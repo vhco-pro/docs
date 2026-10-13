@@ -7,6 +7,36 @@ status: active
 
 # Container conventions
 
+## Distroless application runtimes
+
+Application service images use a digest-pinned distroless runtime, not Alpine
+or a general-purpose distribution as the final stage. This is the required
+runtime model, not an optional optimization. A tool/build-agent image or an
+application that cannot satisfy it needs an explicit documented exception.
+
+| Application | Runtime family |
+| --- | --- |
+| Static Go service | `gcr.io/distroless/static-debian13:nonroot` |
+| Python service with a separately built interpreter and runtime | `gcr.io/distroless/cc-debian13:nonroot` |
+
+These names identify runtime families, not complete Dockerfile pins. Resolve a
+real digest for the selected version and target platforms before generating the
+Dockerfile. Do not copy an undigested reference from this table into a build.
+
+Use a multi-stage build. For dynamically linked runtimes, use `ldd` on the built
+executable in the builder and harvest only the required shared libraries into
+the compatible runtime. A static Go binary needs no libc harvest.
+Keep the builder and runtime ABI compatible; test the actual final image.
+
+For Python, stage the chosen interpreter, standard library, dependencies, and
+required shared libraries. Remove `pip`, `ensurepip`, their metadata, and other
+build/install tools from the staged runtime. Do not use a language convenience
+image to choose an uncontrolled interpreter version.
+
+Run as `USER nonroot:nonroot`; the named distroless variants provide UID 65532.
+Use exec-form `ENTRYPOINT` because distroless has no shell. Do not add a shell
+or package manager to work around a startup script; fix the entry point instead.
+
 ## Build inputs
 
 Pin every external image in `FROM` and external-image `COPY --from` to a digest,
@@ -15,16 +45,15 @@ Resolve the real digest from the registry; never invent it or commit a placehold
 `COPY --from=build` naming a stage in the same Dockerfile needs no image digest.
 Do not use `latest` as a build or deployment dependency.
 
-Use multi-stage builds. Keep compilers, package managers, credentials, and test
-tools out of the runtime image. Copy only the application and its required
-runtime files. Prefer a distroless non-root runtime when the application supports
-it; static Go services follow [Go](go.md). A build-agent image or another genuine
-tool container can need a different runtime; document that requirement.
+Keep compilers, package managers, credentials, and test tools out of the runtime
+image. Copy only the application and its required runtime files. Static Go
+services also follow [Go](go.md).
 
 Separate dependency download layers from source layers to reuse the build cache.
-Use a `.dockerignore` appropriate to the actual build context. Exclude `.git`,
-local output, credentials, and files the build does not consume; prefer an
-allowlist when the required files are small and well-defined.
+Use an allowlist `.dockerignore`: exclude by default, then include the actual
+source, module files, build configuration, and runtime assets required by the
+build. New files must not enter the context accidentally. Keep `.git`, local
+output, credentials, and unrelated files out of that allowlist.
 
 ## Runtime and secrets
 
@@ -38,10 +67,18 @@ Never print the secret or copy its mount into another layer.
 
 ## Publication and consumption
 
-Prefer the existing public container action in
-[shared delivery](../knowledge/shared-delivery.md) when its selected ref meets
-the project's needs. Do not force a wrapper that lacks a required build feature;
-extend it or record the exception rather than silently bypassing it.
+Container build/publication jobs use
+[`michielvha/docker-release-action`](https://github.com/michielvha/docker-release-action)
+at a verified full commit SHA, with the required security profile in
+[container release](../knowledge/container-release.md). Do not replace it with
+direct `docker build` or `docker/build-push-action` steps in release workflows;
+that bypasses the shared scan, signing, SBOM, and attestation path.
+
+Local development and runtime smoke checks can use Docker directly. If a release
+needs a feature or environment the shared action cannot support, request an
+extension or an explicit exception. Do not silently turn controls off or bypass
+the action. An outer SHA pin does not make its transitive action refs immutable;
+inspect those too when assessing the selected revision.
 
 Default personal publication to GHCR when a container is needed. Configure package
 ownership and visibility intentionally. Use the caller's token with `packages:
@@ -51,6 +88,8 @@ write every package in another account. No private registry is required.
 Tag published artifacts with the computed exact version and record the image
 digest. Deploy by digest when reproducible identity matters. Multi-platform
 images need the digest of their image index, not just one architecture's image.
-Scan the image and prove it starts under its declared user; a successful build
-does not establish runtime compatibility. Automated dependency updates should
+Verify the scan, signature, and attestation results before allowing consumers to
+use a published image. Prove it starts under its declared user with the expected
+filesystem restrictions; a successful build does not establish runtime compatibility.
+Automated dependency updates should
 move the readable tag and digest together for review.

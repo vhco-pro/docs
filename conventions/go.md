@@ -53,7 +53,7 @@ that model. Select `GOARCH` for the target platform rather than hardcoding one
 architecture for all images. Use `-trimpath`; only inject version fields that
 actually exist in the application.
 
-A static Go service defaults to a digest-pinned distroless static Debian
+A static Go service uses the required digest-pinned distroless static Debian
 `nonroot` runtime, such as `gcr.io/distroless/static-debian13:nonroot`, running
 as its non-root user. A CGO dependency needs a compatible runtime and an explicit
 reason for the exception, not a broken static-image assumption. See

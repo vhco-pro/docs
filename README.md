@@ -12,7 +12,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | --- | --- |
 | Change code or scripts | [Coding](conventions/coding.md) |
 | Write Go | [Go](conventions/go.md) |
-| Build a container | [Containers](conventions/containers.md) |
+| Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md) and [shared delivery](knowledge/shared-delivery.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |
 | Apply these conventions to an existing repo | [Onboard a repository](guides/onboard-a-repository.md) |

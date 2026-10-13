@@ -17,7 +17,7 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 | Start a Go application | [michielvha/template-go-app](https://github.com/michielvha/template-go-app) | Template files are a starting point; apply the bootstrap guide. |
 | Compute a version and tag | [michielvha/gitversion-tag-action](https://github.com/michielvha/gitversion-tag-action) | The selected action ref and its bundled/custom GitVersion config decide behavior. |
 | Publish Go binaries | [michielvha/goreleaser-action](https://github.com/michielvha/goreleaser-action) | Inspect its selected metadata and signing requirements before wiring it. |
-| Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Inspect supported platforms, secrets, tags, and outputs at the selected ref. |
+| Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Use the required [container security profile](container-release.md); inspect the selected ref. |
 | Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | Reusable workflows are under `.github/workflows/`; discover the actual file before pinning it. |
 
 These are source locations, not a promise that their default branches already

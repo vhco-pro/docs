@@ -56,16 +56,22 @@ its repository or importing the template's history.
    Anchor binary ignores at the repository root. Commit generated module checksums.
 4. Verify the v2 lint configuration and add real test, vet, and lint gates before
    publication. Template TODOs are work to finish, not functioning checks.
-5. For a container, adapt the runtime to the actual binary, select a compatible
-   non-root base, and resolve real image digests. Prove it starts under that user.
+5. For a container, use the required digest-pinned distroless static non-root
+   runtime for a static Go service, not the template's runtime by default. Follow
+   [container conventions](../conventions/containers.md), resolve real digests,
+   and prove startup under the declared user and filesystem restrictions. Build
+   and publish through `michielvha/docker-release-action` with the required
+   [security profile](../knowledge/container-release.md), including on the final
+   merge when using native multi-platform build jobs.
 6. Resolve real commit SHAs for the shared actions under their actual owners.
    Inspect selected inputs/outputs. Prefer bundled version configuration when it
    meets the project rules; do not perpetuate copied stale GitVersion config.
 7. Choose one versioning and release path. A notes-only reusable release workflow
    does not replace a binary build. Do not independently create the same release
    through both it and GoReleaser. Discuss any required shared-flow extension.
-8. Configure signing only when requested; never create an unexplained requirement
-   for a private key. Document required secret names without secret values.
+8. Configure binary/checksum signing only when requested; never create an
+   unexplained requirement for a private key. This is separate from the required
+   keyless container signing profile. Document required secret names without values.
 9. Follow [onboarding](onboard-a-repository.md) to add the pinned local `AGENTS.md`
    and harness bridges.
 

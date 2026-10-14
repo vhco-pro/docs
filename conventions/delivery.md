@@ -10,14 +10,20 @@ status: active
 ## Git and versioning
 
 Use short-lived branches and review changes through PRs. Conventional Commit
-subjects determine version intent: `feat` is minor; `fix`, `perf`, `refactor`, and
-`revert` are patch; `!` on the type/scope or an uppercase `BREAKING CHANGE:` or
-`BREAKING-CHANGE:` footer is major. `chore`, `docs`, `style`, `test`, and `ci` do
-not normally bump the version. The shared action's selected config is authoritative.
+subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,
+`refactor`, and `revert` are patch; `!` on the type/scope or an uppercase
+`BREAKING CHANGE:` or `BREAKING-CHANGE:` footer is major. `docs`, `style`, `test`,
+and `ci` do not normally bump the version. The shared action's selected config
+is authoritative.
 
-Use `fix(deps):` for a dependency update that must release a delivered behavior
-or security fix. A `chore(deps):` merge can correctly produce no new version.
-Do not assume every dependency PR automatically releases a shared component.
+Patch bumps for `chore`, including Renovate's `chore(deps)`, are an intentional
+personal policy so dependency updates release the changed software. A later
+documentation commit must not suppress that bump. A feature or breaking change
+in the same history still takes precedence.
+
+Consumers must adopt an action revision carrying this policy. An older pinned
+revision or custom config can still treat chores differently; a docs change does
+not upgrade an existing workflow pin automatically.
 
 Publish exact semantic versions. Do not create or move major/minor alias tags.
 Choose one component to decide the version and one path to publish the release;

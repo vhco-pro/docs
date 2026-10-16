@@ -1,8 +1,7 @@
 # vhco-pro/docs
 
 Personal engineering conventions and shared knowledge for repositories owned by
-`vhco-pro` and `michielvha`. This is a solo-developer software factory, not a
-company platform. Keep the structure small and the guidance usable.
+`vhco-pro` and `michielvha`. Keep the structure small and the guidance usable.
 
 ## Start here
 

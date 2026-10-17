@@ -5,7 +5,9 @@ pointers here, not copies of these instructions.
 
 1. Read [README.md](README.md) and follow its task route.
 2. Read [coding](conventions/coding.md) before implementation and
-   [documentation](conventions/documentation.md) before writing documents.
+   [documentation](conventions/documentation.md) before writing documents. Edit all prose a reader
+   will see, including commit messages and PR and issue bodies, with the
+   [humanize prose guide](guides/humanize-prose.md).
 3. For a new Go application, follow the
    [bootstrap guide](guides/bootstrap-go-project.md). Start from the actual
    `michielvha/template-go-app`, not an invented scaffold.

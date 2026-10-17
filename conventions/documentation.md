@@ -11,6 +11,13 @@ Use plain English, literal statements, and one main idea per sentence. Keep the
 current or intended state, not the conversation that produced it. No em dashes.
 Do not invent owners, dates, statuses, alternatives, or implementation claims.
 
+## Prose a reader sees
+
+Edit every piece of prose a reader will see with the [humanize prose guide](../guides/humanize-prose.md)
+before it is committed or posted. That covers documents and their prose sections, READMEs, commit
+messages, PR and issue bodies, review summaries and replies. Text that must stay verbatim is not
+rewritten: stored review records, quotations, code, commands and generated output.
+
 ## Document distinctions
 
 A principle explains intent. A guideline recommends an approach. A standard is

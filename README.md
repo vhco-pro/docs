@@ -15,7 +15,8 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md) and [shared delivery](knowledge/shared-delivery.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |
 | Apply these conventions to an existing repo | [Onboard a repository](guides/onboard-a-repository.md) |
-| Write or reorganize documentation | [Documentation](conventions/documentation.md) |
+| Write or reorganize documentation | [Documentation](conventions/documentation.md) and [humanize prose](guides/humanize-prose.md) |
+| Write a commit message, PR, issue or review summary | [Humanize prose](guides/humanize-prose.md) |
 | Specify, plan or implement a feature | [Feature documents](conventions/feature-documents.md) and [feature delivery](conventions/delivery.md#feature-delivery) |
 | Ship a change | [Feature delivery](conventions/delivery.md#feature-delivery) and [delivery](conventions/delivery.md) |
 

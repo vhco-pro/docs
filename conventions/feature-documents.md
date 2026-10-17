@@ -95,8 +95,8 @@ tracker:
       Residual: https://github.com/OWNER/REPO/issues/43
 ```
 
-A residual needs the owner's decision. On a normative revision, ticks, evidence and residuals of the
-revised criteria are reset; their history stays in Git and in the Review Log.
+A residual needs the owner's decision. On a normative revision, every tick, evidence line and residual is
+reset; their history stays in Git and in the Review Log.
 
 ## Test plan
 
@@ -165,7 +165,8 @@ PROPOSAL: <one or two sentences>
 ```
 
 Only the reviews that still decide something must be in record form: the latest spec review, the latest
-implementation review, and every review an acceptance row names. Older subsections are history.
+implementation review, and the review the latest acceptance row names. Older subsections, including
+earlier acceptances, are history.
 
 An implementation review returns one record for every current criterion, with its exact accepted text:
 
@@ -175,8 +176,8 @@ VERDICT: met | not met | untested | not verified
 EVIDENCE: <command or action>, <target>, <observed result>, <limitations>
 ```
 
-Criterion text is the text after `AC-NN: ` plus each following indented line that is not an `Evidence:` or
-`Residual:` line, with whitespace runs folded to one space and the ends trimmed. The record's text after
+Criterion text is the text after `AC-NN: ` plus each following indented line, up to the next list item,
+`Evidence:` line or `Residual:` line, with whitespace runs folded to one space and the ends trimmed. The record's text after
 `CRITERION: AC-NN ` is folded the same way, and the two must be equal.
 
 `met`: executed evidence observed in this review establishes the criterion. `not met`: executed evidence
@@ -271,10 +272,9 @@ regular expressions where they start with `^`.
 
 ## Conditions
 
-The block composes these conditions; `vh-adlc` implements them. A review is stale when the normative
-baseline changed since its commit, when covered files changed on the remote default branch since that
-commit's merge base, or, for an implementation review, when covered files changed on the feature branch
-after it. An unreachable reviewed commit, a `+dirty` target or a missing review is stale.
+The block composes these conditions; `vh-adlc` implements them, and `vh-adlc fresh` decides staleness from
+Git. A review bound to a changed normative baseline, a `+dirty` target, a missing review row or an
+unreachable reviewed commit is stale.
 
 | Condition | Holds when |
 | --- | --- |

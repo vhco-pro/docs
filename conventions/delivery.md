@@ -29,6 +29,33 @@ Publish exact semantic versions. Do not create or move major/minor alias tags.
 Choose one component to decide the version and one path to publish the release;
 do not recompute or publish it independently in parallel jobs.
 
+## Feature delivery
+
+A feature follows the [feature-document standard](feature-documents.md).
+
+- **Documents first on the default branch.** Until a feature document has a `branch` field, it is
+  committed and pushed to the default branch, with any first-run onboarding files and nothing else.
+- **Code on a feature branch.** Implementation starts with one claim commit on the default branch that
+  sets `in-progress` and `branch`, pushed so other sessions see it. The feature branch, named
+  `<conventional type>/<slug>` such as `feat/review-freshness`, starts at that commit. From then on the
+  document is edited only on that branch and returns to the default branch with the PR.
+- **One PR per feature** or child feature, not per phase. Feature PRs land by merge commit or fast-forward,
+  never squash, so the commits its Review Log cites stay reachable.
+- **One writer per feature.** Separate features may run in parallel worktrees. A claim advertises a branch;
+  it is not a lock. Another session takes over a feature only after the owner confirms the earlier writer
+  has stopped. Never force-checkout, reset, prune or delete a worktree to take one over.
+- **Review committed work.** Commit relevant changes before an implementation review; only a review of an
+  exact commit can complete a feature. Leave unrelated staged, unstaged and untracked work untouched.
+- **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
+  only feature documents or Markdown onboarding files carries `[skip ci]`. Any code, test, workflow or
+  other change in the delivery runs normal CI, even when its last commit is documentation-only. Report a
+  skipped run as skipped, never as a pass. Never bypass branch protection or rewrite a pushed commit to
+  remove the marker.
+
+Issue linkage: one issue per feature document. A PR says `Closes #N` only when every criterion is met and
+closure is authorised; otherwise it says `Refs #N` and names what remains. A residual needs a durable
+tracker before the feature is complete.
+
 ## Pinning and updates
 
 Pin external GitHub Actions and reusable workflows to full 40-character commit

@@ -7,8 +7,11 @@ status: active
 
 # Onboard a repository
 
-Use this procedure for a repo under either `vhco-pro` or `michielvha`. Central
-docs are not automatically inherited through the org's `.github` repository.
+Use this procedure for a repo under either `vhco-pro` or `michielvha`. Every such
+repository follows these conventions, onboarded or not
+([decision 0002](../decisions/0002-every-repository-follows-the-conventions.md)).
+Onboarding makes the revision explicit. A tool working in a repository without a
+pin uses its own pinned revision and adds the repository pin with its first change.
 
 ## Choose the documentation revision
 
@@ -16,6 +19,10 @@ Choose a reviewed commit of `vhco-pro/docs` containing the needed pages. Verify
 the full SHA and inspect it. After adoption, update the pin deliberately in a
 reviewed change. During initial setup, `main` may contain only the bootstrap
 README; do not point a consumer at missing pages or silently fall back to `main`.
+
+A pin is exactly one full 40-character SHA across the root `AGENTS.md` and its
+bridges. A short SHA, a branch name or several distinct SHAs is an invalid pin:
+stop and fix it.
 
 The pin is in a small Markdown entry point, not another YAML knowledge map.
 Agents can read the linked pages through GitHub or a checkout of that exact
@@ -34,6 +41,7 @@ https://github.com/vhco-pro/docs/blob/DOCS_SHA/AGENTS.md
 and follow the task routes there before implementation.
 
 For all code, read conventions/coding.md at that revision.
+To specify, plan or implement a feature, read conventions/feature-documents.md.
 For Go, also read conventions/go.md; for images, conventions/containers.md;
 for CI and releases, conventions/delivery.md and knowledge/shared-delivery.md.
 When onboarding or bootstrapping, read the matching guides/ page.
@@ -43,6 +51,9 @@ Preserve this repository's local instructions; report a conflict instead of
 silently overriding either source.
 
 ## Local commands and constraints
+
+Add `Feature documents: <path>` only when feature documents live somewhere other
+than docs/internal/plans/.
 
 List only this repo's verified build/test commands and necessary exceptions.
 ```
@@ -67,4 +78,5 @@ do not assume every tool follows external links without being instructed.
    existing code is compliant.
 
 Update the docs pin when relevant conventions change. Do not copy the central
-pages into every consumer or introduce an automatic knowledge resolver.
+pages into every consumer. Tools resolve only explicit full-SHA pins; there is no
+knowledge mapper or automatic route selection.

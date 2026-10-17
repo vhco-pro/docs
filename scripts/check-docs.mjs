@@ -46,4 +46,35 @@ for (const path of files) {
     assert.ok(statSync(destination).isFile() || statSync(destination).isDirectory());
   }
 }
+const standard = join(root, 'conventions', 'feature-documents.md');
+assert.ok(existsSync(standard), 'conventions/feature-documents.md: missing feature-document standard');
+const standardText = readFileSync(standard, 'utf8');
+const blocks = [...standardText.matchAll(/^```yaml vh-adlc-rules\r?\n([\s\S]*?)^```$/gm)];
+assert.equal(blocks.length, 1, 'conventions/feature-documents.md: needs exactly one yaml vh-adlc-rules block');
+const rules = parse(blocks[0][1]);
+assert.equal(rules.schema, 1, 'vh-adlc-rules: unknown schema');
+const statuses = new Set(rules.statuses);
+for (const [from, targets] of Object.entries(rules.transitions)) {
+  for (const status of [from, ...targets]) assert.ok(statuses.has(status), `vh-adlc-rules: unknown status ${status}`);
+}
+const conditionsSection = standardText.match(/^## Conditions\r?\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
+assert.ok(conditionsSection, 'conventions/feature-documents.md: missing Conditions section');
+const vocabulary = new Set(
+  [...conditionsSection[1].matchAll(/^\| `([a-z_]+)` \| /gm)].map((match) => match[1]),
+);
+const conditionOf = (when) => String(when).replace(/^not /, '');
+for (const [status, conditions] of Object.entries(rules.gates)) {
+  assert.ok(statuses.has(status), `vh-adlc-rules: gate for unknown status ${status}`);
+  for (const condition of conditions) assert.ok(vocabulary.has(condition), `vh-adlc-rules: undefined condition ${condition}`);
+}
+for (const rule of rules.next) {
+  for (const status of [rule.status].flat()) assert.ok(statuses.has(status), `vh-adlc-rules: next for unknown status ${status}`);
+  if (rule.when !== undefined) assert.ok(vocabulary.has(conditionOf(rule.when)), `vh-adlc-rules: undefined condition ${rule.when}`);
+  assert.ok(typeof rule.do === 'string' && rule.do.trim(), 'vh-adlc-rules: next rule without an action');
+}
+for (const [key, value] of Object.entries(rules)) {
+  if (typeof value === 'string' && value.startsWith('^')) new RegExp(value);
+}
+new RegExp(rules.feature_root.declaration);
 console.log(`Checked ${files.length} Markdown files: local links, metadata, and writing constraints pass.`);
+console.log(`Checked the vh-adlc-rules block: ${statuses.size} statuses, ${vocabulary.size} conditions, ${rules.next.length} next rules.`);

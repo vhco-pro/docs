@@ -10,6 +10,9 @@ pointers here, not copies of these instructions.
    [bootstrap guide](guides/bootstrap-go-project.md). Start from the actual
    `michielvha/template-go-app`, not an invented scaffold.
 4. For a consumer repo, follow the [onboarding guide](guides/onboard-a-repository.md).
+5. To specify, plan, implement or ship a feature, follow the
+   [feature-document standard](conventions/feature-documents.md) and
+   [feature delivery](conventions/delivery.md#feature-delivery).
 
 Read only the documents relevant to the task. There is no pack manifest, mapper,
 or required agent framework. If a required source cannot be read, report that

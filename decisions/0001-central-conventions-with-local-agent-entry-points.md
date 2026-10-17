@@ -2,10 +2,14 @@
 title: "Central conventions with local agent entry points"
 type: decision
 description: "Use one personal docs repository and explicit local pointers instead of a knowledge mapper."
-status: accepted
+status: superseded
+superseded_by: "0002-every-repository-follows-the-conventions.md"
 ---
 
 # Central conventions with local agent entry points
+
+Superseded by [0002](0002-every-repository-follows-the-conventions.md): every repository now follows
+the conventions, onboarded or not.
 
 ## Choice
 

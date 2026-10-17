@@ -68,8 +68,9 @@ Review Log. Implementation Phases (before Tasks) and Sources (last) are optional
 not apply rather than leave it empty, except the required ones, which may say "None.".
 
 Scope, Design, Acceptance Criteria, Test Plan and the `covers` frontmatter form the normative baseline. A
-change to any of them is a revision: the document returns to `draft`, earlier reviews become stale, and
-the owner accepts again.
+change to any of them is a revision. Before the change is applied, a `planned` or `in-progress` document
+moves to `draft` (on its feature branch when it has one); earlier reviews become stale, the owner accepts
+again, and the document moves `draft` to `planned` before implementation re-enters through its branch.
 
 Context and Design cite their claims: a `file:line`, or a command and its output, gathered when the claim
 was written. Sources lists every external page read, each with the claim it supports.
@@ -163,6 +164,9 @@ EVIDENCE: <file:line, command and output, or quote>
 PROPOSAL: <one or two sentences>
 ```
 
+Only the reviews that still decide something must be in record form: the latest spec review, the latest
+implementation review, and every review an acceptance row names. Older subsections are history.
+
 An implementation review returns one record for every current criterion, with its exact accepted text:
 
 ```text
@@ -170,6 +174,10 @@ CRITERION: AC-01 <exact accepted text>
 VERDICT: met | not met | untested | not verified
 EVIDENCE: <command or action>, <target>, <observed result>, <limitations>
 ```
+
+Criterion text is the text after `AC-NN: ` plus each following indented line that is not an `Evidence:` or
+`Residual:` line, with whitespace runs folded to one space and the ends trimmed. The record's text after
+`CRITERION: AC-NN ` is folded the same way, and the two must be equal.
 
 `met`: executed evidence observed in this review establishes the criterion. `not met`: executed evidence
 contradicts it. `untested`: no adequate check covers it. `not verified`: a check exists but its execution
@@ -227,6 +235,7 @@ isolation: [structural, procedural, unknown, n/a]
 acceptance_row: { kind: spec, model: n/a, isolation: n/a, outcome: accepted by owner, subsection: false }
 verdicts: [met, not met, untested, not verified]
 record_criterion: '^CRITERION: (AC-\d{2,}) '
+criterion_continuation: '^\s+\S'
 record_verdict: '^VERDICT: (met|not met|untested|not verified)$'
 record_finding: '^FINDING: F-\d{2,}$'
 record_severity: '^SEVERITY: (blocking|should-fix|nit)$'

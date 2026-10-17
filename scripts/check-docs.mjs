@@ -57,8 +57,10 @@ const statuses = new Set(rules.statuses);
 for (const [from, targets] of Object.entries(rules.transitions)) {
   for (const status of [from, ...targets]) assert.ok(statuses.has(status), `vh-adlc-rules: unknown status ${status}`);
 }
+const conditionsSection = standardText.match(/^## Conditions\r?\n([\s\S]*?)(?=^## |(?![\s\S]))/m);
+assert.ok(conditionsSection, 'conventions/feature-documents.md: missing Conditions section');
 const vocabulary = new Set(
-  [...standardText.matchAll(/^\| `([a-z_]+)` \| /gm)].map((match) => match[1]),
+  [...conditionsSection[1].matchAll(/^\| `([a-z_]+)` \| /gm)].map((match) => match[1]),
 );
 const conditionOf = (when) => String(when).replace(/^not /, '');
 for (const [status, conditions] of Object.entries(rules.gates)) {

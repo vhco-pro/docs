@@ -23,6 +23,13 @@ The active conventions state the expected working approach. A page called a
 guideline is not proof that every consumer has adopted or enforces it. Name
 the actual check when claiming enforcement; never infer compliance from this repo.
 
+## Findings and issues
+
+Findings live in documents. An investigation, measurement or root cause goes into
+the repository's analysis or feature document with its evidence. An issue states
+the work in a few lines and links that document; do not paste the reasoning into
+issue comments, where it cannot be reviewed or kept current.
+
 ## Metadata and placement
 
 Content pages under `conventions/`, `knowledge/`, `guides/`, and `decisions/` have

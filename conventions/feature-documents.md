@@ -95,8 +95,8 @@ tracker:
       Residual: https://github.com/OWNER/REPO/issues/43
 ```
 
-A residual needs the owner's decision. On a normative revision, every tick, evidence line and residual is
-reset; their history stays in Git and in the Review Log.
+A residual needs the owner's decision. On a normative revision, every criterion tick, evidence line and residual
+is reset; their history stays in Git and in the Review Log.
 
 ## Test plan
 
@@ -282,7 +282,7 @@ unreachable reviewed commit is stale.
 | `test_plan_complete` | Every criterion ID appears in the Test Plan table |
 | `spec_review_fresh` | The latest spec review exists and is not stale |
 | `spec_review_clean` | The latest spec review is well formed and has no blocking finding, or is exactly `NO FINDINGS` |
-| `accepted` | An acceptance row names a clean spec review whose commit has the current normative baseline |
+| `accepted` | The latest acceptance row names a clean spec review whose commit has the current normative baseline |
 | `tasks_populated` | At least one line matches `task_line` |
 | `tasks_open` | At least one task is unticked |
 | `on_feature_branch_if_set` | The document has no `branch`, or the current branch equals it |

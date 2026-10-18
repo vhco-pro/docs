@@ -7,12 +7,22 @@ status: draft
 
 # Tag-driven Go releases
 
-The pilot consumer is `michielvha/vh-adlc`. Shared orchestration belongs in
-[vhco-pro/.github](https://github.com/vhco-pro/.github), while artifact builds use
-the existing
-[GoReleaser action](https://github.com/michielvha/goreleaser-action).
+The pilot consumer is `michielvha/vh-adlc`. Shared workflows compose separate
+actions, each owning one intent.
+
+| Intent | Component |
+| --- | --- |
+| Check Go source | [go-ci-action](https://github.com/michielvha/go-ci-action) |
+| Calculate a version and create its exact tag | [gitversion-tag-action](https://github.com/michielvha/gitversion-tag-action) |
+| Build, sign, and publish Go artifacts | [goreleaser-action](https://github.com/michielvha/goreleaser-action), release-only next major |
+| Checkout, authenticate, and order those actions | [Shared workflows](https://github.com/vhco-pro/.github) |
+
 This design is a pilot, not an estate-wide rollout. Live event delivery and
 publication must be verified before adoption.
+
+Call the GitVersion action directly through `uses:`. Do not check out or invoke
+its internal scripts. Shared workflows contain orchestration, not copies of CI
+commands or another tagging or publication implementation.
 
 ## Release flow
 
@@ -27,21 +37,25 @@ publication must be verified before adoption.
 4. The exact tag push starts a thin caller of the shared Go release workflow.
    The publisher checks out the event's commit, validates the tag-to-commit
    mapping, and consumes the version from the tag. It does not run GitVersion.
-5. Shared verification runs formatting, module tidiness, vet, tests, build, and
-   lint as blocking checks. PR CI can call the same verification workflow.
-6. The existing GoReleaser action builds and signs a release draft. Only after
-   GoReleaser succeeds is the draft published. Prerelease tags become
-   prereleases and never replace the latest stable release.
+5. `go-ci-action` runs formatting, module tidiness, vet, tests, build, and lint
+   as blocking checks. PR CI calls the same action.
+6. The release-only GoReleaser action provisions the release toolchain, imports
+   the signing key, and runs upstream GoReleaser. GoReleaser itself creates the
+   draft, uploads artifacts, and publishes after successful upload. Its
+   configuration marks prerelease tags as prereleases.
 
 A branch event requests versioning. The exact tag authorizes artifact
 publication. These are separate responsibilities even when both are automatic.
 Checks on the tagged source may repeat PR checks; they verify the source actually
 being released.
 
-The shared verification and release workflows are additive. Existing composite
-action inputs and defaults, and the existing notes-only release workflow, do not
-change. A binary repository has one publisher; it must not run the notes-only
-publisher alongside GoReleaser for the same release.
+The Go CI action and shared Go release workflow are additive. Removing advisory
+lint and unused inputs from the GoReleaser action is isolated to a next-major
+branch. Existing `main` and released action refs remain unchanged during the
+pilot. The notes-only shared release workflow is also unchanged.
+
+A binary repository has one publisher; it must not run the notes-only publisher
+alongside GoReleaser for the same release.
 
 ## Identity and source
 
@@ -50,16 +64,16 @@ token. A tag pushed with the ordinary `GITHUB_TOKEN` does not start another
 tag-push workflow. Checkout or Git's credential helper must use the App identity
 for the push; merely generating an App token is insufficient.
 
-PR version calculation gets no tagging or signing credentials. A published PR
-preview is requested through an authorized manual run on its trusted feature
-branch, not through a privileged `pull_request` job. Fork PRs receive validation
-only. Feature names do not supply a second version counter: use GitVersion's
-actual prerelease output.
+PR version calculation uses the GitVersion action with `dry-run: true` and gets
+no tagging or signing credentials. A published PR preview is requested through
+an authorized manual run on its trusted feature branch with dry-run disabled,
+not through a privileged `pull_request` job. A manual run on `main` selects a
+stable version instead. Fork PRs receive validation only. Feature names do not
+supply a second version counter: use GitVersion's actual prerelease output.
 
-Pin reusable workflows to full commit SHAs. Helper scripts must use the same
-revision as the called workflow and stay outside the application's checkout.
-The application tag identifies source; the workflow pin identifies the build
-implementation.
+Pin actions and reusable workflows to full commit SHAs. The Go workflow needs no
+helper checkout or second `workflow-ref` pin. The application tag identifies
+source; the workflow and action pins identify the build implementation.
 
 ## Failure and retry
 
@@ -70,18 +84,23 @@ this pilot.
 | State | Recovery |
 | --- | --- |
 | Checks or build fail before a release exists | Re-run the original tag workflow at the same source commit |
-| A partial draft exists | Stop and inspect the original artifacts; do not automatically delete or replace them |
-| A public release exists | Do not rebuild or overwrite it |
+| A partial draft exists | Inspect it before retrying; preserve uploaded artifacts and do not delete or replace the draft automatically |
+| A public release exists | Do not overwrite its assets; collisions must fail |
 | The source needs a fix | Commit the fix and release a new exact version |
 
-The shared publisher serializes runs per exact tag and rechecks release state
-before building. API failures are errors, not evidence that a release is absent.
+The shared workflow serializes runs per exact tag. GoReleaser owns release API
+operations and upload failure handling. Configure `replace_existing_artifacts`
+and `replace_existing_draft` as false, and `use_existing_draft` as true. An
+existing asset collision fails rather than replacing its content. These are
+native GoReleaser controls, not custom recovery scripts.
+
 A tag event is not automatically repeated by a later branch push. Re-running a
 failed workflow preserves its original source ref and commit.
 
 Do not require a new tag to be created on every retry: the original exact tag is
 the release identity. Recovery must still protect any content already published.
-The pilot refuses automatic recovery once a draft or public release exists.
+The pilot does not automate deletion, asset replacement, or partial-release
+recovery.
 
 ## Prerelease retention
 

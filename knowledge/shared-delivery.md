@@ -45,6 +45,11 @@ parallel job creating the same GitHub Release. Read the selected component's
 contract before combining flows; extend the shared flow deliberately when
 artifact publication needs it.
 
+The [tag-driven Go release pilot](tag-driven-go-releases.md) separates GitVersion
+tag creation from shared Go verification and signed artifact publication.
+It retains read-only PR checks and allows manually requested trusted-branch
+prereleases. Existing component interfaces remain unchanged.
+
 ## Separate implementation from convention
 
 Use [delivery](../conventions/delivery.md) for pinning and publication rules,

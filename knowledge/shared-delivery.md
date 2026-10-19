@@ -16,6 +16,7 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 | --- | --- | --- |
 | Start a Go application | [michielvha/template-go-app](https://github.com/michielvha/template-go-app) | Template files are a starting point; apply the bootstrap guide. |
 | Compute a version and tag | [michielvha/gitversion-tag-action](https://github.com/michielvha/gitversion-tag-action) | The selected action ref and its bundled/custom GitVersion config decide behavior. |
+| Check Go source | [michielvha/go-ci-action](https://github.com/michielvha/go-ci-action) | The new pilot action owns blocking Go CI checks. Shared workflows compose it; they do not duplicate its commands. |
 | Publish Go binaries | [michielvha/goreleaser-action](https://github.com/michielvha/goreleaser-action) | Inspect its selected metadata and signing requirements before wiring it. |
 | Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Use the required [container security profile](container-release.md); inspect the selected ref. |
 | Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | Reusable workflows are under `.github/workflows/`; discover the actual file before pinning it. |
@@ -44,6 +45,12 @@ A Go application using GoReleaser must have one release owner, not a second
 parallel job creating the same GitHub Release. Read the selected component's
 contract before combining flows; extend the shared flow deliberately when
 artifact publication needs it.
+
+The [tag-driven Go release pilot](tag-driven-go-releases.md) composes the Go CI,
+GitVersion tag, and GoReleaser actions through thin workflows. GitVersion is
+called directly, never through its internal scripts. PR previews remain
+read-only; trusted branch publication is manually requested. The release-only
+GoReleaser change is an isolated next major, not an update to current consumers.
 
 ## Separate implementation from convention
 

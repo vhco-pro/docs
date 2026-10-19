@@ -20,10 +20,18 @@ actions, each owning one intent.
 This design is a pilot, not an estate-wide rollout. Live event delivery and
 publication must be verified before adoption.
 
-The first live migration candidate is `michielvha/chart-fetcher`, after final
-review of the core drafts. It has not been migrated yet. Its existing workflow
-also publishes Docker images, so agree the canary's publishing scope before
-running it; approval of a Go prerelease test is not approval of Docker publishing.
+The first live migration candidate is the binary-only `michielvha/vh-adlc`, after
+final review of the core drafts and explicit activation approval. Its release App
+still needs configuration. Merging its current Version workflow enables automatic
+main-branch tagging once credentials exist, so agree the first publishing run
+before merging that consumer.
+
+Container migration is a later round. `michielvha/chart-fetcher` first produces Go
+binaries, then packages those `dist/` binaries into a multi-platform image through
+the existing `michielvha/docker-release-action`. A later shared container workflow
+can compose the primitives and define the artifact handoff; it is not part of the
+binary canary. The enterprise design remains separate until this personal flow
+has been exercised.
 
 Call the GitVersion action directly through `uses:`. Do not check out or invoke
 its internal scripts. Shared workflows contain orchestration, not copies of CI
@@ -127,5 +135,6 @@ checks do not prevent consumers from using it.
 
 ## Related
 
+- [Dated migration dependency report](../reports/2026-10-19-go-delivery-dependencies.md)
 - [Delivery conventions](../conventions/delivery.md)
 - [Shared delivery components](shared-delivery.md)

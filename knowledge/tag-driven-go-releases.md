@@ -40,9 +40,12 @@ commands or another tagging or publication implementation.
 5. `go-ci-action` runs formatting, module tidiness, vet, tests, build, and lint
    as blocking checks. PR CI calls the same action.
 6. The release-only GoReleaser action provisions the release toolchain, imports
-   the signing key, and runs upstream GoReleaser. GoReleaser itself creates the
-   draft, uploads artifacts, and publishes after successful upload. Its
-   configuration marks prerelease tags as prereleases.
+   the signing key with native GnuPG into a private temporary keyring, and runs
+   the cached GoReleaser binary. The upstream installer runs only on cache misses
+   for exact stable tool versions. The tool pin is independent of GitVersion's
+   application version. GoReleaser itself creates the draft, uploads artifacts,
+   and publishes after successful upload. Its configuration marks prerelease
+   tags as prereleases.
 
 A branch event requests versioning. The exact tag authorizes artifact
 publication. These are separate responsibilities even when both are automatic.

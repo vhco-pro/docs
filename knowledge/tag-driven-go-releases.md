@@ -20,6 +20,11 @@ actions, each owning one intent.
 This design is a pilot, not an estate-wide rollout. Live event delivery and
 publication must be verified before adoption.
 
+The first live migration candidate is `michielvha/chart-fetcher`, after final
+review of the core drafts. It has not been migrated yet. Its existing workflow
+also publishes Docker images, so agree the canary's publishing scope before
+running it; approval of a Go prerelease test is not approval of Docker publishing.
+
 Call the GitVersion action directly through `uses:`. Do not check out or invoke
 its internal scripts. Shared workflows contain orchestration, not copies of CI
 commands or another tagging or publication implementation.
@@ -36,7 +41,8 @@ commands or another tagging or publication implementation.
    are not release inputs.
 4. The exact tag push starts a thin caller of the shared Go release workflow.
    The publisher checks out the event's commit, validates the tag-to-commit
-   mapping, and consumes the version from the tag. It does not run GitVersion.
+   mapping, and passes the exact event tag to GoReleaser. It must not rediscover
+   a different tag from that commit. It does not run GitVersion.
 5. `go-ci-action` runs formatting, module tidiness, vet, tests, build, and lint
    as blocking checks. PR CI calls the same action.
 6. The release-only GoReleaser action provisions the release toolchain, imports

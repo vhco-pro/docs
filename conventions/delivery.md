@@ -116,22 +116,14 @@ across accounts, and its token acts on the caller repository. Both caller and
 callee must permit the operation; no extra PAT is needed just to read a public
 workflow. Do not pass all secrets when none are required.
 
-Use full history and tags for GitVersion and release-note ranges. Ordinary PR
-validation and packaging checks remain unprivileged and do not publish releases,
-push images or create source tags.
+Use full history and tags for GitVersion and release-note ranges. Run versioning
+from branch runs, where GitVersion sees the real branch; a `pull_request` run has
+the merge ref and never tags. Check jobs receive no tagging or signing keys.
 
 The proposed [PR preview policy](../knowledge/tag-driven-go-releases.md#proposed-pr-preview-policy)
-uses a persistent `release:preview` label enabled by a repository writer. It
-requests prerelease tags for successful revisions of that open PR until the
-label is removed. Consumers must explicitly adopt the workflow change before
-this behavior is available. Publication remains a separate exact-tag-triggered
-workflow; a branch or label event never publishes directly.
-
-Callers choose feature-branch-plus-PR or PR-only development checks according
-to cost and feedback needs. Shared workflows do not impose feature-push
-triggers. Main integration and exact-tag release validation keep their own
-purpose. GitVersion's selected branch configuration, history and tags remain
-the version authority; PR metadata only controls preview eligibility.
+uses a persistent `release:preview` label: while it is on an open PR, each push
+that passes CI gets a prerelease tag from GitVersion. Callers choose branch-push
+or PR-only CI by cost. Only the exact tag push publishes.
 
 Dry-run paths still compute real versions and render relevant notes. Serialize
 publication where competing runs could conflict. Test before publication,

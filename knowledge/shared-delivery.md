@@ -54,6 +54,11 @@ GoReleaser change is an isolated next major, not an update to current consumers.
 
 ## Separate implementation from convention
 
+Dependency refs are maintained by the
+[managed Renovate process](managed-renovate.md). Where App access is confirmed,
+the hosted service updates SHA pins through PRs; repositories do not run their
+own updater workers. Existing Dependabot coverage stays until that handover.
+
 Use [delivery](../conventions/delivery.md) for pinning and publication rules,
 [containers](../conventions/containers.md) for image rules, and the component's
 own action/workflow file for its inputs. A public workflow can be consumed from

@@ -156,25 +156,33 @@ the version. The PR and label are eligibility checks only; they do not supply
 a version label or counter. Version calculation must see the actual source
 branch, not GitHub's synthetic PR merge ref.
 
-The implementation uses normal GitHub workflow events for that separation:
-completed successful CI can request `workflow_dispatch` of Version on the
-checked branch. GitHub allows the ordinary workflow token to initiate that
-dispatch. Version verifies the CI run and source, then uses the repository-scoped
-App token only when calling GitVersion to create the exact tag. A read-only
-Version dispatch needs neither an open PR nor a label because it cannot publish.
+The caller uses native `needs:` dependencies to place Version after its CI and
+repository-specific checks. Main's Version job calls a thin shared wrapper:
+App authentication, branch checkout and the existing GitVersion action.
+CI-only jobs call `go-ci-action` directly. The separate shared Go release
+workflow owns CI and publication on tag pushes.
 
-The pilot uses the shared action's existing bundled GitVersion configuration.
-That configuration's `release/<major>.<minor>.<patch>` branches select stable
-versions and are excluded from PR previews. A later consumer with a custom
-configuration needs its branch policy checked during adoption; these workflows
-do not replace that configuration or invent a prerelease version for it.
+A PR event has a synthetic ref. Its successful preview job therefore uses one
+`gh workflow run` command to request the caller's Version entry point on the
+actual checked branch. It carries the source SHA automatically. A small `gh pr
+list` check verifies that the branch still has that head on an open
+`release:preview` PR, then calls the same thin wrapper. There is no
+`workflow_run` trigger, CI run-ID lookup, job-name parameter list, label-history
+audit, or `github-script` action.
+
+The pilot uses the GitVersion action's existing bundled configuration. Callers
+can forward an existing configuration through the wrapper. Those configurations
+decide stable versus prerelease versions; workflows must not replace them with
+custom branch-name or version-parsing rules. A read-only Version dispatch
+needs neither an open PR nor a label because it cannot publish.
 
 ### Writer access and source identity
 
-Repository roles `write`, `maintain` and `admin` may enable previews. Triage
-access alone is insufficient, even though GitHub can allow triagers to apply
-labels. A label is an opt-in signal; the workflow must also establish that a
-writer enabled it before using the release identity.
+The label is a repository opt-in, not a separate approval system. The personal
+pilot uses normal repository permissions for branch writes, label changes and
+workflow dispatch; there is no historical label-enabler authorization service.
+Organization adopters must review their role/label policy, including triage
+access, rather than assuming that a label proves write access.
 
 The opt-in covers subsequent commits on that same open PR until removed.
 There is no requirement to copy a SHA, request another approval, or remove and
@@ -189,7 +197,7 @@ Each request targets the captured PR head commit, not a later branch tip or
 GitHub's temporary PR merge commit. Before tagging, confirm the PR remains open,
 label-enabled and at that head. If a newer push arrives, discard the stale
 request and let the new revision's checks produce the next preview. Serialize
-requests per PR so competing events cannot tag different revisions under one
+version requests per source branch so competing events cannot tag different revisions under one
 version.
 
 PR merge-result tests may complement source checks, but they do not prove that

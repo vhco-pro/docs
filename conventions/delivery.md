@@ -116,8 +116,18 @@ across accounts, and its token acts on the caller repository. Both caller and
 callee must permit the operation; no extra PAT is needed just to read a public
 workflow. Do not pass all secrets when none are required.
 
-Use full history and tags for GitVersion and release-note ranges. PR checks must
-not publish releases, push images, or move tags. Dry-run paths still compute
-real versions and render relevant notes. Serialize publication where competing
-runs could conflict. Test before publication, preserve exact tags on retries,
-and surface failures instead of treating them as an absent release.
+Use full history and tags for GitVersion and release-note ranges. Ordinary PR
+validation and packaging checks remain unprivileged and do not publish releases,
+push images or create source tags.
+
+The proposed [PR preview policy](../knowledge/tag-driven-go-releases.md#proposed-pr-preview-policy)
+uses a persistent `release:preview` label enabled by a repository writer. It
+requests prerelease tags for successful revisions of that open PR until the
+label is removed. Consumers must explicitly adopt the workflow change before
+this behavior is available. Publication remains a separate exact-tag-triggered
+workflow; a branch or label event never publishes directly.
+
+Dry-run paths still compute real versions and render relevant notes. Serialize
+publication where competing runs could conflict. Test before publication,
+preserve exact tags on retries, and surface failures instead of treating them
+as an absent release.

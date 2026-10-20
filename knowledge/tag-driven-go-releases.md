@@ -25,6 +25,11 @@ Its Version workflow automatically creates a new stable tag on main when
 GitVersion selects a new version. Artifact publication remains a separate
 tag-triggered run.
 
+The [PR preview policy below](#proposed-pr-preview-policy) is the next rollout
+change. Its diagrams describe the proposed behavior, not an already deployed
+label trigger. The [live pilot](#current-live-pilot-flow) still uses manual
+feature-branch dispatch until its workflows adopt this policy.
+
 Container migration is a later round. `michielvha/chart-fetcher` first produces Go
 binaries, then packages those `dist/` binaries into a multi-platform image through
 the existing `michielvha/docker-release-action`. A later shared container workflow
@@ -35,7 +40,158 @@ Call the GitVersion action directly through `uses:`. Do not check out or invoke
 its internal scripts. Shared workflows contain orchestration, not copies of CI
 commands or another tagging or publication implementation.
 
-## Release flow
+## Proposed PR preview policy
+
+Use the same event policy in each consuming repository. Keep its additional
+checks and packaging requirements: a shared Go check does not replace a
+provider's acceptance tests or an application's no-network tests.
+
+The native GitHub label `release:preview` enables automatic prereleases for an
+open PR. A repository writer adds it once. It stays on the PR until someone
+removes it; each subsequent eligible head revision requests a new prerelease.
+Opening a PR or pushing a feature branch without that label never requests a
+published preview.
+
+No new App, service, custom action, command bot, or per-commit approval is needed.
+Use the existing GitVersion action, CI action, release action and shared
+workflows. Caller workflows supply GitHub events and repository-specific checks;
+shared workflows compose the common behavior.
+
+### Events and outputs
+
+| Event or state | Validation and packaging | Published output |
+| --- | --- | --- |
+| Feature push with no open PR | CI for the pushed commit | None |
+| PR opened or updated without `release:preview` | PR checks and non-publishing packaging checks | None |
+| Writer adds `release:preview` to an open PR | Validate the current head and test packaging | Request its exact prerelease tag after checks pass |
+| New commit on an open PR with `release:preview` | Validate the new head and test packaging | Automatically request its next GitVersion prerelease tag after checks pass |
+| Label removed or PR closed | Stop future preview requests | No new prerelease; keep existing tags and artifacts |
+| Main updated | Validate the merged source, then calculate its stable version | Request an exact stable tag only when GitVersion selects a new version |
+| Exact stable or prerelease tag pushed | Validate the tagged source, build and sign | Publish through the shared tag-triggered release workflow |
+
+Adding the label to an existing PR requests a preview of its current head;
+another push is not required. Removing it does not undo a tag already created
+or stop a publication that has already been authorized by that tag.
+
+### Delivery diagram
+
+```mermaid
+flowchart TD
+    Push["Push feature branch"] --> Open{"Open PR?"}
+    Open -->|No| BranchCI["CI only"]
+    Open -->|Yes| PR["PR validation and packaging checks"]
+    OpenPR["Open or update PR"] --> PR
+    Enable["Writer adds release:preview"] --> PR
+    PR --> Passed{"Checks pass for current head?"}
+    Passed -->|No| Failed["Report failure; do not request a release"]
+    Passed -->|Yes| Enabled{"PR open and release:preview still present?"}
+    Enabled -->|No| ChecksOnly["Checks complete; no source tag or publication"]
+    Enabled -->|Yes| Preview["GitVersion selects prerelease version"]
+    Preview --> PreviewTag["Create exact prerelease tag at checked head"]
+
+    Main["Push or merge to main"] --> MainCI["Validate merged source"]
+    MainCI --> Stable["GitVersion selects stable version"]
+    Stable --> New{"New version?"}
+    New -->|No| NoRelease["No new publication"]
+    New -->|Yes| StableTag["Create exact stable tag"]
+
+    PreviewTag --> Tagged["Tag-push event"]
+    StableTag --> Tagged
+    Tagged --> Verify["Shared release workflow verifies tagged source"]
+    Verify --> Build["Build and sign"]
+    Build --> Publish["Publish versioned assets"]
+```
+
+Branch/PR event routing should avoid running equivalent validation twice for
+the same source. A PR merge-result check, a main integration check and a check
+of the exact tagged commit can have different purposes. Preserve required
+checks rather than suppressing them solely because their commands look alike.
+
+### The label stays enabled across pushes
+
+```mermaid
+sequenceDiagram
+    actor Writer
+    participant PR as Open PR
+    participant Checks as CI and packaging checks
+    participant Version as GitVersion
+    participant Release as Tag-triggered publisher
+    Writer->>PR: Add release:preview
+    PR->>Checks: Check current head A
+    Checks-->>Version: Head A passed and remains eligible
+    Version->>Release: Push exact prerelease tag for A
+    Release-->>PR: Prerelease assets for A
+    Writer->>PR: Push commit B with label still present
+    PR->>Checks: Check head B
+    Checks-->>Version: Head B passed and remains eligible
+    Version->>Release: Push next exact prerelease tag for B
+    Release-->>PR: Prerelease assets for B
+    Writer->>PR: Remove release:preview
+    Writer->>PR: Push commit C
+    PR->>Checks: Check head C
+    Note over Checks,Release: No preview tag or published prerelease for C
+```
+
+The publisher remains tag-driven in every case. The label and main-branch
+policy decide whether to request a source tag; neither publishes directly.
+GitVersion supplies the actual versions. Do not add a separate label, PR, or
+run counter to invent version numbers.
+
+### Writer access and source identity
+
+Repository roles `write`, `maintain` and `admin` may enable previews. Triage
+access alone is insufficient, even though GitHub can allow triagers to apply
+labels. A label is an opt-in signal; the workflow must also establish that a
+writer enabled it before using the release identity.
+
+The opt-in covers subsequent commits on that same open PR until removed.
+There is no requirement to copy a SHA, request another approval, or remove and
+re-add the label on each push. The implementation records the source SHA
+internally for checks and tagging.
+
+Initially, published previews are limited to branches in the same repository.
+Fork PRs receive unprivileged validation and packaging checks. Do not use a
+privileged PR event to execute untrusted source with tagging or signing keys.
+
+Each request targets the captured PR head commit, not a later branch tip or
+GitHub's temporary PR merge commit. Before tagging, confirm the PR remains open,
+label-enabled and at that head. If a newer push arrives, discard the stale
+request and let the new revision's checks produce the next preview. Serialize
+requests per PR so competing events cannot tag different revisions under one
+version.
+
+PR merge-result tests may complement source checks, but they do not prove that
+the exact feature commit passed. Main and publication checks retain their own
+source identities. A failed check does not create a preview request.
+
+### Packaging tests do not require source tags
+
+Exercise GoReleaser configuration and snapshot packaging without creating a
+remote tag or GitHub Release. These checks must not receive the production App
+key or artifact-signing key. An isolated signing fixture can test signing where
+needed.
+
+Temporary workflow artifacts may make a successful build downloadable without
+publishing a version. They are CI outputs, not prereleases. Published previews
+use the normal exact-tag path and production signing identity.
+
+Snapshot checks cannot establish real tag-event delivery, production permissions
+or publication behavior. A controlled, label-enabled prerelease verifies those
+boundaries. Keep failed-tag retries and existing-asset protection as defined
+under [failure and retry](#failure-and-retry).
+
+### Adoption boundary
+
+This policy is a change to the existing manual-branch pilot. Once a consumer
+adopts it, a manual feature request must obey the same open-PR and label rules;
+it must not provide an unlabeled branch-publication bypass.
+
+Roll out the shared behavior and pilot caller through review-only PRs before
+migrating other consumers one at a time. The docs alone do not enable labels,
+modify repository permissions, create tags or publish artifacts. Container
+promotion and prerelease retention remain separate follow-ups.
+
+## Current live pilot flow
 
 1. PR checks validate the code and calculate the feature branch's GitVersion
    version without publishing or creating a tag.

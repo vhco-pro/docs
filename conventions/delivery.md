@@ -127,6 +127,12 @@ label is removed. Consumers must explicitly adopt the workflow change before
 this behavior is available. Publication remains a separate exact-tag-triggered
 workflow; a branch or label event never publishes directly.
 
+Callers choose feature-branch-plus-PR or PR-only development checks according
+to cost and feedback needs. Shared workflows do not impose feature-push
+triggers. Main integration and exact-tag release validation keep their own
+purpose. GitVersion's selected branch configuration, history and tags remain
+the version authority; PR metadata only controls preview eligibility.
+
 Dry-run paths still compute real versions and render relevant notes. Serialize
 publication where competing runs could conflict. Test before publication,
 preserve exact tags on retries, and surface failures instead of treating them

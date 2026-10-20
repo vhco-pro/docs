@@ -46,6 +46,13 @@ Use the same event policy in each consuming repository. Keep its additional
 checks and packaging requirements: a shared Go check does not replace a
 provider's acceptance tests or an application's no-network tests.
 
+The caller chooses when ordinary CI runs. Both branch-and-PR CI and PR-only CI
+are supported patterns. A private repository can omit feature-push CI to limit
+runner usage; the shared workflow must not impose it. In the event table and
+diagram below, the feature-push CI path applies only when the caller enables
+that trigger. PR preview opt-in and exact-tag publication behave the same in
+either pattern.
+
 The native GitHub label `release:preview` enables automatic prereleases for an
 open PR. A repository writer adds it once. It stays on the PR until someone
 removes it; each subsequent eligible head revision requests a new prerelease.
@@ -61,7 +68,7 @@ shared workflows compose the common behavior.
 
 | Event or state | Validation and packaging | Published output |
 | --- | --- | --- |
-| Feature push with no open PR | CI for the pushed commit | None |
+| Feature push with no open PR | CI if the caller enables branch-push checks; otherwise no run | None |
 | PR opened or updated without `release:preview` | PR checks and non-publishing packaging checks | None |
 | Writer adds `release:preview` to an open PR | Validate the current head and test packaging | Request its exact prerelease tag after checks pass |
 | New commit on an open PR with `release:preview` | Validate the new head and test packaging | Automatically request its next GitVersion prerelease tag after checks pass |
@@ -78,7 +85,9 @@ or stop a publication that has already been authorized by that tag.
 ```mermaid
 flowchart TD
     Push["Push feature branch"] --> Open{"Open PR?"}
-    Open -->|No| BranchCI["CI only"]
+    Open -->|No| PushCI{"Caller enables branch-push CI?"}
+    PushCI -->|Yes| BranchCI["CI only"]
+    PushCI -->|No| NoCI["No run until a PR is opened"]
     Open -->|Yes| PR["PR validation and packaging checks"]
     OpenPR["Open or update PR"] --> PR
     Enable["Writer adds release:preview"] --> PR
@@ -136,6 +145,29 @@ The publisher remains tag-driven in every case. The label and main-branch
 policy decide whether to request a source tag; neither publishes directly.
 GitVersion supplies the actual versions. Do not add a separate label, PR, or
 run counter to invent version numbers.
+
+Versioning jobs call `michielvha/gitversion-tag-action` directly through `uses:`.
+That action alone calculates and pushes the exact tag. Do not add tagging
+scripts, run `git tag` or `git push` in caller workflows, or invoke the action's
+internal scripts.
+
+GitVersion's selected branch configuration, history and existing tags determine
+the version. The PR and label are eligibility checks only; they do not supply
+a version label or counter. Version calculation must see the actual source
+branch, not GitHub's synthetic PR merge ref.
+
+The implementation uses normal GitHub workflow events for that separation:
+completed successful CI can request `workflow_dispatch` of Version on the
+checked branch. GitHub allows the ordinary workflow token to initiate that
+dispatch. Version verifies the CI run and source, then uses the repository-scoped
+App token only when calling GitVersion to create the exact tag. A read-only
+Version dispatch needs neither an open PR nor a label because it cannot publish.
+
+The pilot uses the shared action's existing bundled GitVersion configuration.
+That configuration's `release/<major>.<minor>.<patch>` branches select stable
+versions and are excluded from PR previews. A later consumer with a custom
+configuration needs its branch policy checked during adoption; these workflows
+do not replace that configuration or invent a prerelease version for it.
 
 ### Writer access and source identity
 

@@ -67,11 +67,39 @@ Verify the ref exists and inspect the code at that ref. Repository names that
 look like versions can be branches, and a tag can move. A SHA is the execution
 identity; the comment is a human-readable label.
 
-Use the dependency manager already configured in the repository. Dependabot and
-Renovate are both valid. Keep digest pinning enabled where supported, group
-compatible patch/minor updates when useful, isolate major changes, and read the
-release notes. Green CI is evidence, not approval to merge. Do not switch managers
-or enable automerge without a request.
+The preferred updater for public repositories is the managed Renovate GitHub App,
+maintaining action, workflow, and package dependencies through pull requests.
+Until its repository access is confirmed, retain the existing Dependabot
+configuration rather than leaving a coverage gap or running both for the same
+ecosystem. Keep GitHub Actions
+digest pinning enabled with `helpers:pinGitHubActionDigests`. The hosted service
+runs the updater; do not add a Renovate workflow, runner, scheduler, or updater
+token to each public repository. Project CI still validates the proposed changes.
+
+Keep the released tag as a truthful comment beside the executable SHA so Renovate
+can track its version and digest. A bare SHA without a recognized tracking
+comment may receive no updates. Do not invent a released version for an
+unreleased commit.
+
+Make the initial SHA freeze separately from version upgrades. Resolve the current
+ref, including annotated tags, to its commit and verify that the replacement is
+the same revision. Choosing the latest release instead of the current branch
+head is an upgrade, not a pin-only change.
+
+Isolate action majors and require their review. Unversioned branch/channel digest
+updates also need review, because their digest changes carry no semantic-version
+compatibility promise. Compatible patch/minor grouping and existing approved merge
+rules remain repository-specific. Do not enable additional automerge or bypass CI
+or branch protection as part of a pinning change.
+
+When migrating updater ownership, remove overlapping Dependabot version-update
+entries only after the managed service covers those ecosystems. Preserve
+repository-specific commit types and grouping where appropriate. Do not disable
+security alerts or close someone else's existing update PRs as cleanup.
+
+See [managed dependency updates](../knowledge/managed-renovate.md) for the
+configuration and rollout procedure. Green CI is evidence, not approval to merge
+or to publish a release.
 
 Download executable tools at an exact version and verify an independently pinned
 checksum before executing them. Do not silently accept a different preinstalled

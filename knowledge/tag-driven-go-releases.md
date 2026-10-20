@@ -127,6 +127,67 @@ GoReleaser action on every exact tag, and a labelled prerelease exercises the
 whole path with the production signing identity. Keep failed-tag retries and
 existing-asset protection as defined under [failure and retry](#failure-and-retry).
 
+### Check first or tag first
+
+There are two places a release flow can run its checks relative to the tag.
+
+| | Check first (this design) | Tag first |
+| --- | --- | --- |
+| Order | Push, checks, tag, then the release workflow checks again, builds and publishes | Push, tag, then the release workflow checks, builds and publishes |
+| A version needs | All caller checks to pass | Only GitVersion to compute a new version |
+| The artifact is protected by | Checks inside the release workflow | Checks inside the release workflow |
+| A commit that fails checks | Gets no tag | Keeps its tag with no artifact; the fix releases as the next version |
+
+In both, the checks inside the release workflow protect the artifact: they run
+on the exact tagged commit and are the last step before publishing, including
+for a tag pushed by hand. The checks before the tag protect the version number
+from tags that never get an artifact. That is why CI runs twice in this design.
+
+Tag first is sound only when every commit that can be tagged has already passed
+the same checks the release workflow runs. That requires all three:
+
+- the branch accepts changes only through PRs with required checks;
+- the PR runs every check the release workflow runs, including any scanners;
+- branches must be up to date before merging, or a merge queue is used, so two
+  green PRs cannot combine into a broken branch.
+
+A re-run fixes a transient failure, such as a flaky test or a registry outage,
+under the same tag. It does not fix a deterministic one: a check that only the
+release workflow runs, a dependency or vulnerability database that changed after
+the PR passed, or two PRs that conflict. Those leave a tag without an artifact.
+
+This design checks first because the conditions do not always hold here:
+
+- feature-branch prereleases have no PR gate before each push;
+- small repositories are sometimes pushed to `main` directly.
+
+On a branch where all three conditions hold, the checks before the tag add
+little beyond a quicker failure.
+
+Where the Git tag is itself the artifact, as for a GitHub Action or a reusable
+workflow, there is no later publish step to hold back a broken version.
+Consumers can adopt the tag as soon as it exists. Those repositories must pass
+their checks before tagging, through required PR checks or check-first CI.
+
+### Same workflow or separate workflows
+
+The tag can start the release in two ways. Use one per repository; enabling both
+releases the same tag twice.
+
+| | Separate workflows | Same workflow |
+| --- | --- | --- |
+| How the release starts | The tag push event starts a tag-triggered workflow | A dependent job in the run that pushed the tag |
+| Tag push identity | A GitHub App token; a `GITHUB_TOKEN` push starts no workflow | `GITHUB_TOKEN` with `contents: write` |
+| A tag pushed by hand | Is released | Is not released |
+| Retrying a failed release | Re-run the tag workflow | **Re-run failed jobs**, which reuses the attempt's `tagged` and `tag` outputs |
+| **Re-run all jobs** | Not applicable | The tag already exists, so `tagged` is false and nothing is released |
+
+The [shared workflows](https://github.com/vhco-pro/.github) support both. The
+GitVersion wrapper inherits the caller job's token and exposes `tagged`, `tag`
+and `version`; the Go release workflow accepts the tag created earlier in the
+run. In both arrangements GoReleaser refuses to replace an existing release's
+assets, so a retry cannot change what was already published.
+
 ## Current live pilot flow
 
 1. PR checks validate the code and calculate the feature branch's GitVersion

@@ -59,6 +59,12 @@ Where the Git tag is the release, as for an action or a reusable workflow,
 consumers can use the tag as soon as it exists. Its tests run before the tag is
 created.
 
+A public component is licensed Apache-2.0, with the full licence text in a root
+`LICENSE` file. The copyright line names the owner of the organization: `VH & Co
+BV` in `vhco-pro`, `Michiel VH` in `michielvha`. Add the file in the pull request
+that creates the repository. Do not change an existing licence as a side effect
+of other work.
+
 ## Inputs and safety
 
 Pass action inputs into scripts through environment variables or argument arrays;

@@ -59,6 +59,12 @@ A fact has one authoritative home. Link to code for values and to shared
 conventions for rules; do not copy component input tables into these docs. Repo
 READMEs explain using the component; they do not repeat the org's coding rules.
 
+A component's usage examples are complete files under `examples/<scenario>/`,
+linked from the README, not YAML blocks in its prose. A caller copies a file
+whole instead of assembling fragments. A test or linter checks each example
+against the component's current inputs, outputs and secrets, so an example
+cannot drift from the interface it shows.
+
 Use relative links inside this repo and verified public URLs outside it. Read
 code at the selected ref before describing behavior. An unreachable source is
 an unknown, not an empty source. Keep current version readings in configuration

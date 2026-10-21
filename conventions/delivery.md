@@ -105,6 +105,15 @@ Download executable tools at an exact version and verify an independently pinned
 checksum before executing them. Do not silently accept a different preinstalled
 version. Store tool configuration once, next to its owning component.
 
+Every dependency must be discoverable by the repository's update tool, or it
+silently stops being updated. Pin a tool in a manifest that tool reads: a
+`requirements.txt` with `--hash` lines, `go.mod`, a lockfile, a Dockerfile `FROM`,
+or an action SHA with its tag comment. A version and checksum hardcoded in a
+script are invisible to Dependabot and Renovate. When a tool has no supported
+manifest, use a Renovate custom manager that matches the pin, and put the pin
+where that manager looks. Adding a dependency includes confirming the updater
+will propose its next version.
+
 ## Workflows and permissions
 
 Keep substantial logic in scripts as defined in [coding](coding.md). Reuse the

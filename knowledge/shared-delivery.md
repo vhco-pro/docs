@@ -19,7 +19,7 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 | Check Go source | [michielvha/go-ci-action](https://github.com/michielvha/go-ci-action) | The new pilot action owns blocking Go CI checks. Shared workflows compose it; they do not duplicate its commands. |
 | Publish Go binaries | [michielvha/goreleaser-action](https://github.com/michielvha/goreleaser-action) | Inspect its selected metadata and signing requirements before wiring it. |
 | Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Use the required [container security profile](container-release.md); inspect the selected ref. |
-| Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Under review; replaces `reusable-release.yml` in `vhco-pro/.github`. |
+| Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Replaces `reusable-release.yml` in `vhco-pro/.github`. |
 | Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | Reusable workflows are under `.github/workflows/`; discover the actual file before pinning it. |
 
 These are source locations, not a promise that their default branches already

@@ -20,7 +20,9 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 | Publish Go binaries | [michielvha/goreleaser-action](https://github.com/michielvha/goreleaser-action) | Inspect its selected metadata and signing requirements before wiring it. |
 | Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Use the required [container security profile](container-release.md); inspect the selected ref. |
 | Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Replaces `reusable-release.yml` in `vhco-pro/.github`. |
-| Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | Reusable workflows are under `.github/workflows/`; discover the actual file before pinning it. |
+| Tag after checks, with labelled PR previews | [vhco-pro/version-workflow](https://github.com/vhco-pro/version-workflow) | Decides when a run tags and calls `gitversion-tag-action`; copy its example folder. |
+| Check and publish a Go release for an exact tag | [vhco-pro/go-release-workflow](https://github.com/vhco-pro/go-release-workflow) | Composes `go-ci-action` and `goreleaser-action`; one example folder per arrangement. |
+| Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | CodeQL and Scorecard workflows under `.github/workflows/`; discover the actual file before pinning it. |
 
 These are source locations, not a promise that their default branches already
 implement every convention. Existing references can be older than the reviewed
@@ -34,12 +36,9 @@ reusable workflow uses the caller's repository context and token. A dry run
 computes and renders without publishing. Version outputs remain available when
 tagging is skipped, and a publication retry must stay bounded to the exact tag.
 
-The reusable release workflow is introduced through
-[the shared workflow PR](https://github.com/vhco-pro/.github/pull/15), with the
-action changes reviewed in
-[the GitVersion action PR](https://github.com/michielvha/gitversion-tag-action/pull/5).
-Until reviewed changes are merged and released, choose the reviewed commit
-explicitly; do not claim these additions exist in an older released ref.
+`gh-release-workflow` implements this contract for repositories whose tag is
+the release. Pin a released commit; do not claim behaviour that exists only in
+an unreleased one.
 
 The notes-only release workflow does not build or attach Go binaries or images.
 A Go application using GoReleaser must have one release owner, not a second
@@ -47,11 +46,12 @@ parallel job creating the same GitHub Release. Read the selected component's
 contract before combining flows; extend the shared flow deliberately when
 artifact publication needs it.
 
-The [tag-driven Go release pilot](tag-driven-go-releases.md) composes the Go CI,
-GitVersion tag, and GoReleaser actions through thin workflows. GitVersion is
-called directly, never through its internal scripts. PR previews remain
-read-only; trusted branch publication is manually requested. The release-only
-GoReleaser change is an isolated next major, not an update to current consumers.
+The [tag-driven Go releases](tag-driven-go-releases.md) compose the Go CI,
+GitVersion tag, and GoReleaser actions through `version-workflow` and
+`go-release-workflow`. GitVersion is called directly, never through its internal
+scripts. A branch publishes a prerelease only while its open PR has the
+`release:preview` label. The release-only GoReleaser action is v2, a major
+that existing v1 consumers adopt deliberately.
 
 ## Separate implementation from convention
 

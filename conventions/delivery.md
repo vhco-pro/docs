@@ -129,7 +129,7 @@ Use full history and tags for GitVersion and release-note ranges. Run versioning
 from branch runs, where GitVersion sees the real branch; a `pull_request` run has
 the merge ref and never tags. Check jobs receive no tagging or signing keys.
 
-The proposed [PR preview policy](../knowledge/tag-driven-go-releases.md#proposed-pr-preview-policy)
+The [PR preview policy](../knowledge/tag-driven-go-releases.md#pr-preview-policy)
 uses a persistent `release:preview` label: while it is on an open PR, each push
 that passes CI gets a prerelease tag from GitVersion. Callers choose branch-push
 or PR-only CI by cost. Only the exact tag push publishes.

@@ -381,6 +381,7 @@ was migrated by the binary pilot.
 
 ## Related
 
+- [Release rollout handover, 2026-10-23](../reports/2026-10-23-release-rollout-handover.md): what is migrated and what is next
 - [Dated migration dependency report](../reports/2026-10-19-go-delivery-dependencies.md)
 - [Delivery conventions](../conventions/delivery.md)
 - [Shared delivery components](shared-delivery.md)

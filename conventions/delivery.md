@@ -25,6 +25,24 @@ Consumers must adopt an action revision carrying this policy. An older pinned
 revision or custom config can still treat chores differently; a docs change does
 not upgrade an existing workflow pin automatically.
 
+Use the GitVersion configuration bundled with the action. A repository-specific
+GitVersion file is an exception that its README must justify.
+
+Tag every release `v` followed by its semantic version: `v1.2.3`,
+`v1.3.0-feature.1`. The tag carries the `v`; the version inside artifacts, file
+names and package metadata does not (`app_1.2.3_linux_amd64.tar.gz`). SemVer
+calls the prefix a convention, not part of the version, but Go modules and the
+Terraform Registry require it, and GitHub Actions use it. A mixed estate breaks
+tooling that builds a tag from a version.
+
+To move a repository from unprefixed tags, first tag the commit of its latest
+release with the same version plus `v` (`v0.6.2` beside `0.6.2`). GitVersion
+reads both, and the action looks only for the `v` tag before pushing, so without
+that baseline the first run republishes the current version. A tag on an old
+commit starts no release when that commit's workflows have no tag trigger;
+check before pushing it. Update anything that builds a download URL from the
+version, such as a Homebrew formula.
+
 Publish exact semantic versions. Do not create or move major/minor alias tags.
 Choose one component to decide the version and one path to publish the release;
 do not recompute or publish it independently in parallel jobs.
@@ -129,7 +147,7 @@ Use full history and tags for GitVersion and release-note ranges. Run versioning
 from branch runs, where GitVersion sees the real branch; a `pull_request` run has
 the merge ref and never tags. Check jobs receive no tagging or signing keys.
 
-The proposed [PR preview policy](../knowledge/tag-driven-go-releases.md#proposed-pr-preview-policy)
+The [PR preview policy](../knowledge/tag-driven-go-releases.md#pr-preview-policy)
 uses a persistent `release:preview` label: while it is on an open PR, each push
 that passes CI gets a prerelease tag from GitVersion. Callers choose branch-push
 or PR-only CI by cost. Only the exact tag push publishes.

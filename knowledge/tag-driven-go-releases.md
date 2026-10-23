@@ -14,21 +14,17 @@ actions, each owning one intent.
 | --- | --- |
 | Check Go source | [go-ci-action](https://github.com/michielvha/go-ci-action) |
 | Calculate a version and create its exact tag | [gitversion-tag-action](https://github.com/michielvha/gitversion-tag-action) |
-| Build, sign, and publish Go artifacts | [goreleaser-action](https://github.com/michielvha/goreleaser-action), release-only next major |
-| Checkout, authenticate, and order those actions | [Shared workflows](https://github.com/vhco-pro/.github) |
+| Build, sign, and publish Go artifacts | [goreleaser-action](https://github.com/michielvha/goreleaser-action), release-only since v2 |
+| Decide when to tag, authenticate, and call GitVersion | [version-workflow](https://github.com/vhco-pro/version-workflow) |
+| Check the tagged source, then build, sign, and publish | [go-release-workflow](https://github.com/vhco-pro/go-release-workflow) |
 
 This design has passed the binary pilot, not an estate-wide rollout. Each
 consumer still needs its own migration review and live verification.
 
-The binary-only `michielvha/vh-adlc` pilot uses the merged shared components.
-Its Version workflow automatically creates a new stable tag on main when
-GitVersion selects a new version. Artifact publication remains a separate
-tag-triggered run.
-
-The [PR preview policy below](#proposed-pr-preview-policy) is the next rollout
-change. Its diagrams describe the proposed behavior, not an already deployed
-label trigger. The [live pilot](#current-live-pilot-flow) still uses manual
-feature-branch dispatch until its workflows adopt this policy.
+The binary-only `michielvha/vh-adlc` pilot runs the
+[PR preview policy below](#pr-preview-policy) since v0.3.1: branch CI, then
+`version-workflow` tags `main` or a labelled PR head, and the tag push starts
+`go-release-workflow`. See [verification](#pr-preview-verification-2026-10-22).
 
 Container migration is a later round. `michielvha/chart-fetcher` first produces Go
 binaries, then packages those `dist/` binaries into a multi-platform image through
@@ -40,18 +36,18 @@ Call the GitVersion action directly through `uses:`. Do not check out or invoke
 its internal scripts. Shared workflows contain orchestration, not copies of CI
 commands or another tagging or publication implementation.
 
-## Proposed PR preview policy
+## PR preview policy
 
 Every consumer uses the same shape. Its own checks stay in its own CI.
 
 | Intent | How the caller does it |
 | --- | --- |
 | CI only | Call `michielvha/go-ci-action` directly, plus repository-specific checks |
-| Version and tag | After the checks, `needs:` a call to the shared GitVersion wrapper |
-| Build, sign and publish | Exact tag push calls the shared Go release workflow |
+| Version and tag | After the checks, `needs:` a call to `vhco-pro/version-workflow` |
+| Build, sign and publish | Exact tag push calls `vhco-pro/go-release-workflow` |
 
-The GitVersion wrapper authenticates, checks out the branch and calls
-`michielvha/gitversion-tag-action`. GitVersion and its configuration decide the
+`version-workflow` decides whether this run tags, authenticates, checks out the
+checked commit and calls `michielvha/gitversion-tag-action`. GitVersion and its configuration decide the
 version and push the tag. No workflow adds tagging scripts, version parsing or
 a PR-derived counter.
 
@@ -63,16 +59,17 @@ there is a `PullRequest` version rather than the feature branch's. Callers
 therefore run CI on `push`. A PR shows those push checks on its head commit, so
 no separate PR run is needed.
 
-After all checks pass, a small release gate decides whether this run tags:
+After all checks pass, `version-workflow` decides whether this run tags:
 
-| Branch | Wrapper call |
+| Branch | Result |
 | --- | --- |
 | `main` | Tags the stable version when it is new |
 | Feature branch with an open `release:preview` PR at this commit | Tags the prerelease version |
 | Any other feature branch | `dry-run`: calculates the version only |
 
-The gate is one `gh pr list --head <branch> --state open --label release:preview`
-query. A writer adds the label once and every later push to that PR gets a
+The decision is one `gh pr list --head <branch> --state open --label release:preview`
+query inside `version-workflow`, so callers have no gate of their own and cannot
+override it. A writer adds the label once and every later push to that PR gets a
 prerelease until the label is removed or the PR closes. Adding the label does
 not push a commit, so a small `pull_request: labeled` workflow reruns CI on the
 branch with `gh workflow run`. That run tags the current head.
@@ -95,7 +92,7 @@ flowchart TD
 sequenceDiagram
     actor Writer
     participant CI as Branch CI
-    participant GV as GitVersion wrapper
+    participant GV as version-workflow
     participant Rel as Tag-triggered release
     Writer->>CI: Add release:preview (CI reruns on head A)
     CI->>GV: Checks pass, label present
@@ -182,19 +179,19 @@ releases the same tag twice.
 | Retrying a failed release | Re-run the tag workflow | **Re-run failed jobs**, which reuses the attempt's `tagged` and `tag` outputs |
 | **Re-run all jobs** | Not applicable | The tag already exists, so `tagged` is false and nothing is released |
 
-The [shared workflows](https://github.com/vhco-pro/.github) support both. The
-GitVersion wrapper inherits the caller job's token and exposes `tagged`, `tag`
-and `version`; the Go release workflow accepts the tag created earlier in the
-run. In both arrangements GoReleaser refuses to replace an existing release's
+Both are supported. `version-workflow` inherits the caller job's token and
+exposes `tagged`, `tag` and `version`; `go-release-workflow` accepts the tag
+created earlier in the run through its `tag` input, and has a complete example
+folder for each arrangement. In both arrangements GoReleaser refuses to replace an existing release's
 assets, so a retry cannot change what was already published.
 
 ## Current live pilot flow
 
-1. PR checks validate the code and calculate the feature branch's GitVersion
-   version without publishing or creating a tag.
-2. A push to `main` runs GitVersion to select the next stable version.
-   An authorized manual run on a trusted feature branch can instead request
-   its computed prerelease version.
+1. Every branch push runs CI. When the checks pass, `version-workflow`
+   calculates the version and tags only on `main` or for an open
+   `release:preview` PR at that commit.
+2. On `main`, GitVersion selects the next stable version; on a labelled PR
+   branch, its prerelease version.
 3. Tag creation pushes only the exact semantic version for that source commit.
    No new tag means no new publication request. Floating major and minor aliases
    are not release inputs.
@@ -219,8 +216,8 @@ publication. These are separate responsibilities even when both are automatic.
 Checks on the tagged source may repeat PR checks; they verify the source actually
 being released.
 
-The Go CI action and shared Go release workflow are additive. The release-only
-GoReleaser implementation is now on its default branch. Before that merge, all
+The release-only GoReleaser action is released as v2.0.0; the legacy v1 tag
+is unchanged. Before the release-only change reached its default branch, all
 ten inventoried consumers of its floating main ref were frozen to their original
 commits, including the legacy v1 release action. That freeze was not a migration
 to the new interface. Existing immutable refs and the v1 tag remain unchanged.
@@ -250,11 +247,10 @@ pass it to PR preview jobs. The App key can mint tokens throughout its
 installation even though each normal job requests a single-repository token.
 Treat that key as an owner-wide credential.
 
-PR version calculation uses the GitVersion action with `dry-run: true` and gets
-no tagging or signing credentials. A published PR preview is requested through
-an authorized manual run on its trusted feature branch with dry-run disabled,
-not through a privileged `pull_request` job. A manual run on `main` selects a
-stable version instead. Fork PRs receive validation only. Feature names do not
+A run that does not tag mints no App token and persists no credentials. A
+published PR preview is requested with the `release:preview` label on a
+same-repository PR, never through a privileged `pull_request` job. Fork PRs
+receive no push CI and no credentials. Feature names do not
 supply a second version counter: use GitVersion's actual prerelease output.
 
 Pin actions and reusable workflows to full commit SHAs. The Go workflow needs no
@@ -344,6 +340,19 @@ A separate
 [main-branch versioning retry](https://github.com/michielvha/vh-adlc/actions/runs/39446313064)
 found `v0.2.0` already on the remote and skipped tagging. It did not request a
 second publication or overwrite the release.
+
+## PR preview verification (2026-10-22)
+
+[vh-adlc#18](https://github.com/michielvha/vh-adlc/pull/18) moved the pilot to
+`version-workflow` v0.1.0 and `go-release-workflow` v0.1.0. On its unlabelled
+branch, the shared decision looked up the PR, chose not to tag, minted no App
+token and ran GitVersion as a dry run. After the merge, CI on `main` tagged
+`v0.3.1` with the App, and the
+[tag-triggered release](https://github.com/michielvha/vh-adlc/actions/runs/39813406602)
+reran Go CI on the tag and published the
+[signed release](https://github.com/michielvha/vh-adlc/releases/tag/v0.3.1)
+with four archives, `checksums.txt` and its signature. The labelled prerelease
+path has not run live yet.
 
 ## Container migration boundary
 

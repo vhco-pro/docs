@@ -52,8 +52,8 @@ components, and the caller or a workflow composes them.
 
 Do not rename a published repository. Every consumer pins its name. Add the
 correctly named repository, migrate the consumers, and keep the old one serving
-the refs that still pin it. The reusable workflows in `vhco-pro/.github` predate
-this rule; they move to correctly named repositories as they change.
+the refs that still pin it. The release workflows have moved out of `vhco-pro/.github`; its
+remaining CodeQL and Scorecard workflows move as they change.
 
 Where the Git tag is the release, as for an action or a reusable workflow,
 consumers can use the tag as soon as it exists. Its tests run before the tag is

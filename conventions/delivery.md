@@ -9,6 +9,19 @@ status: active
 
 ## Git and versioning
 
+Use trunk-based development: the default branch is the integration trunk and PR
+branches are temporary. Enable GitHub's `delete_branch_on_merge` setting on each
+repository. After a confirmed merge, delete the remote PR branch if GitHub has
+not already removed it. Before deleting a stale branch, verify its current tip
+is reachable from the current default branch; a previously merged PR alone is
+not proof because its branch may have gained new commits.
+
+Do not delete the default branch, protected branches, active PR branches, or
+branches with unpublished or unmerged commits. Local cleanup is separate:
+delete only merged local branches that are not checked out in any worktree,
+and use `git branch -d`, never force deletion. Do not remove worktrees as part
+of branch cleanup. Report any branch that cannot safely be removed.
+
 Use short-lived branches and review changes through PRs. Conventional Commit
 subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,
 `refactor`, and `revert` are patch; `!` on the type/scope or an uppercase

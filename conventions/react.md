@@ -28,17 +28,20 @@ second cache or fetch the same server state again in a component effect.
 ## Server state and the query cache
 
 A query function returns the data the UI consumes. Render from the query result. Do not populate
-component state inside `queryFn` and return `null`, discard the result, or keep a second state copy as
-the authoritative server response. A cached remount can skip `queryFn`; that local copy then remains
-empty even though the query succeeded earlier. Editable form drafts are separate local state with an
-explicit initialization and reset boundary.
+component state inside `queryFn` or keep a second state copy as the authoritative server response.
+A cached remount can skip `queryFn`; that local copy then remains empty even though the query succeeded
+earlier. Returning `null` is valid when it represents the requested data; it does not repair a query that
+stores its useful response only in component state. Editable form drafts are separate local state with
+an explicit initialization and reset boundary.
 
 Query keys include every input that changes the requested data: account or workspace identity, resource
 ID, filters, and pagination as applicable. Gate dependent queries until their prerequisites exist.
-Pass the provided abort signal through the API client to cancellable requests. A cache key separates
+Pass the provided abort signal through the API client to cancellable requests. Without consuming it,
+an unused in-flight query can still complete and populate its cache. Unmounting one observer does not
+necessarily make a shared query unused. Verify the client's cancellation behavior. A cache key separates
 requests; cancellation prevents obsolete work where supported. Neither substitutes for server-side
-authorization. Keep credentials out of cache keys and remove or separate account-scoped caches when
-the authenticated identity changes.
+authorization. Keep credentials out of cache keys and remove or separate account-scoped caches when the
+authenticated identity changes.
 
 After a successful write, update or invalidate the relevant cache entries. Keep query loading,
 polling, and error state in the query layer; keep user selections and editable drafts in local UI state.
@@ -59,8 +62,9 @@ Use event handlers for event-driven work and calculate derived state without an 
 If a repository already provides a reviewed `useMountEffect`, use it only for mount-scoped external
 setup that does not depend on changing props, state, identity, or configuration. Its callback must return
 the required cleanup. It is not an exactly-once guarantee: development Strict Mode can exercise another
-setup/cleanup cycle, and remounting runs setup again. Do not introduce a generic lifecycle wrapper in a
-new repository to conceal dependency requirements; prefer a purpose-specific hook.
+setup/cleanup cycle, and remounting runs setup again. Setup must tolerate repeated execution even when
+cleanup is correct. Do not introduce a generic lifecycle wrapper in a new repository to conceal
+dependency requirements; prefer a purpose-specific hook.
 
 Unsubscribe listeners, clear timers, dispose widgets, and cancel or ignore obsolete async results when
 synchronization ends. Write cleanup so repeated setup and cleanup are safe. Keep an effect's callback
@@ -69,8 +73,9 @@ synchronous; put asynchronous work inside it with an explicit cancellation and f
 ## Keep rendering pure and components reusable
 
 Rendering calculates the UI. Do not start requests, subscriptions, timers, or queued asynchronous work
-while rendering. Scheduling a `queueMicrotask`, promise, or mutable ref batch from render is not a
-general replacement for an effect. A deferred callback does not make the render that scheduled it pure.
+while rendering. Scheduling external work through `queueMicrotask`, a promise, or a mutable ref batch
+during render is itself a side effect. Deferring execution does not remove that side effect; queued work
+can survive an abandoned render or unmount.
 
 Define reusable component types outside the parent render so React can preserve their identity. Reuse
 the application's existing flows, controls, page layouts, and design tokens. Extend an established
@@ -89,10 +94,11 @@ and vendor exemptions narrow. Check named, aliased, and namespace React access a
 configuration; a named-import restriction alone does not prove all call forms are covered. An approved
 exception should disable the particular import restriction, not dependency or cleanup checks.
 
-In the inspected Stackweaver revision, `no-restricted-imports` warns on named `useEffect` imports and is
-disabled in several directories and tests. Query-result-discard selectors and several React rules are
-errors. Those selectors catch particular syntactic forms; they do not prove every query function is
-free of side effects. Check the effective configuration and behavior before claiming a ban is enforced.
+Query-result-discard selectors catch particular syntactic forms; they do not prove every query function
+returns useful data or avoids component-state side effects. Review query functions and test cache reuse.
+Check the effective configuration and behavior before claiming a ban is enforced. The dated
+[source and independent review](../reports/2026-10-24-react-typescript-conventions-review.md) records the
+source application's enforcement gaps.
 
 Run the local type-check, lint, relevant tests, and production build. Verify UX changes in a real
 browser: inspect rendered data, navigate away and back, exercise loading/failure states, and check the

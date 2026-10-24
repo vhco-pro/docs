@@ -17,8 +17,8 @@ domain conversion at named boundaries so components receive useful types.
 
 Avoid `any`. An exception belongs at a documented interoperability boundary with the narrowest possible
 scope; it is not a reusable exemption for every API client, test, or complex page. Keep the exception and
-its reason in that repository's configuration or beside the affected code. Do not copy Stackweaver's
-file-specific exemptions into another application.
+its reason in that repository's configuration or beside the affected code. Do not copy another
+application's file-specific exemptions.
 
 Prefer inferred types inside an implementation and explicit types for public interfaces and external
 data contracts. Preserve null, absence, and failure as distinct states when the domain distinguishes
@@ -27,8 +27,9 @@ them. Do not force a value through the checker with an unchecked cast or non-nul
 ## Async calls and callbacks
 
 Await promises, return them to a caller that handles them, or handle rejection explicitly. A `void`
-expression marks intentional non-awaiting; it does not catch an error. Use it only when the invoked
-function handles its own failure or the call attaches a rejection handler.
+expression marks intentional non-awaiting and may suppress a floating-promise lint warning; it does
+not catch an error. Use it only when the invoked function handles its own failure or the call attaches
+a rejection handler.
 
 UI callbacks are functions, not calls performed while constructing JSX. Use an arrow around navigation
 or another invocation when arguments must be supplied. For a promise-returning event action, use a
@@ -48,7 +49,8 @@ Run the repository's type-check script, lint, relevant tests, and production bui
 tsconfig with `files: []` and project references, use the configured build-mode check, such as
 `tsc -b --noEmit`, when supported by that project's compiler setup. A bare `tsc --noEmit` at that root
 can check no application files. Verify which projects and files the command includes before reporting
-success; do not copy a repository-specific command without its configuration.
+success. Inspect resolved configuration and file lists, including exclusions. Do not copy a
+repository-specific command without its configuration.
 
 ## Sources
 

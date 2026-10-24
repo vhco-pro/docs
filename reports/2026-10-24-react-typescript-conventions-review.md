@@ -98,6 +98,14 @@ remain code-path risks pending focused tests, not demonstrated user-visible bugs
 authentication state, or live server was changed. A separate read-only review of the revised guideline
 reported no substantive findings.
 
+## Pre-publication review
+
+At the owner's request, a fresh Copilot CLI session reviewed the final React and TypeScript policies
+and the new upstream-skill guide. It reported Claude Haiku 4.5 and a READY verdict with no defects.
+The session read anonymized policy text and public primary documentation, with shell and file writes
+denied. It did not receive source application files or inspect consumer configuration. Local document
+checks verify the relative report link the reviewer could not inspect in its isolated packet.
+
 ## Verification
 
 The author evaluated the installed ESLint configuration for a feature page, the mount helper, and the

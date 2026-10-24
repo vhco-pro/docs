@@ -10,6 +10,8 @@ status: active
 Apply [coding](coding.md) and [TypeScript](typescript.md). Preserve React's rendering, dependency, and
 cleanup contracts. The choice of query library and component organization are owner preferences,
 not requirements imposed by React. Repository-local design systems and routing still apply.
+For uncertain React behavior or performance work, follow the
+[upstream skill guide](../guides/use-react-skills.md).
 
 ## Choose where work belongs
 

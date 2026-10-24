@@ -13,6 +13,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Write Go | [Go](conventions/go.md) |
 | Write TypeScript | [TypeScript](conventions/typescript.md) |
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
+| Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md), [managed dependency updates](knowledge/managed-renovate.md), [shared delivery](knowledge/shared-delivery.md), and the [Go release pilot](knowledge/tag-driven-go-releases.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |

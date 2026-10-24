@@ -1,9 +1,9 @@
 # React and TypeScript conventions review, 2026-10-24
 
 The proposed [React](../conventions/react.md) and [TypeScript](../conventions/typescript.md)
-guidelines retain the source application's preferences while correcting unsupported runtime and
-enforcement claims. The corrected draft is ready for shared-document review. This change installs no
-frontend lint rules and does not establish compliance in a consumer repository.
+guidelines correct unsupported runtime and enforcement claims. The follow-up inspection also rejects
+a blanket effect-import ban as a shared correctness rule. The corrected draft is ready for review.
+This change installs no frontend lint rules and does not establish compliance in a consumer repository.
 
 ## Review scope
 
@@ -58,6 +58,46 @@ guidelines. The author's source checks and primary references govern those dispo
 editing removed redundant warnings about global rejection listeners and build-info timestamps from the
 guidelines; their review dispositions remain above.
 
+## Follow-up: upstream skills and checks in Stackweaver
+
+React's own documentation repository contains a `react-expert` research skill. Its scope is researching
+documentation through source, tests, and history; it is not a general application coding standard.
+Vercel publishes a separate performance skill with React and Next.js recommendations. Neither was
+installed or invoked as a complete skill workflow here. Their contents were inspected as references;
+React's documentation and tests remain the evidence for React behavior.
+
+The shared draft now allows legitimate direct effects, preserves dependency linting, and recommends
+purpose-specific hooks where they help. A mount-only wrapper is not a replacement for reactive
+synchronization. Query-library choice remains a preference. Adoption rules require a primary source,
+the failure a correctness rule prevents, and its regression check; a new preference alone does not
+justify rewriting an existing application.
+
+A bounded source audit found 40 `useMountEffect` calls and 143 `queryFn` property declarations. Five
+query functions directly call local state setters, matching five sites already documented in the
+source repository. This syntax scan does not establish the behavior of every helper called indirectly.
+Working listener, observer, and interval-cleanup patterns do not need a blanket migration.
+
+Two scratch component tests imported the actual source helper and `useVcsRepoBrowser` hook, with network
+calls mocked. Both passed while asserting the problematic behavior:
+
+- With Strict Mode at the root, the mount helper ran setup twice and cleanup once before unmount,
+  followed by a second cleanup on unmount.
+- The VCS browser selected its sole connection after the first fetch. On remount with the same query
+  client and the application's 30-second stale window, the cached connections were present but the
+  selection was empty. There was still only one list request.
+
+The installed React and React DOM versions used in those tests were 19.3.0, and Vitest was 5.0.3.
+The package manifest specifies compatible version ranges, not these exact versions. An initial test
+placed Strict Mode below a wrapper and observed one setup; placing Strict Mode at the root through the
+test library's `reactStrictMode` option matched the application and exercised replay. The distinction
+is documented by React and must not be hidden by a test harness.
+
+OAuth authorization and email/SMS challenge creation also have request paths that can execute again
+under replay. Duplicate delivery, callback mismatch, and production impact were not reproduced. These
+remain code-path risks pending focused tests, not demonstrated user-visible bugs. No application code,
+authentication state, or live server was changed. A separate read-only review of the revised guideline
+reported no substantive findings.
+
 ## Verification
 
 The author evaluated the installed ESLint configuration for a feature page, the mount helper, and the
@@ -70,8 +110,8 @@ Parsing the application tsconfig with the installed TypeScript API produced 433 
 include the explicitly excluded page as a root file. That measurement does not prove that an excluded
 file can never enter a program through an import, or that a full type-check succeeds.
 
-No Stackweaver source files were changed. No application tests or browser checks were run for this
-documentation change. `npm run check` passed for 26 Markdown files and the feature rules block;
+No Stackweaver application source files were changed. The follow-up used the two scratch component
+tests above; no full application suite or browser checks ran. `npm run check` passed for 26 Markdown files and the feature rules block;
 `git diff --check` passed. These checks cover document structure, local links, metadata, and whitespace;
 they do not prove runtime behavior or consumer adoption.
 
@@ -91,3 +131,11 @@ they do not prove runtime behavior or consumer adoption.
   `void` does not handle rejection.
 - [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html):
   solution configurations and build-mode traversal.
+- [React documentation research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md):
+  purpose and research workflow of the upstream skill.
+- [Vercel React skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md),
+  [event logic](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/rules/rerender-move-effect-to-event.md),
+  and [dependencies](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/rules/rerender-dependencies.md):
+  supplementary guidance that retains legitimate effects.
+- [React 19.3 effect replay test](https://github.com/react/react/blob/1d34f91dfde6bba84d08b683aaba164c7194dacb/packages/react-reconciler/src/__tests__/StrictEffectsMode-test.js):
+  upstream setup/cleanup/setup assertion for the locally installed version.

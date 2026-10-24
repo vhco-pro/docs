@@ -7,23 +7,24 @@ status: active
 
 # React conventions
 
-Apply [coding](coding.md) and [TypeScript](typescript.md). These are owner conventions for React
-applications, including the preferred restriction on direct `useEffect` use. Repository-local design
-systems, component libraries, routing, and documented exceptions still apply.
+Apply [coding](coding.md) and [TypeScript](typescript.md). Preserve React's rendering, dependency, and
+cleanup contracts. The choice of query library and component organization are owner preferences,
+not requirements imposed by React. Repository-local design systems and routing still apply.
 
 ## Choose where work belongs
 
 | Work | Preferred place |
 | --- | --- |
 | Values calculated from props or state | Calculate during render; use `useMemo` when memoization is useful |
-| A user's action, navigation, or notification | An event handler |
+| Work triggered by a user's click, submission, or navigation | An event handler |
 | Reading server state in a client application | TanStack Query through the repository's API client |
 | A server write caused by a user action | A mutation/event action with explicit cache updates or invalidation |
 | Polling server state | Query `refetchInterval` with explicit enable and stop conditions |
-| Synchronizing a widget, subscription, timer, or browser API | A reviewed hook with dependencies and cleanup |
+| Synchronizing a widget, subscription, timer, or browser API | An effect with dependencies and cleanup, extracted into a purpose-specific hook when useful |
 
-Use an existing framework's data-loading boundary when that repository requires it. Do not introduce a
-second cache or fetch the same server state again in a component effect.
+Preserve an existing application's established data-loading boundary and cache. TanStack Query is the
+default for a new client-rendered application, not a reason to migrate an existing one. Do not introduce
+a second cache or fetch the same server state again in a component effect.
 
 ## Server state and the query cache
 
@@ -50,9 +51,9 @@ provide empty, error, and retry states without replacing a failure with fabricat
 
 ## Effects are reviewed boundaries
 
-Pages and feature components do not import or call raw `useEffect` by default. Use a hook named for
-the external system or behavior it synchronizes. An unavoidable direct effect needs a narrow,
-documented exception explaining the external synchronization, dependencies, and cleanup.
+Use effects for external synchronization. A direct `useEffect` with correct dependencies and cleanup is
+valid. Extract a hook named for the external system or behavior when it improves reuse or makes that
+synchronization easier to understand. Do not add a generic wrapper merely to avoid importing `useEffect`.
 
 An effect is appropriate when an external system must stay synchronized with reactive inputs. Keep
 those inputs in its dependency list. Do not omit dependencies, suppress `exhaustive-deps`, or move
@@ -70,6 +71,11 @@ Unsubscribe listeners, clear timers, dispose widgets, and cancel or ignore obsol
 synchronization ends. Write cleanup so repeated setup and cleanup are safe. Keep an effect's callback
 synchronous; put asynchronous work inside it with an explicit cancellation and failure strategy.
 
+Cleanup cannot undo a request the server has already accepted. Authentication exchanges, challenge
+creation, and other non-idempotent operations need an explicit strategy for repeated execution. Test
+that one logical operation produces the intended result under replay and remounting, including late
+responses. A flag that skips setup can also suppress the only result after cleanup has ignored it.
+
 ## Keep rendering pure and components reusable
 
 Rendering calculates the UI. Do not start requests, subscriptions, timers, or queued asynchronous work
@@ -85,14 +91,16 @@ loading/error states. Component names, styling tokens, and vendor paths remain r
 
 ## Enforcement and verification
 
-Keep Rules of Hooks and dependency checking enabled. Use the React lint rules supported by the chosen
+Keep Rules of Hooks and dependency checking enabled. Configure supported purpose-specific effect hooks
+for dependency linting as their signatures require. Use the React lint rules supported by the chosen
 plugin version to check purity, ref access, state updates, immutability, and component identity. Pin and
 verify the actual configuration; the presence of these instructions does not install enforcement.
 
-New application code should fail lint for the prohibited direct-effect patterns. Keep low-level hook
-and vendor exemptions narrow. Check named, aliased, and namespace React access against the effective
-configuration; a named-import restriction alone does not prove all call forms are covered. An approved
-exception should disable the particular import restriction, not dependency or cleanup checks.
+For new applications, make hook-order and dependency violations fail lint. Check the effective severity,
+file coverage, and hook-call forms. Existing warning baselines need bounded remediation before promotion
+to errors. A repository-local import restriction is a style choice; it must not force hidden dependencies
+or render side effects. Keep exceptions narrow without disabling dependency checks. Do not use the count
+of `useEffect` imports as a correctness measure.
 
 Query-result-discard selectors catch particular syntactic forms; they do not prove every query function
 returns useful data or avoids component-state side effects. Review query functions and test cache reuse.
@@ -108,6 +116,17 @@ redirects, clipboard, file transfer, or reported engine-specific behavior, inclu
 Verify deployment-sensitive behavior against the production build or container. Report what ran and
 what remains unverified.
 
+## Adopt changes without repeated migrations
+
+Adopt these rules for new work. Change existing code when a demonstrated defect, security requirement,
+or measured performance problem justifies it. Keep working code unless changing it is needed for that
+correction. A new preferred wrapper or query library alone does not justify a repository-wide rewrite.
+
+For a proposed correctness rule, record its primary source, the failure it prevents, and the check that
+would detect a regression. Verify the rule against the repository's actual React and tooling versions.
+Label an untested claim as a risk. Keep preferences distinct so a style decision cannot silently become
+a claim that working software is broken.
+
 ## Sources
 
 Adapted from Stackweaver at `12addcbe3a605ca083308a0df1b7647cdfb48600`:
@@ -120,6 +139,8 @@ Adapted from Stackweaver at `12addcbe3a605ca083308a0df1b7647cdfb48600`:
 - [React: unnecessary effects](https://react.dev/learn/you-might-not-need-an-effect): derived state, event handling, and external synchronization.
 - [React: render purity](https://react.dev/reference/rules/components-and-hooks-must-be-pure): side effects belong outside rendering.
 - [React: custom lifecycle hooks](https://react.dev/learn/reusing-logic-with-custom-hooks#avoid-custom-lifecycle-hooks): avoid wrappers that obscure reactive dependencies.
+- [React's research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md): documentation research process, not an application coding standard.
+- [Vercel React skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md): supplementary performance guidance; framework-specific recommendations are not universal React requirements.
 - [React: effect dependencies](https://react.dev/reference/eslint-plugin-react-hooks/lints/exhaustive-deps): complete dependency lists and stale closures.
 - [React Strict Mode](https://react.dev/reference/react/StrictMode): development setup/cleanup checks.
 - [TanStack Query functions](https://tanstack.com/query/latest/docs/framework/react/guides/query-functions), [keys](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys), and [cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation): returned query data, input-scoped caching, and abort propagation.

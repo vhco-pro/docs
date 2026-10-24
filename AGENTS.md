@@ -8,6 +8,8 @@ pointers here, not copies of these instructions.
    [documentation](conventions/documentation.md) before writing documents. Edit all prose a reader
    will see, including commit messages and PR and issue bodies, with the
    [humanize prose guide](guides/humanize-prose.md).
+   Read [TypeScript](conventions/typescript.md) for TypeScript and
+   [React](conventions/react.md) for React work, including specification and review.
 3. For a new Go application, follow the
    [bootstrap guide](guides/bootstrap-go-project.md). Start from the actual
    `michielvha/template-go-app`, not an invented scaffold.

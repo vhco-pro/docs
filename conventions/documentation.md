@@ -30,6 +30,25 @@ The active conventions state the expected working approach. A page called a
 guideline is not proof that every consumer has adopted or enforces it. Name
 the actual check when claiming enforcement; never infer compliance from this repo.
 
+## Public project README banners
+
+When creating or refreshing a README for a public open-source project, offer to
+generate a project-specific banner as an alternative to using the VH & Co logo
+as the header. The banner is optional. A project logo or a plain text heading
+can also suit the repository.
+
+Use the shared colour palette with the project's name and relevant artwork so
+each project has its own identity. Show a preview before adopting the banner.
+Keep tags optional and preserve existing README content when changing the header.
+
+Use `readme-assets-gen` when available and keep its project config with the
+generator. Commit the exported SVG or PNG assets to the public project repository;
+the README must not require access to a private generator or a live rendering
+service. Provide light and dark variants through GitHub's supported
+[`<picture>` markup](https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors)
+and give the image meaningful alt text. Keep the project description and usage
+instructions readable as text below it.
+
 ## Findings and issues
 
 Findings live in documents. An investigation, measurement or root cause goes into

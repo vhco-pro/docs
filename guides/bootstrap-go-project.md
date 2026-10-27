@@ -54,6 +54,8 @@ its repository or importing the template's history.
    Implement the smallest runnable entry point and a meaningful behavior test.
 3. Replace template names, binary paths, badges, platform lists, and metadata.
    Anchor binary ignores at the repository root. Commit generated module checksums.
+   For a public open-source project, offer the
+   [README banner option](../conventions/documentation.md#public-project-readme-banners).
 4. Verify the v2 lint configuration and add real test, vet, and lint gates before
    publication. Template TODOs are work to finish, not functioning checks.
 5. For a container, use the required digest-pinned distroless static non-root

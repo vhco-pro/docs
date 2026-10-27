@@ -25,6 +25,10 @@ from another version.
 
 ## Review React performance
 
+Apply the [entry-loading and navigation rules](../conventions/react.md#entry-loading-and-navigation-performance)
+when assessing startup, route splitting, or asset delivery. Record both the entry improvement and any
+first-navigation cost before recommending a loading strategy.
+
 The [React performance skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md)
 is maintained by Vercel Engineering. Use its relevant rule files when implementing a performance-sensitive
 path or investigating a measured performance problem. It covers React and Next.js; Next.js server

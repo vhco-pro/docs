@@ -91,6 +91,56 @@ actions menu or shared picker rather than constructing a parallel interaction fo
 Follow the local theme and accessibility rules, including keyboard access, focus, labels, and visible
 loading/error states. Component names, styling tokens, and vendor paths remain repository-local.
 
+## Entry loading and navigation performance
+
+For changes to routes, shared providers, dependencies, or visible assets, include client delivery cost in the
+acceptance criteria. Record a baseline before changing loading strategy. For a new application, record
+the initial budget and measurement conditions instead. Set budgets for that application's users and
+critical journeys; a byte limit from another repository is not a universal target.
+
+Keep a browser entry's initial dependency graph limited to code it needs. Public entry points should not pull
+unrelated application pages and heavy libraries through a root module, shared provider, or barrel
+export. Split substantial unused code at route or feature boundaries when measurements support it.
+Keep small shared UI and state together where that preserves identity and avoids extra waits.
+
+Measure initial entry, the first visit to another page, and repeat visits separately. Use comparable
+builds, dependencies, browser-cache conditions, viewport, and network/CPU profiles. Record transferred
+bytes, paint timings, and the time until the relevant content or action is usable, as applicable.
+Test the critical journey when a faster entry can move a delay to its next step. A smaller initial
+bundle does not establish that every page or interaction is faster. Report regressions and the
+accepted tradeoff before seeking approval. Label controlled API fixtures; they isolate code delivery
+and do not measure backend latency or prove authentication.
+
+Separate development-server evidence from production-build evidence. Verify deployment-sensitive
+behavior against the actual production artifact. Distinguish a fresh browser visit from server startup
+or rebuilding a dependency cache. Keep exact timings and profiles in the repository's evidence record.
+
+Keep navigation and shared auth/query state mounted outside destination loading boundaries where their
+continuity is required. Provide usable loading feedback and explicit recovery for a missing module.
+Exercise direct links, delayed and failed imports, browser history, changing URL parameters, and open
+menus while a destination finishes loading. Preserve authorization and the intended return URL.
+
+Choose preloading from measured navigation needs. Prefer the router or framework's supported loading
+facilities; bounded preloading for a known destination or user intent can reduce the first-click wait.
+Check cancellation and failure behavior, caching, and its network cost. Include speculative downloads
+in the evidence. Do not report lower delivery cost by hiding the complete application download behind
+first paint. React's documented
+lazy/resource-loading APIs have their own semantics; they do not justify arbitrary render-time data
+requests or repeated side effects.
+
+Size images for their rendered dimensions and pixel density, preserve colors/transparency, and verify
+the result visually. Prioritize critical visible assets. Defer inactive media without removing the
+last usable frame before its replacement decodes. Check delayed loads, theme changes, and responsive
+layouts. Opacity alone does not prevent an image download.
+
+Protect an accepted initial-load budget and dependency boundary with repository-owned automated checks.
+Count the complete static browser entry graph in the built output, including shared chunks and explicit preloads. State the
+compression settings and distinguish offline compressed size from actual transfer. Use bundler
+metadata or source attribution to identify excluded modules; an entry filename or marker alone can
+miss code moved into a shared chunk. Test that the check rejects a representative leak and budget
+breach, and verify that CI runs it for relevant application and checker changes. Instructions or a
+successful build alone do not establish enforcement. Revisit a budget through review and evidence.
+
 ## Enforcement and verification
 
 Keep Rules of Hooks and dependency checking enabled. Configure supported purpose-specific effect hooks
@@ -145,4 +195,8 @@ Adapted from Stackweaver at `12addcbe3a605ca083308a0df1b7647cdfb48600`:
 - [Vercel React skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md): supplementary performance guidance; framework-specific recommendations are not universal React requirements.
 - [React: effect dependencies](https://react.dev/reference/eslint-plugin-react-hooks/lints/exhaustive-deps): complete dependency lists and stale closures.
 - [React Strict Mode](https://react.dev/reference/react/StrictMode): development setup/cleanup checks.
+- [React lazy loading](https://react.dev/reference/react/lazy) and [Suspense](https://react.dev/reference/react/Suspense): deferred component code, cached module results, loading boundaries, and error handling.
+- [React module preloading](https://react.dev/reference/react-dom/preloadModule): supported resource hints during rendering or before navigation.
+- [Web.dev code splitting](https://web.dev/articles/reduce-javascript-payloads-with-code-splitting/): initial-route JavaScript delivery and subsequent loading.
+- [Vite development and production delivery](https://v8.vite.dev/guide/why): native ESM development requests and production bundling.
 - [TanStack Query functions](https://tanstack.com/query/latest/docs/framework/react/guides/query-functions), [keys](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys), and [cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation): returned query data, input-scoped caching, and abort propagation.

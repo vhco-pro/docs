@@ -70,6 +70,12 @@ For Claude, add `CLAUDE.md` containing `@AGENTS.md`. These are thin harness
 bridges, not duplicated conventions. Other agents use the root file explicitly;
 do not assume every tool follows external links without being instructed.
 
+## Public project presentation
+
+For a public open-source repository, offer the
+[project banner option](../conventions/documentation.md#public-project-readme-banners)
+when preparing or reviewing its README.
+
 ## Check the onboarding
 
 1. Verify every selected page exists at the pinned revision.

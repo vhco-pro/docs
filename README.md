@@ -9,6 +9,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 
 | Task | Read |
 | --- | --- |
+| Apply the owner's Postbode dark style | [VH Midnight](guides/vh-midnight.md) |
 | Change code or scripts | [Coding](conventions/coding.md) |
 | Write Go | [Go](conventions/go.md) |
 | Specify, write or review PHP | [PHP](conventions/php.md) |

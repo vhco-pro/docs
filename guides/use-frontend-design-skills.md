@@ -15,6 +15,10 @@ and [TypeScript](../conventions/typescript.md) conventions.
 Read the relevant pinned upstream skill before using it. These references make the procedure
 available to any agent host; they do not install a plugin or run its tooling.
 
+For the owner's Postbode-inspired dark style, use [VH Midnight](vh-midnight.md): a deep blue
+gradient, pale text and restrained translucent surfaces. Keep the product's existing light
+palette and adapt its accent colours for contrast.
+
 ## Design the interface
 
 Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design/SKILL.md)

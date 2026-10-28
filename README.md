@@ -18,6 +18,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Build, test or review any browser frontend, including plain JavaScript and VitePress | [Frontend testing](conventions/frontend-testing.md): owned fixtures, browser scenarios and responsive visual verification |
 | Design or review colour in an interface | [Colour in interfaces](conventions/interface-colour.md): colour for status and identity, neutral descriptive content or coloured icons, never colour alone |
 | Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |
+| Design, implement or review a user-facing interface in any stack | [Use frontend design skills](guides/use-frontend-design-skills.md) |
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |

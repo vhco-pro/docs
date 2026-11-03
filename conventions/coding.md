@@ -65,6 +65,12 @@ BV` in `vhco-pro`, `Michiel VH` in `michielvha`. Add the file in the pull reques
 that creates the repository. Do not change an existing licence as a side effect
 of other work.
 
+## Configuration format
+
+Configuration a person writes or reviews is YAML. Never choose JSON for it. Settings files we define use
+the `.yaml` suffix and load strictly. A file an external tool defines keeps that tool's format. Generated
+files and machine-to-machine output may be JSON.
+
 ## Inputs and safety
 
 Pass action inputs into scripts through environment variables or argument arrays;

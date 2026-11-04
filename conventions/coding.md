@@ -89,6 +89,11 @@ script or action over a second implementation of its logic. Keep CI integration
 checks for contracts that only the runner can prove, such as reusable workflow
 access and action outputs. Do not add tests just to raise a count.
 
+A long end-to-end suite, such as one that builds a cluster, is not the loop for fixing what it finds.
+Keep its environment, load only what a fix changed, and rerun only the failing tests and their
+neighbours. Order the suite so the areas under change fail first. Run the whole suite once, on the
+final change, as its own detached job so a tool's time limit cannot cut it short.
+
 Explain changes and their verification in the PR. Use Conventional Commits as
 defined in [delivery](delivery.md). Do not add AI credit trailers. Read
 [Go](go.md) or [containers](containers.md) when they apply.

@@ -25,6 +25,8 @@ The roots command returns declared roots, absence or an incomplete diagnostic. A
 that command only when no raw line, after optional spaces or tabs, starts with the marker. This
 presence check does not parse fences or YAML. A fenced example therefore goes through the shared
 parser and yields absence if there is no actual declaration.
+Absence keeps an integrated caller's existing manual review, with that limitation stated and no
+mechanical-pass claim. Missing root `AGENTS.md` counts as absent; unreadable instructions are a gap.
 
 Integrated checks use the declaration. A direct check can take explicit roots without adopting the
 workflow. Missing setup must not silently become a manual fallback for an adopted repository.
@@ -75,7 +77,7 @@ project procedure before deciding which metadata may be updated.
 ## Document and policy views
 
 Use committed HEAD for tracked documentation and root `AGENTS.md` configuration. Dirty policy edits
-do not change roots or feature classification. Configuration changes take effect after committing;
+do not change roots or feature classification and are reported as excluded input. Configuration changes take effect after committing;
 the current owner's restrictions still apply.
 
 Only explicitly selected document metadata overlays use working-tree bytes or deletion. Metadata
@@ -105,9 +107,10 @@ The checker runs without an active agent session and performs no download, gener
 capture, repository edit or binary-cache write. Explicit setup prepares its runtime and verified
 dependencies first. The checker must reuse vh-adlc's verified
 [`settings read` reader](https://github.com/michielvha/vh-adlc/blob/main/docs/reference/cli.md)
-rather than requiring a parser from each consumer. Metadata must use that reader's
-[accepted YAML forms](https://github.com/michielvha/vh-adlc/blob/main/docs/specs/settings-reader.md#design),
-including its scalar spellings and numeric limits.
+rather than requiring a parser from each consumer. Metadata must use the reader's accepted forms
+at the consumer's pinned checker revision, including its scalar spellings and numeric limits.
+The [current reader documentation](https://github.com/michielvha/vh-adlc/blob/main/docs/specs/settings-reader.md#design)
+is an informative pointer; it does not replace that execution pin.
 
 | Outcome | Meaning | Check exit |
 | --- | --- | --- |
@@ -126,8 +129,10 @@ operation retains its specific stop, commit and shipment rules.
 
 The checker supplies no documentation-accuracy verdict or persistent verification receipt. An
 adapter may preserve an older caller's exits and output, but must distinguish an incomplete check
-from both a no-match and an affected-doc warning. A documented legacy empty-input no-op makes no
-claim of complete coverage. Compatibility adapters delegate matching to the shared implementation.
+from both a no-match and an affected-doc warning using a separate nonzero exit. Print incomplete
+diagnostics and known candidates on the same stream used for candidate output. A documented legacy
+empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
+hidden as that no-op. Compatibility adapters delegate matching to the shared implementation.
 
 ## Reviewing and updating candidates
 

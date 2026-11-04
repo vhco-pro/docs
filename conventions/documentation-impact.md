@@ -135,7 +135,8 @@ from both a no-match and an affected-doc warning using a separate nonzero exit. 
 diagnostics and known candidates on the same stream used for candidate output. A documented legacy
 empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
 hidden as that no-op. Compatibility adapters delegate matching to the shared implementation.
-Apart from that documented no-op, which runs before setup and roots checks, an adapter replacing
+Validate option and input syntax before choosing that no-op; malformed arguments or input produce
+the incomplete exit. Apart from that no-op, which runs before setup and roots checks, an adapter replacing
 a local checker treats absent or gapped roots as setup failures with that separate incomplete exit;
 they are neither a no-match nor a manual pass.
 
@@ -148,8 +149,9 @@ missing document with its proposed home and source evidence.
 
 Update ordinary-document mappings when code moves. Preserve intended contracts and historical
 records; a software bug is a software question, not a reason to rewrite the contract. Never delete
-a document or drop coverage solely to silence a result. Standard feature-document `covers` changes
-are normative revisions and go through its spec procedure. Attention-labelled or local-format
+a document or drop coverage solely to silence a result. This procedure never edits a standard
+feature document's `covers`; report the proposed normative revision and route it to that feature's
+spec procedure. Attention-labelled or local-format
 plans follow their retained local procedure; unknown applicability is reported without edits.
 
 A report-only request permits inspection and reporting. Authorized updates may make the minimal

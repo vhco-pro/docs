@@ -102,10 +102,11 @@ matching and result meanings. Missing tools are setup gaps, not compliance evide
 The checker runs without an active agent session and performs no download, generation, screenshot
 capture, repository edit or binary-cache write. Explicit setup prepares its runtime and verified
 dependencies first. The implementation reuses vh-adlc's verified
-[`settings read` reader](https://github.com/michielvha/vh-adlc/blob/main/docs/reference/cli.md#settings-read)
+[`settings read` reader](https://github.com/michielvha/vh-adlc/blob/main/docs/reference/cli.md)
 rather than requiring a parser from each consumer. Its documented subset requires one mapping with
 string keys and rejects duplicate keys, anchors, aliases, merge keys and explicit tags. The linked
-reader documentation also defines accepted scalar spellings and numeric limits.
+[accepted YAML forms](https://github.com/michielvha/vh-adlc/blob/main/docs/specs/settings-reader.md#design)
+also define scalar spellings and numeric limits.
 
 | Outcome | Meaning | Check exit |
 | --- | --- | --- |

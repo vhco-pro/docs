@@ -22,7 +22,8 @@ documentation roots. Read it with the checker's verified strict YAML reader. Emp
 duplicate declarations are gaps. An indented look-alike outside fences is a gap too.
 
 The roots command returns declared roots, absence or an incomplete diagnostic. A caller may skip
-that command only when no raw line, after optional spaces or tabs, starts with the marker. This
+that command only when no raw line, after optional spaces or tabs, starts with the marker
+`Documentation impact roots:`. This
 presence check does not parse fences or YAML. A fenced example therefore goes through the shared
 parser and yields absence if there is no actual declaration.
 Absence keeps an integrated caller's existing manual review, with that limitation stated and no
@@ -133,6 +134,8 @@ from both a no-match and an affected-doc warning using a separate nonzero exit. 
 diagnostics and known candidates on the same stream used for candidate output. A documented legacy
 empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
 hidden as that no-op. Compatibility adapters delegate matching to the shared implementation.
+For an adapter replacing a local checker, absent or gapped roots are setup failures with that
+separate incomplete exit; they are neither a no-match nor a manual pass.
 
 ## Reviewing and updating candidates
 

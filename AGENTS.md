@@ -10,6 +10,8 @@ pointers here, not copies of these instructions.
    [humanize prose guide](guides/humanize-prose.md).
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
+   For a TypeScript browser frontend, also read the required
+   [frontend testing standard](conventions/frontend-testing.md).
 3. For a new Go application, follow the
    [bootstrap guide](guides/bootstrap-go-project.md). Start from the actual
    `michielvha/template-go-app`, not an invented scaffold.

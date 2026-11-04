@@ -52,6 +52,9 @@ can check no application files. Verify which projects and files the command incl
 success. Inspect resolved configuration and file lists, including exclusions. Do not copy a
 repository-specific command without its configuration.
 
+Browser applications must also meet the [frontend testing standard](frontend-testing.md),
+including reproducible development data and executable Playwright scenarios.
+
 ## Sources
 
 Adapted from Stackweaver at `12addcbe3a605ca083308a0df1b7647cdfb48600`:

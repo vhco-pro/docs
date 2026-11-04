@@ -168,6 +168,9 @@ redirects, clipboard, file transfer, or reported engine-specific behavior, inclu
 Verify deployment-sensitive behavior against the production build or container. Report what ran and
 what remains unverified.
 
+React browser applications must also meet the [frontend testing standard](frontend-testing.md),
+which defines populated development fixtures, automated scenarios and retained evidence.
+
 ## Adopt changes without repeated migrations
 
 Adopt these rules for new work. Change existing code when a demonstrated defect, security requirement,

@@ -18,7 +18,7 @@ every repository to annotate its documents or replace its current documentation 
 
 Adoption is declared by one column-zero line in root `AGENTS.md`, outside fenced code:
 `Documentation impact roots: ["docs/"]`. Its value is a YAML flow sequence of repository-relative
-documentation roots. Read it with the pinned strict YAML reader. Empty, malformed, conflicting or
+documentation roots. Read it with the checker's verified strict YAML reader. Empty, malformed, conflicting or
 duplicate declarations are gaps. An indented look-alike outside fences is a gap too.
 
 The roots command returns declared roots, absence or an incomplete diagnostic. A caller may skip
@@ -28,7 +28,8 @@ parser and yields absence if there is no actual declaration.
 
 Integrated checks use the declaration. A direct check can take explicit roots without adopting the
 workflow. Missing setup must not silently become a manual fallback for an adopted repository.
-Resolve the required engineering pages before editing; an older pin gets a pin-update handoff.
+Resolve the required engineering pages before editing; an older pin stops the operation and reports
+a pin-update handoff. A setup or roots gap supports no completion claim and grants no pin change.
 
 The caller selects a Git base or explicit source paths. With a base, compare HEAD to its merge-base
 with that base. Include both names of a rename and deleted paths. Add dirty or untracked paths only
@@ -38,7 +39,7 @@ Report excluded dirty scope. Do not infer which agent owns a file from Git statu
 ## Coverage metadata
 
 Read `covers` only from leading Markdown YAML frontmatter. It is a list of source paths or patterns,
-such as `covers: ['deploy/**']`. Unrelated field names are allowed within the reader's strict subset.
+such as `covers: ['deploy/**']`. Unrelated field names are allowed within the checker's strict subset.
 Prose and fenced examples containing that name are not metadata.
 
 Paths are repository-relative, case-sensitive POSIX paths. Reject absolute paths, traversal,
@@ -92,14 +93,19 @@ without usable coverage patterns is incomplete even if its documents are otherwi
 
 ## Results and enforcement
 
-Adoption requires a pinned checker implementing this contract. The reusable implementation belongs
-to [vh-adlc](https://github.com/michielvha/vh-adlc); its repository owns installation, command inputs,
+Adoption requires a pinned checker implementing this contract. The enforcing component is
+`vh-adlc-docs-impact` and its documentation-impact checker in
+[vh-adlc](https://github.com/michielvha/vh-adlc); that repository owns installation, command inputs,
 the versioned report schema and complete executable examples. This page is the prose home for
 matching and result meanings. Missing tools are setup gaps, not compliance evidence.
 
 The checker runs without an active agent session and performs no download, generation, screenshot
 capture, repository edit or binary-cache write. Explicit setup prepares its runtime and verified
-dependencies first. Reuse the repository's strict YAML reader rather than introducing another one.
+dependencies first. The implementation reuses vh-adlc's verified
+[`settings read` reader](https://github.com/michielvha/vh-adlc/blob/main/docs/reference/cli.md#settings-read)
+rather than requiring a parser from each consumer. Its documented subset requires one mapping with
+string keys and rejects duplicate keys, anchors, aliases, merge keys and explicit tags. The linked
+reader documentation also defines accepted scalar spellings and numeric limits.
 
 | Outcome | Meaning | Check exit |
 | --- | --- | --- |
@@ -111,6 +117,10 @@ JSON and human output have the same meaning. Keep known candidates visible when 
 Reports identify the selected source/base, roots, HEAD, selected document bindings, uncovered docs,
 excluded dirty inputs and unmatched source paths. Each candidate identifies its matched source
 paths and patterns. Order results deterministically and make changed inputs visible.
+
+Reviewing the known candidates does not clear an incomplete result. Resolve its gaps within the
+authorized scope or report a handoff; the documentation obligation remains incomplete. The calling
+operation retains its specific stop, commit and shipment rules.
 
 The checker supplies no documentation-accuracy verdict or persistent verification receipt. An
 adapter may preserve an older caller's exits and output, but must distinguish an incomplete check
@@ -132,7 +142,7 @@ plans follow their retained local procedure; unknown applicability is reported w
 
 A report-only request permits inspection and reporting. Authorized updates may make the minimal
 doc corrections and run required local checks. Settings, documents and checker output create no
-publication or live-operation authority. Existing review-refresh requirements still apply when a
+commit, publication, merge or live-operation authority. Existing review-refresh requirements still apply when a
 documentation fix changes a feature's covered paths.
 
 ## Project responsibilities and migration

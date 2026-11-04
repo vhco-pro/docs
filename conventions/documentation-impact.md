@@ -96,6 +96,9 @@ report without treating that alone as an error. Malformed or unterminated frontm
 non-list `covers`, invalid list entries and strict-reader refusals are incomplete. A whole root
 without usable coverage patterns is incomplete even if its documents are otherwise valid.
 
+When a caller edits coverage metadata, it selects those documents as metadata overlays for
+its assessment. A HEAD-only result does not assess that caller's metadata changes.
+
 ## Results and enforcement
 
 Adoption requires an installed checker implementing this contract. Enforcement is assigned to
@@ -134,7 +137,8 @@ adapter may preserve an older caller's exits and output, but must distinguish an
 from both a no-match and an affected-doc warning using a separate nonzero exit. Print incomplete
 diagnostics and known candidates on the same stream used for candidate output. A documented legacy
 empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
-hidden as that no-op. Compatibility adapters delegate matching to the shared implementation.
+hidden as that no-op. This includes input empty after documented legacy exclusions,
+with no explicit metadata selection; selecting metadata always forces checking. Compatibility adapters delegate matching to the shared implementation.
 Validate option and input syntax before choosing that no-op; malformed arguments or input produce
 the incomplete exit. Apart from that no-op, which runs before setup and roots checks, an adapter replacing
 a local checker treats absent or gapped roots as setup failures with that separate incomplete exit;

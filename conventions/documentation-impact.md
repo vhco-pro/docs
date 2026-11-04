@@ -58,7 +58,7 @@ malformed patterns and unreadable input. Matching follows these rules:
 | `?` | One character within a path segment. |
 | `[abc]`, `[a-z]`, `[^a]` | A character class, range or negated class within a segment. |
 | `**` | Zero or more characters, including separators. A whole `**/` segment can match zero directories. |
-| Backslash | Escape the next metacharacter. Preserve the backslash when quoting YAML. |
+| Backslash | Treat the next character literally, even if it is not an operator. Preserve the backslash when quoting YAML. |
 
 Characters with no operator meaning, including braces and exclamation marks, are literals. There
 is no brace expansion or leading-pattern negation. Malformed brackets and dangling escapes fail
@@ -98,7 +98,7 @@ without usable coverage patterns is incomplete even if its documents are otherwi
 
 ## Results and enforcement
 
-Adoption requires a pinned checker implementing this contract. Enforcement is assigned to
+Adoption requires an installed checker implementing this contract. Enforcement is assigned to
 `vh-adlc-docs-impact` and its documentation-impact checker in
 [vh-adlc](https://github.com/michielvha/vh-adlc); that repository owns installation, command inputs,
 the versioned report schema and complete executable examples. This page is the prose home for
@@ -109,7 +109,8 @@ capture, repository edit or binary-cache write. Explicit setup prepares its runt
 dependencies first. The checker must reuse vh-adlc's verified
 [`settings read` reader](https://github.com/michielvha/vh-adlc/blob/main/docs/reference/cli.md)
 rather than requiring a parser from each consumer. Metadata must use the reader's accepted forms
-at the consumer's pinned checker revision, including its scalar spellings and numeric limits.
+at the revision of the checker executing the check, with its locked, verified reader, including
+that reader's scalar spellings and numeric limits. This requires no extra consumer pin file.
 The [current reader documentation](https://github.com/michielvha/vh-adlc/blob/main/docs/specs/settings-reader.md#design)
 is an informative pointer; it does not replace that execution pin.
 
@@ -134,8 +135,9 @@ from both a no-match and an affected-doc warning using a separate nonzero exit. 
 diagnostics and known candidates on the same stream used for candidate output. A documented legacy
 empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
 hidden as that no-op. Compatibility adapters delegate matching to the shared implementation.
-For an adapter replacing a local checker, absent or gapped roots are setup failures with that
-separate incomplete exit; they are neither a no-match nor a manual pass.
+Apart from that documented no-op, which runs before setup and roots checks, an adapter replacing
+a local checker treats absent or gapped roots as setup failures with that separate incomplete exit;
+they are neither a no-match nor a manual pass.
 
 ## Reviewing and updating candidates
 

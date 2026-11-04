@@ -35,11 +35,14 @@ and [coding](coding.md#tests-and-changes) for type checks and focused reruns.
 
 ## Useful, owned seed data
 
-Provide an explicit seed/bootstrap command that creates or identifies a stable
-nonproduction test identity and meaningful application data. Document the login
-or supported identity-provider setup. A freshly started development stack must
-have a way to show its primary populated journeys immediately after sign-in.
-Synthetic fixtures must be distinguishable from real customer data.
+Provide an explicit seed/bootstrap command that prepares meaningful application
+data or deterministic content/client state. Applications with accounts must
+also create or identify a stable nonproduction test identity and document its
+login or supported identity-provider setup. A freshly started development stack
+must have a way to show its primary populated journeys immediately, after
+sign-in where applicable. Anonymous or client-only frontends do not need to add
+authentication or a backend to meet this standard. Synthetic fixtures must be
+distinguishable from real customer data.
 
 Seed through supported domain services or a dedicated fixture program that
 satisfies application invariants. Do not use arbitrary SQL inserts or mock the
@@ -72,7 +75,8 @@ persistent demonstrations cannot overwrite each other.
 ## Executable browser scenarios
 
 Check application behavior, not merely screenshots or HTTP 200 responses.
-Exercise the primary populated journey through the browser and its real API:
+Exercise the primary populated journey through the browser and, where the
+application has one, its real API:
 read seeded data, perform the relevant action, assert its result, reload and
 navigate away/back. Where persistence, restart, ownership or service integration
 is part of the change, verify those boundaries too. Keep an unseeded/empty-state
@@ -85,7 +89,8 @@ state private and out of committed artifacts. Separate tests that consume
 rate-limit or lockout budgets, and preserve production authentication controls.
 
 Use deterministic fakes for paid or nondeterministic dependencies, with at least
-one real backend/persistence path for the primary journey. Identify mocked
+one real backend/persistence path where the application uses those services.
+Client-only frontends exercise their actual client state and storage. Identify mocked
 boundaries and keep any credentialed live checks separate. A successful mocked
 view does not establish that an external provider or deployment works.
 

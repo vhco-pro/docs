@@ -21,7 +21,7 @@ Adoption is declared by one column-zero line in root `AGENTS.md`, outside fenced
 documentation roots. Read it with the checker's verified strict YAML reader. Empty, malformed, conflicting or
 duplicate declarations are gaps. An indented look-alike outside fences is a gap too.
 
-The roots command returns declared roots, absence or an incomplete diagnostic. A caller may skip
+The shared checker's roots command (see Results and enforcement) returns declared roots, absence or an incomplete diagnostic. A caller may skip
 that command only when no raw line, after optional spaces or tabs, starts with the marker
 `Documentation impact roots:`. This
 presence check does not parse fences or YAML. A fenced example therefore goes through the shared
@@ -35,7 +35,9 @@ Resolve the required engineering pages before editing; an older pin stops the op
 a pin-update handoff. A setup or roots gap supports no completion claim and grants no pin change.
 
 The caller selects a Git base or explicit source paths. With a base, compare HEAD to its merge-base
-with that base. Include both names of a rename and deleted paths. Add dirty or untracked paths only
+with that base. A missing or nonunique merge-base, or a malformed, absolute or traversing
+selected source path, is incomplete. A selected path absent from the working tree is not.
+Include both names of a rename and deleted paths. Add dirty or untracked paths only
 when selected for this request. Path-only inputs match by their path strings, including deletions.
 Report excluded dirty scope. Do not infer which agent owns a file from Git status.
 A caller that cannot identify the requested scope reports a gap; it neither adds unrelated dirty

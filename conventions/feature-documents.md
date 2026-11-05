@@ -132,6 +132,11 @@ Only the owner answers them. Write each for a decision in under a minute:
 **Why this is yours:** what makes it a judgement call.
 ```
 
+Every trade-off the document settles is an open question, including one the author would answer the same
+way the owner would. A section that weighs options and keeps one, such as a simplification check, raises
+that choice here instead of deciding it. User-facing terms the feature introduces or changes appear in a
+glossary row and are held to it by a criterion.
+
 An answered question is folded into the document and removed. "None." means every question has been
 answered, not that none was asked.
 

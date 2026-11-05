@@ -58,6 +58,11 @@ issue comments, where it cannot be reviewed or kept current.
 
 ## Metadata and placement
 
+Repositories adopting change-based documentation checks follow
+[documentation impact](documentation-impact.md) for coverage metadata, selected source/document
+views and review outcomes. It keeps feature-review freshness separate and leaves site generation
+and visual verification with the project.
+
 Content pages under `conventions/`, `knowledge/`, `guides/`, and `decisions/` have
 YAML frontmatter with `title`, `type`, `description`, and `status`. Root entry
 points and harness bridges have no content frontmatter.

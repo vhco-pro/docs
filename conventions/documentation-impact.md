@@ -176,10 +176,10 @@ what was reviewed, changed, generated or left unknown.
 Before replacing a local checker, inventory its callers and compare behavior at exact commits.
 Build any legacy coverage index from the same committed source in disposable scratch; report drift
 in an existing index separately. Preserve retained readers' interpretations when correcting metadata.
-Incomplete collection of the actual cutover corpus blocks adoption. A lost legacy candidate, or a valid
-pattern whose meaning changes, also blocks adoption until a separately reviewed correction or
-bounded compatibility treatment preserves the old candidates. Use separately reviewed
-meaning-preserving syntax corrections or leave the migration blocked.
+Incomplete collection of the actual cutover corpus blocks adoption until a separately reviewed,
+meaning-preserving syntax correction lets it collect completely. A lost legacy candidate, or a
+valid pattern whose meaning changes, also blocks adoption until a separately reviewed correction
+or bounded compatibility treatment preserves the old candidates.
 
 Publish and verify the shared dependency before consumer cutover, test installed caller behavior,
 and retain a scoped rollback path. A new engineering pin can also affect other adopted operations;

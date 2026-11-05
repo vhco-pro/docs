@@ -21,7 +21,7 @@ Adoption is declared by one column-zero line in root `AGENTS.md`, outside fenced
 documentation roots. Read it with the checker's verified strict YAML reader. Empty, malformed, conflicting or
 duplicate declarations are gaps. An indented look-alike outside fences is a gap too.
 
-The shared checker's roots command (see Results and enforcement) returns declared roots, absence or an incomplete diagnostic. A caller may skip
+The shared checker's roots command (owned by vh-adlc; see Results and enforcement) returns declared roots, absence or an incomplete diagnostic. A caller may skip
 that command only when no raw line, after optional spaces or tabs, starts with the marker
 `Documentation impact roots:`. This
 presence check does not parse fences or YAML. A fenced example therefore goes through the shared
@@ -138,9 +138,10 @@ The checker supplies no documentation-accuracy verdict or persistent verificatio
 adapter may preserve an older caller's exits and output, but must distinguish an incomplete check
 from both a no-match and an affected-doc warning using a separate nonzero exit. Print incomplete
 diagnostics and known candidates on the same stream used for candidate output. A documented legacy
-empty-input no-op makes no claim of complete coverage; an explicitly requested check cannot be
-hidden as that no-op. This includes input empty after documented legacy exclusions,
-with no explicit metadata selection; selecting metadata always forces checking. Compatibility adapters delegate matching to the shared implementation.
+no-op makes no complete-coverage claim. The no-op covers input that is empty, or empty after
+its documented legacy exclusions, when no metadata is selected. Any explicit metadata selection
+forces checking and can never be absorbed by the no-op. Compatibility adapters delegate matching
+to the shared implementation.
 Validate option and input syntax before choosing that no-op; malformed arguments or input produce
 the incomplete exit. Apart from that no-op, which runs before setup and roots checks, an adapter replacing
 a local checker treats absent or gapped roots as setup failures with that separate incomplete exit;
@@ -175,7 +176,9 @@ what was reviewed, changed, generated or left unknown.
 Before replacing a local checker, inventory its callers and compare behavior at exact commits.
 Build any legacy coverage index from the same committed source in disposable scratch; report drift
 in an existing index separately. Preserve retained readers' interpretations when correcting metadata.
-Incomplete collection of the actual cutover corpus blocks adoption. Use separately reviewed
+Incomplete collection of the actual cutover corpus blocks adoption. A lost legacy candidate, or a valid
+pattern whose meaning changes, also blocks adoption until a separately reviewed correction or
+bounded compatibility treatment preserves the old candidates. Use separately reviewed
 meaning-preserving syntax corrections or leave the migration blocked.
 
 Publish and verify the shared dependency before consumer cutover, test installed caller behavior,

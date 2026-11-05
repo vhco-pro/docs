@@ -82,6 +82,13 @@ A feature follows the [feature-document standard](feature-documents.md).
   the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
   those paths has published, not when the merge's own CI passes.
+- **A new component gets its own release path.** A change that adds an independently deployable component
+  (a binary, image, chart or package that installs or runs on its own) gives it its own release path in the
+  same feature. Where the project publishes through mirrored or synced repositories, that means its own
+  repository, sync workflow and release, published before the change that depends on it merges. Never ship
+  a new component inside another component's artifact or repository to save the setup. A feature document
+  that adds a component without naming its own release path is incomplete, and a review treats that as
+  blocking.
 - **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
   only feature documents or Markdown onboarding files carries `[skip ci]`. Any code, test, workflow or
   other change in the delivery runs normal CI, even when its last commit is documentation-only. Report a

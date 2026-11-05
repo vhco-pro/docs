@@ -75,6 +75,10 @@ again, and the document moves `draft` to `planned` before implementation re-ente
 Context and Design cite their claims: a `file:line`, or a command and its output, gathered when the claim
 was written. Sources lists every external page read, each with the claim it supports.
 
+Design names every artifact the change affects and the path that releases each one, as the
+[delivery conventions](delivery.md#feature-delivery) describe. A component the feature adds gets its own
+release path; when it does not have one, the document is not ready for review.
+
 ## Acceptance criteria
 
 ```markdown

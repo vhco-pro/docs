@@ -77,6 +77,11 @@ A feature follows the [feature-document standard](feature-documents.md).
   has stopped. Never force-checkout, reset, prune or delete a worktree to take one over.
 - **Review committed work.** Commit relevant changes before an implementation review; only a review of an
   exact commit can complete a feature. Leave unrelated staged, unstaged and untracked work untouched.
+- **Prove the real release path.** A feature document names every artifact its change affects and the
+  path that builds and publishes each one: images, packages, charts, mirrored or synced repositories, and
+  the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
+  only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
+  those paths has published, not when the merge's own CI passes.
 - **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
   only feature documents or Markdown onboarding files carries `[skip ci]`. Any code, test, workflow or
   other change in the delivery runs normal CI, even when its last commit is documentation-only. Report a

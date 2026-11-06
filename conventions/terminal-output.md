@@ -52,9 +52,8 @@ cursor control.
 
 Detect terminal capabilities on the stream being styled. Default to append-only
 plain output for a non-TTY stream. An explicit forced-colour option may add colour
-to human output, but must never decorate machine-readable output. A selected plain
-mode removes terminal styling. Avoid spinners, cursor rewrites and interactive
-prompts on non-TTY streams. Keep progress and diagnostics on the
+to human output, but must never decorate machine-readable output. Avoid spinners,
+cursor rewrites and interactive prompts on non-TTY streams. Keep progress and diagnostics on the
 program's documented diagnostic stream so stdout remains usable as data.
 
 Interactive views must provide noninteractive arguments for the operation where

@@ -75,6 +75,25 @@ again, and the document moves `draft` to `planned` before implementation re-ente
 Context and Design cite their claims: a `file:line`, or a command and its output, gathered when the claim
 was written. Sources lists every external page read, each with the claim it supports.
 
+### Owner summary in Context
+
+New documents and documents undergoing a normative revision start Context with `### Owner summary`.
+Use a few short paragraphs to explain the problem and outcome, scope, approach, important defaults,
+permissions, trade-offs, validation state and owner decisions. Include migration or recovery where it
+matters. Usually 250 to 400 words is enough; a small feature can be shorter. This is guidance for a
+readable explanation, not a word-count gate.
+
+The detailed normative sections remain authoritative. The summary must agree with them and distinguish
+planned checks from observed proof. Refresh it when scope, proof or decisions change and before asking
+for acceptance. Explain material changes since the last accepted scope. The reviewer checks for
+contradictions, consequential omissions and unsupported claims through the existing finding records.
+Keep the owner-facing conversation summary before acceptance as well.
+
+Historical documents remain valid without this subsection. A summary-only prose correction does not
+change the normative baseline or accept a feature. Keep stored review records verbatim; do not shorten
+them to make the summary easier to find. The required top-level sections and machine-readable rules
+below are unchanged.
+
 ## Acceptance criteria
 
 ```markdown

@@ -27,6 +27,16 @@ covers:
 
 ## Context
 
+### Owner summary
+
+<Explain the outcome, included and excluded scope, proposed approach, consequential defaults,
+permissions and trade-offs. Include migration or recovery when relevant. Distinguish planned checks
+from observed proof; state review status, limitations and decisions needed. Explain what acceptance
+authorizes. Use a few short paragraphs, usually 250 to 400 words, and less for a small feature.
+Keep this explanation consistent with the detailed sections; they retain normative authority.>
+
+### Background
+
 <Why this is needed. Cite every claim about the current state with file:line, or a command and its output.>
 
 ## Scope

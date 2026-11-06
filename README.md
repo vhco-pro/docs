@@ -12,7 +12,8 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Change code or scripts | [Coding](conventions/coding.md) |
 | Write Go | [Go](conventions/go.md) |
 | Write TypeScript | [TypeScript](conventions/typescript.md) |
-| Build or test a TypeScript browser frontend | [Frontend testing](conventions/frontend-testing.md): owned seed data, Playwright scenarios and repeatable verification |
+| Build, test or review any browser frontend, including plain JavaScript and VitePress | [Frontend testing](conventions/frontend-testing.md): owned fixtures, browser scenarios and responsive visual verification |
+| Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |

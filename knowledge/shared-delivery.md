@@ -53,6 +53,10 @@ scripts. A branch publishes a prerelease only while its open PR has the
 `release:preview` label. The release-only GoReleaser action is v2, a major
 that existing v1 consumers adopt deliberately.
 
+The [Cloudflare Worker email pattern](cloudflare-worker-email.md) uses a
+shared CI action and release workflow to publish one version for multiple
+independently activated site Workers.
+
 ## Separate implementation from convention
 
 Dependency refs are maintained by the

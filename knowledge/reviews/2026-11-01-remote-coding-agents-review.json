@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-01",
+  "model": "claude-opus-5.5",
+  "invocation": "Installed GitHub Copilot CLI, bundled runtime selected with --no-auto-update",
+  "cli_version": "1.0.51",
+  "cogpit_tag": "v3.5.3",
+  "cogpit_commit": "f492f811adb4fa9e71aadf4954f8745034eeb3e8",
+  "review_mode": "read-only local source inspection and public web research",
+  "runtime_pilot_executed": false,
+  "records": {
+    "2026-11-01-remote-coding-agents-opus-5-5.txt": {
+      "sha256": "d37860e69e38cdf7906ccc92c001e3afb25362bb95931ee44087f7641f9c44e0",
+      "preserved_verbatim": true
+    },
+    "2026-11-01-remote-coding-agents-opus-5-5-addendum.txt": {
+      "sha256": "381b2f036bccfba256b9725232093b5dd55d56b20c94c99dabe39ab309c1f274",
+      "preserved_verbatim": true
+    },
+    "2026-11-01-remote-coding-agents-opus-5-5-final.txt": {
+      "sha256": "9d7300d5f641013a186b46b4b4e797951a94b587910426ffbd99d0cd9b467115",
+      "preserved_verbatim": true
+    }
+  },
+  "reading_order": [
+    "Read the original report with the addendum and final review; later records correct earlier claims.",
+    "Use the knowledge page as the qualified summary.",
+    "Draft status does not establish adoption or authorize installation."
+  ],
+  "final_review_scope": "Byte-identical copies of the two draft pages; parent verified README and record hashes; recommended minor edits then applied."
+}

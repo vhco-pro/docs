@@ -1,0 +1,77 @@
+# Final bounded review of the remote coding-agent drafts
+
+**Disposition: safe to keep as a DRAFT evaluation page and a gated measurement guide.** The fixes below are recommended edits, not blockers. The drafts are not an accepted decision and not an onboarding runbook you can run as written. On current evidence, Cogpit fails full Copilot replacement. Nothing in these drafts authorizes installing anything or treating reduced feature coverage as acceptable.
+
+**Which files I reviewed:** I could not read the three repository files under `/home/m/code/vhco-pro-docs-agent-interface-review/` (permission denied). I reviewed the copies in `/tmp/central-agent-review-20261101/final/knowledge/remote-coding-agents.md` and `/tmp/central-agent-review-20261101/final/guides/pilot-remote-coding-agents.md` instead. I did not review `README.md`, the `reviews/*.txt` files or the provenance JSON. Before saving, the parent should confirm the repository files are byte-identical to these copies, and check the README and review hashes itself.
+
+## Checklist
+
+All requested items are applied in the reviewed copies:
+- **Known gaps block full replacement:** knowledge lines 55 and 72-78; guide lines 36-40.
+- **No terminal fallback:** knowledge line 147; guide lines 95-97, which also count an embedded terminal panel as fallback.
+- **Same effective CLI binary plus a separate handshake test:** guide lines 78-81; knowledge lines 56 and 67-70.
+- **Inventory-based rollback that never deletes by name match:** guide lines 142-155.
+- **Remote-only by default on the Mac:** guide lines 71-73.
+- **Approval mode checked per session:** guide lines 89-90.
+- **Helper-skill writes and symlink targets:** knowledge lines 82-91; guide lines 53-55.
+- **Exact local-trust condition and a proxy-authentication test:** knowledge lines 93-100; guide lines 60-65.
+- **Updater behavior and artifact signature treated as unverified:** knowledge lines 109-116; guide lines 67-70.
+- **Native file hooks kept separate from `hooks:false`:** knowledge line 57.
+
+## Remaining findings (none block draft status)
+
+**F1. A contradictory scoping sentence (guide line 56).** "Keep the service scoped to the trial repositories" contradicts lines 51-52, which correctly say filesystem permissions define access. Reword it to: "Limit the pilot account's filesystem access to the trial repositories." Lines 56 and 81 are also unwrapped merged lines (cosmetic only).
+
+**F2. Crash semantics are missing (knowledge lines 104-106 and the lifecycle table).** The text covers a normal shutdown but not a crash. If the shared Copilot child exits or its connection closes, `discardTransport` clears every active Copilot session on that host (`copilotTransport.ts:1347-1380`). Add one sentence on this, and add a lifecycle case: "Copilot child exits during a turn."
+
+**F3. Withdrawing my plugin-injection claim.** My addendum's B5 said system-message injection "remains even then" (that is, even with `COGPIT_SKILL_HOME` set). I withdraw that.
+- `withPluginSkills` (`copilotTransport.ts:111-116`) appends text only when `pluginSkillContext` returns some.
+- `skillInstructions` (`server/plugins/manager.ts:175-197`) returns an empty string when:
+  - plugins are unavailable or closed;
+  - `COGPIT_DISABLE_PLUGINS=1` is set (line 173);
+  - no plugin is enabled, error-free, host-compatible and contributes skills;
+  - no plugin's scope covers the workspace.
+- The bundled helper skills are a separate path that writes files into agent homes.
+
+Knowledge lines 86-87 are worded correctly ("can separately append"), and nothing claims `COGPIT_SKILL_HOME` removes all additions. A useful extra step: record the enabled plugins and the safe-mode state before the pilot.
+
+**F4. Mac-side rollback is only implied (guide line 142).** It should explicitly list:
+- the app bundle;
+- application-support data and the device registry;
+- any release the updater has staged;
+- the bootstrap marker directory;
+- the pilot account itself, if one was created.
+
+## Corrected assessment of the VS Code Agents window row
+
+I checked two primary pages: agent-harnesses and remote-agent-sessions. The knowledge row (line 134) is fair but incomplete.
+
+- **Copilot runs through an SDK, not necessarily your installed CLI.** The Copilot harness runs on the Copilot SDK inside VS Code's Agent Host. Whether it uses the server's installed Copilot CLI binary, its `~/.copilot` settings and its existing CLI session history is unknown.
+- **Claude and Codex are also not the native CLIs.**
+  - Claude runs on the Claude Agent SDK; the docs do not establish parity with the Claude Code CLI.
+  - Codex runs either through the OpenAI extension or an experimental Agent Host integration.
+  - Harness customizations, including hooks, "follow the selected harness".
+- **There is a third connection path the row omits:** GitHub Environments (Preview), which reaches GitHub Mobile and GitHub.com. Add it to the row.
+- **None of the three paths is Tailscale-only.**
+  - GitHub Environments is mediated by a GitHub account and the cloud.
+  - Dev tunnels are an authenticated relay, presumably Microsoft-hosted.
+  - SSH works only from the VS Code desktop client.
+  - So a private phone path is unverified, as the row already says.
+- **Host-side requirements.** Sessions need the agent host running. For desktop-hosted sessions the VS Code application itself must keep running. Connecting does not migrate existing sessions.
+- **Desktop technology.** The VS Code desktop app is Electron, which is a packaging question separate from agent parity.
+
+Disposition for this row: a candidate to evaluate, not a match or a recommendation.
+
+## Runtime boundary (none of this has been verified)
+
+- The Cogpit handshake with any server's effective Copilot binary.
+- Whether native hooks, MCP (including OAuth), skills and custom agents load in sessions Cogpit starts.
+- Whether effort settings reach the agent.
+- Whether an unauthenticated request through Tailscale Serve is rejected.
+- Whether other local accounts can reach the trusted loopback path.
+- The real Mac artifact's signing and notarization state, and its updater behavior.
+- Continuity when the Mac is closed or offline, and phone access with the Mac powered off.
+- Restart, crash and reboot behavior.
+- Isolation between multiple hosts.
+- Feature parity at the exact release for Paseo, Happier, HAPI and VS Code.
+- All of the above for Claude and Codex.

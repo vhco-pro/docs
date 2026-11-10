@@ -1,0 +1,144 @@
+# Addendum and errata to the independent Cogpit review (2026-11-01)
+
+This addendum corrects my original report; that report stays unchanged at `review.raw.md`. It is still read-only research: nothing was installed, edited, logged in to or started. I re-checked only `copilotTransport.ts:975-995` and `security.ts:19-78` at `f492f811`.
+
+## A. Corrections and withdrawals
+
+**E1. Happier and privacy.** I withdraw the matrix cell "Private (Tailscale only): No (relay)."
+- Two things need separating: a relay component the architecture requires, and a dependency on a vendor's cloud.
+- A Happier relay that the owner self-hosts and exposes only on the tailnet could meet the private-access preference. The owner never prohibited a relay.
+- Vendor Remote Control (GitHub or Anthropic) is different: it is a cloud dependency the owner cannot host privately.
+- Unknown: whether Happier can run without any relay. The draft's wording "optional self-hosted relay" should say whether the *relay* is optional or only *self-hosting* it is.
+
+**E2. HAPI.**
+- I withdraw "TUI-only commands such as /rewind and /mcp are not available remotely" as evidence about Copilot. That text sits in the Cursor section (`agents.md:105-119`). For Copilot it is unknown.
+- I also restate "no macOS desktop app" more narrowly: the docs I reviewed list no macOS desktop client. That does not prove no such client exists.
+
+**E3. macOS signing and reproducibility.** These are findings about the source and the build workflow, not inspection of the shipped app.
+- `release.yml:175-183` sets `CSC_IDENTITY_AUTO_DISCOVERY=false`, and `release.yml:143-145,182` checks out a private edition submodule.
+- That suggests the downloaded app may be unsigned or ad-hoc-signed, and that public source alone may not rebuild it. Neither is verified.
+- I did not run `codesign -dv`, `spctl -a -vv` or a notarization check on the actual `Cogpit-3.5.3-arm64-mac.zip`.
+- The updater behaviour (`updater.ts:91-162`) is observed in source; I did not observe it at runtime.
+
+**E4. Desktop toolkit.**
+- I withdraw "None of them is native SwiftUI". Happier's desktop technology is unknown.
+- How the app is packaged and which toolkit it uses is a separate owner decision. Nothing shows the owner rejected Electron, and nothing shows they accepted it.
+- I withdraw G4's assumption that a Gatekeeper override is needed. First inspect the downloaded artifact. Any override would be its own owner decision, made with evidence in hand.
+
+**E5. Copilot version and protocol.**
+- I withdraw G1 ("Copilot exactly 1.0.105"). That version was simply what happened to be on the review host; it is not a known compatible baseline.
+- I also withdraw the inference that 1.0.105 speaks protocol 3. My reasoning was "the SDK pins 1.0.106-2 and accepts protocol ≥3". That only shows a ≥3 lower bound. It does not show the CLI reports exactly 3.
+- Cogpit rejects any version other than exactly 3 and tears down the transport (`copilotTransport.ts:982-994`).
+- On the review host, `copilot --version` reports 1.0.105, but `copilot --no-auto-update --version` reports 1.0.51. Cogpit launches with `--no-auto-update`, so it would get the effective binary, 1.0.51.
+- My own original observation needs correcting too. The session-state layout I attributed to "1.0.105" (`events.jsonl`, `session.db`, `inuse.<pid>.lock`) was written by the 1.0.51 process running this review.
+- **Replacement gate:**
+  1. Record the effective version under Cogpit's exact launch flags.
+  2. Record the `connect` handshake result.
+  3. Run the native baseline with that same effective binary.
+
+**E6. Rollback.** I withdraw my rollback steps. They deleted `~/.cogpit`, the data directory, every `cogpit*` skill and the marker directory, which could destroy data that existed before the pilot, or follow symlinks, given `realpathSync` in `skills.ts:16`. Replacement:
+1. Before the pilot, inventory paths, file types, symlink targets and hashes for:
+   - each agent home's `skills/`;
+   - `~/.cogpit`;
+   - `~/.config/cogpit` (or `COGPIT_DATA_DIR`);
+   - the supervisor directories;
+   - the Bun location;
+   - the Mac's application-support and marker paths;
+   - `tailscale serve status`.
+2. Remove only paths the pilot created, determined by diffing against that inventory.
+3. Restore modified files selectively from backup.
+4. Never remove an existing `~/.copilot`, `~/.claude` or `~/.codex` root, any native session-state or history, or authentication.
+5. Turn off only the Serve port the pilot created.
+
+**E7. Comparative depth.**
+- "Deepest Copilot integration" and the numerical ranking compared Cogpit's source against other projects' documentation only. I re-label them as provisional.
+- I have validated no exact-release runtime parity for any of these clients.
+- If a control is missing from a project's docs, that does not prove the control is absent.
+
+**E8. Loopback trust.** The exact bypass condition (`security.ts:72-74`) is all three of:
+- the socket address is in {127.0.0.1, ::1, ::ffff:127.0.0.1};
+- the `Host` hostname is literally localhost, 127.0.0.1 or [::1];
+- none of `Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host` or `X-Forwarded-Proto` is present.
+
+Two of my earlier claims go beyond that:
+- "Any other Unix user can take control" is an inference from this code path. I have not tested it.
+- "The whole tailnet would be unauthenticated if Serve omitted the forwarding headers" is also too strong. The proxy would additionally have to rewrite `Host` to a literal loopback name; a non-loopback `Host` takes the separate untrusted-loopback branch (`security.ts:76-78`).
+
+No live Tailscale authentication test has been run.
+
+**E9. Hooks.** The flag `hooks:false` refers to SDK callback hooks. Whether native and repository file hooks run is unknown. I make no claim that they are disabled.
+
+**E10. Taking over a running session.**
+- "The only verified same-process path is vendor Remote Control" should read: it is the only same-process path found in this review.
+- Cogpit's refusal of in-use sessions is a confirmed limit of Cogpit. It does not prove that no other design could support joining a running process.
+
+## B. Remaining blockers in the drafts
+
+**B1 (most important): known Copilot gaps are effectively waived.**
+- The knowledge page calls Cogpit "an evaluated candidate", and the guide's rule "If an already-known gap blocks a required workflow, stop that candidate" is correct.
+- But neither document names the gaps already known from source and docs, which leaves the pilot free to proceed by default:
+  - goals and workflows: not exposed (`usage.md:22`);
+  - subagent transcripts: off;
+  - slash-command UI: off;
+  - MCP management: off (`mcp:false`);
+  - MCP elicitation: `requestElicitation:false`;
+  - image input: off;
+  - effort selection: the descriptor sets `reasoningEffort:false`, although an RPC for it exists (`copilotTransport.ts:782`), so this needs a runtime check;
+  - custom-agent selection: absent from the RPC surface;
+  - MCP servers that need OAuth sign-in are skipped by headless sessions (Copilot CLI changelog 1.0.101).
+- Fix: list these in the knowledge page. State that for the owner's stated requirements (subagents, goals, MCP, custom agents), Cogpit already fails full Copilot parity on current evidence.
+- Fix: in the guide, require either an explicit owner scope change ("limited UX measurement") or proof that a listed item is not actually needed, before anything is installed.
+
+**B2. The baseline uses the wrong binary.** "Establish the baseline" must run the CLI binary the adapter actually launches, under its exact flags (E5). Otherwise a difference between versions looks like a client gap.
+
+**B3. Embedded terminal counts as terminal fallback.** Cogpit has built-in terminal panels (node-pty/xterm). The guide should state that using the client's built-in terminal for any required step counts as terminal fallback and fails that step.
+
+**B4. Missing security gates:**
+- An unauthenticated request through the Serve URL must be rejected.
+- Record whether other local accounts or untrusted local processes exist, and get an owner decision on the loopback trust boundary.
+- Confirm new sessions do not default to full access (`usage.md:42`), and check this per session, not once globally.
+- Check whether hub credentials stored at rest are acceptable.
+
+**B5. Missing state-mutation gate.**
+- On every start Cogpit writes helper skills into the native agent homes. On the Mac, its local server does so too, if any agent home exists there.
+- Gate: compare the before and after inventories. Evaluate `COGPIT_SKILL_HOME` pointed at a directory that does not exist as a mitigation (`skills.ts:9-10,34`), but treat it as undocumented.
+- Its system-message injection (`copilotTransport.ts:111-116`) remains even then and must be disclosed.
+
+**B6. Remote-only check missing.** The owner requires sessions to always run remotely, so the clean-Mac test must confirm that no local agent session is created or offered by default.
+
+**B7. Rollback is incomplete.** The guide's rollback covers only the supervisor and Serve. It needs the inventory-and-diff procedure from E6 to cover pilot-created skills, data, binaries and Mac artifacts.
+
+**B8. Scoping claim.** "Keep the service scoped to the trial repositories" is not enforced. `COGPIT_PROJECTS_ROOT` only sets where folder browsing starts, and the service keeps the account's full permissions. State this as a limitation, or require a dedicated account if real scoping is needed.
+
+**B9. Auto-update pausing.** "Prevent automatic upgrades" on the server may change the owner's Copilot settings. Record any such change as a pilot-created modification that must be reversed on rollback.
+
+Otherwise the drafts are correct on:
+- the four session operations;
+- the distinction between file hooks and callback hooks;
+- refusing an in-use session versus taking it over;
+- the phone-with-Mac-offline test;
+- route preservation;
+- not treating a systemd user unit as portable.
+
+## C. Corrected alternative assessment (all provisional, documentation-level except Cogpit)
+
+| Client | Copilot (first trial) | Three agents, multiple hosts, phone without the Mac | Main unknowns |
+|---|---|---|---|
+| Cogpit 3.5.3 | Broadest Copilot control surface found in source, but known gaps (B1) already fail full parity. | One host shown at a time. A hub on each server is possible. | Handshake and effective version, file hooks, MCP, packaging. |
+| Paseo | Copilot via ACP; depth unknown. | Documented multi-host support; mobile apps over Tailscale. | Native-session import, Copilot approvals and rewind, release pin. |
+| Happier | Documented as experimental: no steering, fork or rollback for Copilot. These are documented gaps for a Copilot-first trial. | Merged session list. A self-hosted relay reachable only over the tailnet can be private (E1). | Whether it works without a relay, desktop technology, release pin. |
+| HAPI | Copilot via ACP; remote limits unknown (E2). | Hub plus runners. | Whether a macOS desktop client exists; local mode wraps the agent's terminal UI. |
+| OpenCode | Not the Copilot CLI agent. | — | Control only; fails the native-agent requirement. |
+| Vendor Remote Control | Joins the same running process. | One vendor per app; a terminal-hosted process on the server. | Runs through the vendor's cloud, not privately; what the UI covers. |
+
+**Corrected ranking.** No client is established as meeting the full requirement.
+- For the long-term three-agent goal, Paseo and Happier are co-equal candidates for a documentation-to-source review. Happier is no longer excluded on privacy grounds.
+- For Copilot specifically, every candidate currently has known or unknown parity gaps.
+
+## D. Disposition
+
+With B1–B9 applied and these errata attached, the two documents are safe to publish as **draft** material:
+- a provisional evaluation page;
+- a gated pilot procedure.
+
+They are **not** an adoption decision, an installation runbook, or authority to execute anything. On current evidence Cogpit cannot pass full Copilot parity. A Cogpit pilot is legitimate only as an owner-approved, explicitly scoped measurement, run after the first server's facts and the actual Mac artifact have been inspected. Do not create an accepted decision record.

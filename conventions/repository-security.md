@@ -52,8 +52,12 @@ an alert immediately, ignoring its schedule and PR limits. The Renovate App need
 Dependabot alerts for this. Where Renovate owns an ecosystem, leave Dependabot version updates and
 Dependabot security updates off so both tools do not open PRs for the same fix.
 
-Where Renovate owns no ecosystem in the repository, turn on Dependabot security updates so each
-alert with an available patch gets a fix PR.
+Turn on Dependabot security updates only where Dependabot is the configured updater: the
+repository has a `.github/dependabot.yml` or `.github/dependabot.yaml` and shows no sign of
+Renovate. Signs of Renovate are a Renovate config file, a PR from the Renovate App, or its open
+Dependency Dashboard issue. Each alert with an available patch then gets a fix PR. A repository
+with neither updater configured keeps them off, because the Renovate App can start covering it
+before its first PR and both tools would then open PRs for the same fix.
 
 ## Container images
 

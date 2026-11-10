@@ -112,8 +112,8 @@ gh api -X PATCH repos/OWNER/NAME \
   -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
 ```
 
-Where Renovate owns no ecosystem in the repository, also turn on Dependabot security
-updates:
+Where the repository has a `.github/dependabot.yml` and no sign of Renovate, also turn on
+Dependabot security updates:
 
 ```bash
 gh api -X PUT repos/OWNER/NAME/automated-security-fixes

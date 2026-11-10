@@ -113,8 +113,7 @@ gh api -X PATCH repos/OWNER/NAME \
 ```
 
 Where the repository has a `.github/dependabot.yml` or `.github/dependabot.yaml` and no sign of
-Renovate, also turn on
-Dependabot security updates:
+Renovate, also turn on Dependabot security updates:
 
 ```bash
 gh api -X PUT repos/OWNER/NAME/automated-security-fixes

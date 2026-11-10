@@ -12,15 +12,20 @@ status: active
 Use trunk-based development: the default branch is the integration trunk and PR
 branches are temporary. Enable GitHub's `delete_branch_on_merge` setting on each
 repository. After a confirmed merge, delete the remote PR branch if GitHub has
-not already removed it. Before deleting a stale branch, verify its current tip
-is reachable from the current default branch; a previously merged PR alone is
-not proof because its branch may have gained new commits.
+not already removed it. Before deleting a stale branch, prove its current tip
+is merged: it is reachable from the current default branch, or it is contained in
+the head commit GitHub recorded for a merged PR from that branch, which covers
+squash and rebase merges. A previously merged PR alone is not proof because its
+branch may have gained new commits.
 
 Do not delete the default branch, protected branches, active PR branches, or
 branches with unpublished or unmerged commits. Local cleanup is separate:
-delete only merged local branches that are not checked out in any worktree,
-and use `git branch -d`, never force deletion. Do not remove worktrees as part
-of branch cleanup. Report any branch that cannot safely be removed.
+delete only merged local branches that are not checked out in any worktree.
+Use `git branch -d`; a squash-merged branch, which `git branch -d` refuses, may
+be removed with `git update-ref -d refs/heads/BRANCH TIP` once the tip is proven
+merged. Never use `git branch -D`. Remove a worktree only when the owner asks,
+only when it is clean, and only with `git worktree remove` without `--force`.
+Report any branch that cannot safely be removed.
 
 Use short-lived branches and review changes through PRs. Conventional Commit
 subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,

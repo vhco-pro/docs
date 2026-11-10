@@ -112,7 +112,8 @@ gh api -X PATCH repos/OWNER/NAME \
   -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
 ```
 
-Where the repository has a `.github/dependabot.yml` and no sign of Renovate, also turn on
+Where the repository has a `.github/dependabot.yml` or `.github/dependabot.yaml` and no sign of
+Renovate, also turn on
 Dependabot security updates:
 
 ```bash

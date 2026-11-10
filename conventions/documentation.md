@@ -94,6 +94,14 @@ code at the selected ref before describing behavior. An unreachable source is
 an unknown, not an empty source. Keep current version readings in configuration
 or a dated measurement, not normative prose that goes stale after the next merge.
 
+Refer to an issue, pull request, commit, release or workflow run by its full
+URL, such as `https://github.com/OWNER/REPO/pull/8`, never as a bare `#8` or
+`OWNER/REPO#8`. This holds in documents, commit messages, PR and issue bodies
+and every report to the owner, including chat replies: a bare reference is
+only a link where GitHub renders it. Closing keywords accept the URL too, as
+in `Closes https://github.com/OWNER/REPO/issues/42`. Quoted text stays as
+written, such as a stored review record.
+
 Create folders only when they have content. Split a long page when a section
 has an independent reader or task; do not require a folder around every topic.
 Use Mermaid for a small source-controlled diagram when a diagram improves the

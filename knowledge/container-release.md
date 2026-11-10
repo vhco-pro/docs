@@ -78,6 +78,15 @@ The inspected defaults are report-only Trivy and opt-in signing/SBOM/attestation
 The required profile above overrides them. SBOMs are workflow artifacts and
 attestations, not automatically assets on a GitHub Release.
 
+`attest-provenance`, `attest-sbom` and `attest-vex` create GitHub artifact
+attestations through `actions/attest-*`. On the Free, Pro and Team plans GitHub
+offers those only to public repositories, so they fail in a private repository on
+these accounts. A private repository keeps the Trivy scan, Cosign signing and the
+SBOM. For the attestations it records an explicit exception and attests with Cosign
+to the registry, for example `cosign attest --type spdxjson` for the SBOM, until the
+action supports registry attestations. The BuildKit provenance that
+`docker/build-push-action` adds by default is unaffected.
+
 The action also publishes a `latest` image alias. That is not a deployment pin:
 use the final digest or the exact version according to
 [container conventions](../conventions/containers.md). Git release tags remain

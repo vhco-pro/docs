@@ -86,6 +86,43 @@ This is a repository setting, not a commit, and changing it needs admin rights.
 GitHub copies no settings from a template repository, so a repository created from
 a template starts with it off.
 
+## Turn on the security features
+
+[Repository security](../conventions/repository-security.md) decides which features
+a repository gets from its visibility. Read the current state first:
+
+```bash
+gh repo view OWNER/NAME --json visibility
+gh api repos/OWNER/NAME --jq .security_and_analysis
+gh api -i repos/OWNER/NAME/vulnerability-alerts
+```
+
+The last command returns `204` when Dependabot alerts are on and `404` when they are
+off. With the owner's agreement, turn on Dependabot alerts in every repository:
+
+```bash
+gh api -X PUT repos/OWNER/NAME/vulnerability-alerts
+```
+
+In a public repository, also turn on secret scanning and push protection:
+
+```bash
+gh api -X PATCH repos/OWNER/NAME \
+  -f 'security_and_analysis[secret_scanning][status]=enabled' \
+  -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
+```
+
+Where the repository has a `.github/dependabot.yml` or `.github/dependabot.yaml` and no sign of
+Renovate, also turn on Dependabot security updates:
+
+```bash
+gh api -X PUT repos/OWNER/NAME/automated-security-fixes
+```
+
+Check the dependency graph under Settings, Advanced Security. CodeQL and Scorecard
+are workflow files in a public repository, added in a reviewed change like any other
+workflow. These settings need admin rights.
+
 ## Public project presentation
 
 For a public open-source repository, offer the
@@ -102,6 +139,8 @@ when preparing or reviewing its README.
    existing code is compliant.
 5. Confirm `gh repo view OWNER/NAME --json deleteBranchOnMerge` reports `true`,
    or that the owner chose to leave it off.
+6. Confirm the security features match the repository's visibility, or that the
+   owner chose otherwise.
 
 Update the docs pin when relevant conventions change. Do not copy the central
 pages into every consumer. Tools resolve only explicit full-SHA pins; there is no

@@ -7,7 +7,7 @@ status: active
 
 # Managed dependency updates
 
-The preferred updater for public repositories is the managed Renovate GitHub
+The preferred updater for public and private repositories is the managed Renovate GitHub
 App. Once its repository access is confirmed, repository configuration declares
 the update policy. No self-hosted updater, repository-local Renovate workflow,
 or updater token is needed for public dependencies. Keep existing Dependabot

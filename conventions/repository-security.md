@@ -52,6 +52,9 @@ an alert immediately, ignoring its schedule and PR limits. The Renovate App need
 Dependabot alerts for this. Where Renovate owns an ecosystem, leave Dependabot version updates and
 Dependabot security updates off so both tools do not open PRs for the same fix.
 
+Where Renovate owns no ecosystem in the repository, turn on Dependabot security updates so each
+alert with an available patch gets a fix PR.
+
 ## Container images
 
 Every published image uses the [container security profile](../knowledge/container-release.md):

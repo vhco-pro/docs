@@ -108,14 +108,16 @@ Verify the ref exists and inspect the code at that ref. Repository names that
 look like versions can be branches, and a tag can move. A SHA is the execution
 identity; the comment is a human-readable label.
 
-The preferred updater for public repositories is the managed Renovate GitHub App,
+The preferred updater for public and private repositories is the managed Renovate GitHub App,
 maintaining action, workflow, and package dependencies through pull requests.
 Until its repository access is confirmed, retain the existing Dependabot
 configuration rather than leaving a coverage gap or running both for the same
 ecosystem. Keep GitHub Actions
 digest pinning enabled with `helpers:pinGitHubActionDigests`. The hosted service
 runs the updater; do not add a Renovate workflow, runner, scheduler, or updater
-token to each public repository. Project CI still validates the proposed changes.
+token to each repository. Project CI still validates the proposed changes.
+[Repository security](repository-security.md) covers the alerts and scanning that
+sit beside the updater.
 
 Keep the released tag as a truthful comment beside the executable SHA so Renovate
 can track its version and digest. A bare SHA without a recognized tracking

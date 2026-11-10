@@ -22,7 +22,7 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 | Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Replaces `reusable-release.yml` in `vhco-pro/.github`. |
 | Tag after checks, with labelled PR previews | [vhco-pro/version-workflow](https://github.com/vhco-pro/version-workflow) | Decides when a run tags and calls `gitversion-tag-action`; copy its example folder. |
 | Check and publish a Go release for an exact tag | [vhco-pro/go-release-workflow](https://github.com/vhco-pro/go-release-workflow) | Composes `go-ci-action` and `goreleaser-action`; one example folder per arrangement. |
-| Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | CodeQL and Scorecard workflows under `.github/workflows/`; discover the actual file before pinning it. |
+| Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | CodeQL and Scorecard workflows under `.github/workflows/`; discover the actual file before pinning it. [Repository security](../conventions/repository-security.md) says which repositories use them. |
 
 These are source locations, not a promise that their default branches already
 implement every convention. Existing references can be older than the reviewed

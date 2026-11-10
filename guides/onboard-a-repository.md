@@ -70,6 +70,22 @@ For Claude, add `CLAUDE.md` containing `@AGENTS.md`. These are thin harness
 bridges, not duplicated conventions. Other agents use the root file explicitly;
 do not assume every tool follows external links without being instructed.
 
+## Turn on automatic branch deletion
+
+PR branches are temporary ([delivery](../conventions/delivery.md#git-and-versioning)).
+GitHub's automatic head-branch deletion is the only setting that removes every
+merged PR branch, whoever merges it. Check it, and with the owner's agreement turn
+it on:
+
+```bash
+gh repo view OWNER/NAME --json deleteBranchOnMerge
+gh repo edit OWNER/NAME --delete-branch-on-merge
+```
+
+This is a repository setting, not a commit, and changing it needs admin rights.
+GitHub copies no settings from a template repository, so a repository created from
+a template starts with it off.
+
 ## Public project presentation
 
 For a public open-source repository, offer the
@@ -84,6 +100,8 @@ when preparing or reviewing its README.
    Go template, before it changes files.
 4. Run the repo's checks and review exceptions. A new pointer does not prove the
    existing code is compliant.
+5. Confirm `gh repo view OWNER/NAME --json deleteBranchOnMerge` reports `true`,
+   or that the owner chose to leave it off.
 
 Update the docs pin when relevant conventions change. Do not copy the central
 pages into every consumer. Tools resolve only explicit full-SHA pins; there is no

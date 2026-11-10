@@ -42,6 +42,15 @@ gh repo create OWNER/NAME --template michielvha/template-go-app --public --clone
 ```
 
 Replace `OWNER/NAME` with the agreed values and use `--private` when appropriate.
+A repository created from a template gets its files but not its settings. Turn on
+automatic deletion of merged PR branches right after creation, as the
+[onboarding guide](onboard-a-repository.md#turn-on-automatic-branch-deletion)
+describes:
+
+```bash
+gh repo edit OWNER/NAME --delete-branch-on-merge
+```
+
 Do not execute a public creation command before visibility is agreed. For an
 existing local project, adapt the template's relevant files instead of replacing
 its repository or importing the template's history.

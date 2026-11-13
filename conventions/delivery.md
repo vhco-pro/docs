@@ -88,10 +88,12 @@ A feature follows the [feature-document standard](feature-documents.md).
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
   those paths has published, not when the merge's own CI passes.
 - **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
-  only feature documents or Markdown onboarding files carries `[skip ci]`. Any code, test, workflow or
-  other change in the delivery runs normal CI, even when its last commit is documentation-only. Report a
-  skipped run as skipped, never as a pass. Never bypass branch protection or rewrite a pushed commit to
-  remove the marker.
+  only feature documents or Markdown onboarding files carries `[skip ci]`. A repository may also declare
+  extra skip-eligible paths (`skip_ci_paths` in its loop settings), such as agent instructions and other
+  files no build or release reads; a delivery that changes only those paths, feature documents and
+  onboarding files carries the marker too. Any other code, test, workflow or change in the delivery runs
+  normal CI, even when its last commit is documentation-only. Report a skipped run as skipped, never as a
+  pass. Never bypass branch protection or rewrite a pushed commit to remove the marker.
 
 Issue linkage: one issue per feature document. A PR says `Closes #N` only when every criterion is met and
 closure is authorised; otherwise it says `Refs #N` and names what remains. A residual needs a durable

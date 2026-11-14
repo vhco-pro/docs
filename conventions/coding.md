@@ -13,6 +13,13 @@ Make the smallest change that satisfies the request. Reuse the repository's
 libraries and helpers before adding another abstraction or dependency. Preserve
 unrelated work and public interfaces unless the task requires a change.
 
+Treat an added host, service, credential store or orchestration step as a dependency
+decision too. Establish why the outcome needs it and whether an existing component
+can own the operation. Check first installation and recovery when management,
+networking or secret services are unavailable. Keep a usable bootstrap path for
+the platform that normally performs the automation. Record consequential choices
+in the feature's Design and verify them during review.
+
 Workflows orchestrate. Substantial logic lives in `scripts/`, not YAML `run`
 blocks: a `run` block longer than about 5 to 10 lines moves into a script. A
 command invoking a script, setting up a standard tool, or checking a single

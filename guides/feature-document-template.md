@@ -47,6 +47,11 @@ Keep this explanation consistent with the detailed sections; they retain normati
 
 <The design and its interfaces. Reference files and symbols; do not paste code.>
 
+<When operational dependencies change, explain their necessity and owning component.
+Describe first installation and recovery while the normal management or secret service is
+unavailable, including access to required keys and instructions. Resolve circular dependencies
+with a usable bootstrap path. Carry material recovery promises into criteria and failure scenarios.>
+
 ## Acceptance Criteria
 
 - [ ] AC-01: <The end state, observable without reading the code.>

@@ -20,6 +20,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md), [managed dependency updates](knowledge/managed-renovate.md), [shared delivery](knowledge/shared-delivery.md), and the [Go release pilot](knowledge/tag-driven-go-releases.md) |
 | Set up Dependabot alerts, secret scanning, CodeQL or Scorecard | [Repository security](conventions/repository-security.md) |
+| Choose hosting, service exposure or domain names | [Hosting and domains](knowledge/hosting-and-domains.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |
 | Apply these conventions to an existing repo | [Onboard a repository](guides/onboard-a-repository.md) |
 | Evaluate one chat client for remote coding agents | [Remote coding-agent interfaces](knowledge/remote-coding-agents.md) and the [pilot guide](guides/pilot-remote-coding-agents.md) |

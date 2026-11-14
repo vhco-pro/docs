@@ -54,14 +54,17 @@ then **Explore build machine via SSH or VNC/RDP client** on the running build.
 Use an approved provider integration if it supports the same scoped operation.
 Treat connection commands and temporary credentials as secrets. Establish
 SSH host trust from an authenticated source for that build before sending
-private inputs. Stop on an identity or host-key mismatch. Verify the active
+private inputs. When the workflow records a host fingerprint, match it to the
+authenticated log for the exact build. Stop on an identity or host-key mismatch. Verify the active
 checkout and tool versions after connecting. [Codemagic remote access](https://docs.codemagic.io/troubleshooting/accessing-builder-machine-via-ssh/)
 
 Keep ordinary simulator jobs independent of signing credentials and release
-permissions. Use the project's approved private workflow for signing, verify
-the exported artifact and entitlements, and clean up temporary signing
-material. Upload and tester assignment have their own authorization and
-verification.
+permissions. In the approved private signing workflow, verify the certificate,
+provisioning profile, exported IPA digest and signed app entitlements. Clean
+up temporary signing material. Upload and tester assignment have their own
+authorization. If the approved scope is owner-only TestFlight, verify the exact
+processed build, sole authorized tester, automatic distribution off and no
+public link. [Apple internal TestFlight testers](https://developer.apple.com/help/app-store-connect/test-a-beta-version/add-internal-testers/)
 
 ## Match the test to the evidence
 
@@ -81,6 +84,12 @@ If the owner says the device is ready and the backend shows no registration,
 record both observations. Check the build, account, backend origin, reachability,
 permission state and registration request where evidence exists. Use a
 simulator to reproduce the controllable parts while the phone is unavailable.
-If a physical check remains necessary, send the smallest remaining set of
-steps with a verified link, expiry, expected result and stop condition. Keep
-prior results with their exact build and test conditions.
+For a planning reminder, verify that tapping it opens the expected week and
+shows the existing meal without starting a planning operation.
+
+Bundle any remaining physical checks into one handoff. Confirm the build and
+network access, test a temporary account page with disposable data, and give
+its expiry in the owner’s time zone. Include the exact controls, expected
+result and stop condition. Keep prior results with their exact build and test
+conditions. Store project-specific repository references, workflow versions and
+run receipts with the project.

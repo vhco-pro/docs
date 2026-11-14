@@ -123,6 +123,13 @@ One table with exactly the header `| Criterion | Proof |`. Every criterion ID ap
 a cell may list several IDs separated by commas. Proof names a real check: a test, a scenario with a pass
 condition, or a written manual procedure.
 
+A proof that judges free text with a pattern lists its must-pass and must-fail examples in the row. A row
+has passed review once a clean pass whose reviewed commit already held the row's current text has no
+finding whose `WHERE` names that row or the Test Plan as a whole; a later change to the row starts over.
+After that, a finding that only widens the pattern to catch more wrong output is a nit, and it is listed
+rather than applied, even when the same pass changes the baseline for other findings. A finding that shows
+the pattern rejects a correct output is blocking, because the proof then fails a correct implementation.
+
 ## Tasks
 
 ```markdown
@@ -152,9 +159,10 @@ Only the owner answers them. Write each for a decision in under a minute:
 ```
 
 Every trade-off the document settles is an open question, including one the author would answer the same
-way the owner would. A section that weighs options and keeps one, such as a simplification check, raises
-that choice here instead of deciding it. User-facing terms the feature introduces or changes appear in a
-glossary row and are held to it by a criterion.
+way the owner would. A review finding rated nit is the exception: it follows the nit rule in
+[Review log](#review-log) and is never raised as an open question. A section that weighs options and keeps
+one, such as a simplification check, raises that choice here instead of deciding it. User-facing terms the
+feature introduces or changes appear in a glossary row and are held to it by a criterion.
 
 An answered question is folded into the document and removed. "None." means every question has been
 answered, not that none was asked.
@@ -187,6 +195,32 @@ WHERE: <section>
 EVIDENCE: <file:line, command and output, or quote>
 PROPOSAL: <one or two sentences>
 ```
+
+Rate each finding by what it changes:
+
+- blocking: a stated fact is false and that changes what is built, what a proof checks or how the
+  binary reads the document; an implementer following the document would build something that does not
+  solve the stated problem; a criterion cannot be met; or a proof fails a correct implementation or
+  cannot be executed.
+- should-fix: two careful implementers would build different things, or a proof could pass on a wrong
+  implementation, except widening a free-text pattern row that has passed review to catch more wrong
+  output, which is a nit (see [Test plan](#test-plan)).
+- nit: wording, style, redundancy, or a citation slip that changes nothing an implementer builds or a
+  proof checks. Widening a free-text pattern row that has passed review to catch more wrong output is also
+  a nit.
+
+A repository may declare review lenses, extra checks its reviews apply, each with its own severity. A
+finding a declared lens raises takes that lens's severity; these definitions rate every other finding.
+
+A nit on the normative baseline never causes a revision on its own. When the author applies a pass's
+blocking or should-fix findings to the baseline, the same commit fixes every nit of that pass, in any
+section and of either kind, without raising a judgement nit as an open question. The one exception is a
+free-text widening nit, which stays listed even when the baseline changes for other findings. Every nit
+the author does not apply, from every pass it handled in that invocation, is listed with its ID and one
+line in its report and the owner-facing conversation summary, not in the document. A finding confined to
+sections outside the normative baseline may be applied at any time, because it does not make the review
+stale. A nit left unapplied stays in the document until a later revision touches it or the owner asks for
+one.
 
 Only the reviews that still decide something must be in record form: the latest spec review, the latest
 implementation review, and the review the latest acceptance row names. Older subsections, including

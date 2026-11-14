@@ -117,7 +117,8 @@ configuration rather than leaving a coverage gap or running both for the same
 ecosystem. Keep GitHub Actions
 digest pinning enabled with `helpers:pinGitHubActionDigests`. The hosted service
 runs the updater; do not add a Renovate workflow, runner, scheduler, or updater
-token to each repository. Project CI still validates the proposed changes.
+token to each repository. Project CI still validates the proposed changes; in a private
+repository that is the local command ([CI by repository visibility](#ci-by-repository-visibility)).
 [Repository security](repository-security.md) covers the alerts and scanning that
 sit beside the updater.
 
@@ -159,6 +160,37 @@ manifest, use a Renovate custom manager that matches the pin, and put the pin
 where that manager looks. Adding a dependency includes confirming the updater
 will propose its next version.
 
+## CI by repository visibility
+
+GitHub-hosted runners are free for public repositories, but private repositories spend a limited
+budget of Actions minutes. A repository's visibility decides where its CI runs.
+
+- **Public repositories run CI on GitHub.** Push and PR triggers stay as the repository needs them.
+- **Private repositories run CI on the developer's machine.** One read-only command, such as
+  `make verify`, runs every check the hosted workflows would run: formatting, linting of whole modules,
+  tests, builds and the secret scan. It reports problems and fixes nothing, so a local pass predicts a
+  hosted one. A committed pre-commit hook runs it for the checks the staged change affects, and the full
+  command runs before every push. The hook lives in the repository (for example `.githooks/`, enabled
+  with `git config core.hooksPath .githooks`), and the local instructions name the command and the hook
+  setup. In the vh-adlc loop, declare the command as a verification rung and set `ci_trigger: manual`.
+- **Hosted checks in a private repository run only on request.** Check workflows trigger on
+  `workflow_dispatch` alone, with no `push`, `pull_request` or `schedule` trigger. Dispatch a run only
+  when hosted evidence is needed, such as an operating system the developer cannot run. Do not make a
+  branch rule require a status check that no automatic trigger produces.
+- **Publication stays on GitHub.** Workflows that tag, sign or publish keep their default-branch or tag
+  triggers, because their credentials do not belong on a developer machine. A merge to the default
+  branch is the only routine CI spend in a private repository.
+- **Validate dependency PRs locally.** A Renovate or Dependabot PR in a private repository gets no
+  automatic run. Run the local command on its branch, or dispatch a run, before treating it as checked.
+- **Report what ran.** A hosted check that did not run is not a pass. Report the local command's result
+  at the pushed commit, and hosted CI as not triggered by policy.
+- **The owner may keep hosted checks.** A private repository keeps automatic check triggers only when
+  the owner chooses that for it, recorded in its local instructions with the reason. Tooling warns about
+  a private repository on automatic CI and never blocks it.
+- **Change with the visibility.** When a private repository becomes public, restore its push and PR
+  triggers in the same change. When a public repository becomes private, make its check workflows
+  manual and move their checks into the local command before the next push.
+
 ## Workflows and permissions
 
 Keep substantial logic in scripts as defined in [coding](coding.md). Reuse the
@@ -176,8 +208,9 @@ the merge ref and never tags. Check jobs receive no tagging or signing keys.
 
 The [PR preview policy](../knowledge/tag-driven-go-releases.md#pr-preview-policy)
 uses a persistent `release:preview` label: while it is on an open PR, each push
-that passes CI gets a prerelease tag from GitVersion. Callers choose branch-push
-or PR-only CI by cost. Only the exact tag push publishes.
+that passes CI gets a prerelease tag from GitVersion. Public callers choose branch-push
+or PR-only CI by cost; in a private repository a preview needs a dispatched run
+([CI by repository visibility](#ci-by-repository-visibility)). Only the exact tag push publishes.
 
 Dry-run paths still compute real versions and render relevant notes. Serialize
 publication where competing runs could conflict. Test before publication,

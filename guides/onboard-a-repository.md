@@ -71,6 +71,15 @@ For Claude, add `CLAUDE.md` containing `@AGENTS.md`. These are thin harness
 bridges, not duplicated conventions. Other agents use the root file explicitly;
 do not assume every tool follows external links without being instructed.
 
+## Choose where CI runs
+
+Check the visibility with `gh repo view OWNER/NAME --json visibility`. A public
+repository keeps its hosted CI. A private repository runs its CI locally, through
+one read-only command and a committed pre-commit hook, and its check workflows
+become manual
+([CI by repository visibility](../conventions/delivery.md#ci-by-repository-visibility)).
+Name the command and the hook setup under local commands.
+
 ## Turn on automatic branch deletion
 
 PR branches are temporary ([delivery](../conventions/delivery.md#git-and-versioning)).
@@ -142,6 +151,8 @@ when preparing or reviewing its README.
    or that the owner chose to leave it off.
 6. Confirm the security features match the repository's visibility, or that the
    owner chose otherwise.
+7. In a private repository, confirm the check workflows trigger only on
+   `workflow_dispatch` and that the pre-commit hook runs the local CI command.
 
 Update the docs pin when relevant conventions change. Do not copy the central
 pages into every consumer. Tools resolve only explicit full-SHA pins; there is no

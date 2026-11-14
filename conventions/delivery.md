@@ -184,6 +184,9 @@ budget of Actions minutes. A repository's visibility decides where its CI runs.
   automatic run. Run the local command on its branch, or dispatch a run, before treating it as checked.
 - **Report what ran.** A hosted check that did not run is not a pass. Report the local command's result
   at the pushed commit, and hosted CI as not triggered by policy.
+- **The owner may keep hosted checks.** A private repository keeps automatic check triggers only when
+  the owner chooses that for it, recorded in its local instructions with the reason. Tooling warns about
+  a private repository on automatic CI and never blocks it.
 - **Change with the visibility.** When a private repository becomes public, restore its push and PR
   triggers in the same change. When a public repository becomes private, make its check workflows
   manual and move their checks into the local command before the next push.

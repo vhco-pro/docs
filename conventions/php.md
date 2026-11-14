@@ -26,13 +26,14 @@ plugins use PSR-12. Keep style fixes confined to touched code. Pure PHP files om
 
 Use native parameter, property and return declarations where the supported runtime and inherited
 contract permit them. New standalone PHP files use `declare(strict_types=1)`. Framework integration
-must preserve parent/interface signatures and test the actual callers' coercion behavior. Strict typing
-is selected by the calling file and does not validate an HTTP request, XML document or framework model.
-[PHP type declarations](https://www.php.net/manual/en/language.types.declarations.php), [method variance](https://www.php.net/manual/en/language.oop5.variance.php).
+must preserve parent/interface signatures and test the actual callers' coercion behavior. Scalar argument
+checking follows the calling file's mode. Scalar return checking follows the function-definition file's
+mode. These declarations do not validate an HTTP request, XML document or framework model.
+[PHP type declarations](https://www.php.net/manual/en/language.types.declarations.php), [implemented scalar-types RFC](https://wiki.php.net/rfc/scalar_type_hints_v5), [method variance](https://www.php.net/manual/en/language.oop5.variance.php).
 
 Validate external values before conversion. Define the meaning of missing, null, empty and zero for
-each boundary. Use strict comparisons when testing sentinel results such as `false`; a successful
-zero-byte result must not become an error through a truthiness check. Keep `mixed` at the particular
+each boundary. Use strict comparisons when testing sentinel results such as `false`. Handle a successful
+zero-byte result according to the operation's contract. Keep `mixed` at the particular
 external boundary and narrow it before domain use. PHPDoc describes array shapes, collections and
 information native declarations cannot express. Avoid annotations that only repeat native types.
 
@@ -140,3 +141,6 @@ contents must exclude developer dependencies and private fixtures.
 The implementation review verifies the selected coding rules, analysis coverage and native platform
 evidence alongside feature criteria. Syntax, formatting and static analysis each cover different defects.
 Report checks that were executed and remaining gaps, including a check that ran against no owned files.
+
+PHP applications and plugins with browser interfaces also follow the
+[frontend testing standard](frontend-testing.md), including owned fixtures and executable browser journeys.

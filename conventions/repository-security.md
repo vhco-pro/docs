@@ -20,7 +20,10 @@ commands that check and change these settings.
 Turn on the dependency graph, Dependabot alerts, secret scanning and push protection.
 
 Run CodeQL code scanning with the reusable CodeQL workflow in
-[`vhco-pro/.github`](https://github.com/vhco-pro/.github) for each language in the repository.
+[`vhco-pro/.github`](https://github.com/vhco-pro/.github) for each supported language in the repository.
+Verify current language support before configuring the workflow. Use an appropriate source-security
+analyzer for other languages and record each language's actual coverage. PHP projects follow the
+language-specific security checks. [CodeQL language support](https://codeql.github.com/docs/codeql-overview/supported-languages-and-frameworks/), [PHP security checks](php.md#security-checks).
 GitHub Actions workflows count as a language. Run OpenSSF Scorecard with the reusable Scorecard
 workflow from the same repository and set `publish_results: true`.
 
@@ -40,6 +43,11 @@ as unavailable for the plan, not as findings to fix.
 
 When a private repository becomes public, turn on the public features in the same change of
 visibility.
+
+Standalone dependency, source-security and secret scanners can run locally and in ordinary CI on
+private repositories. Use these checks for the repository's languages and package formats, including
+the [PHP checks](php.md#security-checks) where applicable. Record the chosen tools, rules, coverage and
+findings. Their command-line results remain usable when GitHub-hosted alert ingestion is unavailable.
 
 ## Updaters and alerts
 

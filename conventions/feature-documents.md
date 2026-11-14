@@ -94,6 +94,23 @@ change the normative baseline or accept a feature. Keep stored review records ve
 them to make the summary easier to find. The required top-level sections and machine-readable rules
 below are unchanged.
 
+### Dependency and recovery review
+
+For a design that adds or changes operational dependencies, explain in Design
+which component owns each affected operation and why the dependency is needed.
+Consider existing native capabilities before adding another host, service or
+orchestration step. Describe first installation and recovery with the normal
+management platform or secret service unavailable, including how required keys
+and recovery instructions remain accessible. Identify any circular dependency
+and provide a usable bootstrap path.
+
+The spec reviewer checks these paths and challenges dependencies whose need is
+unsupported. Use the existing finding records for missing paths or unjustified
+dependencies. Put material availability and recovery promises into acceptance
+criteria with a failure scenario in the Test Plan. The implementation reviewer
+checks the resulting evidence. A small change can explain this in a paragraph.
+This is a semantic review requirement through the existing reviewer procedure.
+
 ## Acceptance criteria
 
 ```markdown

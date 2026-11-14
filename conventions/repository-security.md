@@ -44,8 +44,8 @@ as unavailable for the plan, not as findings to fix.
 When a private repository becomes public, turn on the public features in the same change of
 visibility.
 
-Standalone dependency, source-security and secret scanners can run locally and in ordinary CI on
-private repositories. Use these checks for the repository's languages and package formats, including
+Standalone dependency, source-security and secret scanners run on private repositories as part of the
+local CI command ([CI by repository visibility](delivery.md#ci-by-repository-visibility)). Use these checks for the repository's languages and package formats, including
 the [PHP checks](php.md#security-checks) where applicable. Record the chosen tools, rules, coverage and
 findings. Their command-line results remain usable when GitHub-hosted alert ingestion is unavailable.
 

@@ -10,6 +10,7 @@ pointers here, not copies of these instructions.
    [humanize prose guide](guides/humanize-prose.md).
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
+   Read [PHP](conventions/php.md) for PHP work, including specification and review.
    For every browser frontend, including plain JavaScript and VitePress, read the
    required [frontend testing standard](conventions/frontend-testing.md).
    For command-line output or terminal interaction, read

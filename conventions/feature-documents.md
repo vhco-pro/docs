@@ -113,7 +113,6 @@ This is a semantic review requirement through the existing reviewer procedure.
 
 ## Acceptance criteria
 
-
 ```markdown
 - [ ] AC-01: The end state, observable without reading the code.
 ```

@@ -88,6 +88,8 @@ Test observable behavior and important failure paths. Prefer tests of the actual
 script or action over a second implementation of its logic. Keep CI integration
 checks for contracts that only the runner can prove, such as reusable workflow
 access and action outputs. Do not add tests just to raise a count.
+[Testing](testing.md) covers diagnosing a failure, proving a test catches its
+defect, and reading a run's evidence.
 
 A long end-to-end suite, such as one that builds a cluster, is not the loop for fixing what it finds.
 Keep its environment, load only what a fix changed, and rerun only the failing tests and their

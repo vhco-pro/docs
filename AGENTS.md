@@ -10,6 +10,8 @@ pointers here, not copies of these instructions.
    [humanize prose guide](guides/humanize-prose.md).
    Write skills, agent entry points, reviewer prompts and references an agent
    loads with the [write for agents guide](guides/write-for-agents.md).
+   Read [testing](conventions/testing.md) before diagnosing a failure, writing or
+   changing a test, or claiming that a run proves a change.
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
    Read [PHP](conventions/php.md) for PHP work, including specification and review.

@@ -92,8 +92,10 @@ A feature follows the [feature-document standard](feature-documents.md).
   the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
   those paths has published, not when the merge's own CI passes.
-- **Skip CI when no check could change its verdict.** Hosted minutes cost money, so CI does not run for a
-  delivery it cannot judge differently. A delivery whose commit, outgoing push range and PR diff all change
+- **Skip CI when no check could change its verdict.** CI on GitHub-hosted runners costs nothing for a
+  public repository, but a private repository spends a limited budget of minutes, and a long-running suite
+  wastes time and capacity in any repository. So CI does not run for a delivery it cannot judge
+  differently; this matters most for private repositories and for suites that take long to run. A delivery whose commit, outgoing push range and PR diff all change
   only feature documents or Markdown onboarding files carries `[skip ci]`. A repository may also declare
   extra skip-eligible paths (`skip_ci_paths` in its loop settings): agent instructions, development-only
   scripts that no build or release runs, editor configuration, and other files no build or release reads.

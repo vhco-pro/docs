@@ -27,7 +27,12 @@ merged. Never use `git branch -D`. Remove a worktree only when the owner asks,
 only when it is clean, and only with `git worktree remove` without `--force`.
 Report any branch that cannot safely be removed.
 
-Use short-lived branches and review changes through PRs. Conventional Commit
+Use short-lived branches and review changes through PRs. A private repository with one developer
+and a full local check (see [CI by repository visibility](#ci-by-repository-visibility)) may record in
+its local instructions that small, contained, verified changes go straight to the default branch: one
+independently reviewable correction with a clear cause and bounded impact, every applicable local
+check passed. Features, migrations and changes to public contracts, authentication or deployment
+behavior still use a branch and a PR. Conventional Commit
 subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,
 `refactor`, and `revert` are patch; `!` on the type/scope or an uppercase
 `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer is major. `docs`, `style`, `test`,
@@ -87,11 +92,14 @@ A feature follows the [feature-document standard](feature-documents.md).
   the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
   those paths has published, not when the merge's own CI passes.
-- **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
+- **Skip CI when no check could change its verdict.** Hosted minutes cost money, so CI does not run for a
+  delivery it cannot judge differently. A delivery whose commit, outgoing push range and PR diff all change
   only feature documents or Markdown onboarding files carries `[skip ci]`. A repository may also declare
-  extra skip-eligible paths (`skip_ci_paths` in its loop settings), such as agent instructions and other
-  files no build or release reads; a delivery that changes only those paths, feature documents and
-  onboarding files carries the marker too. Any other code, test, workflow or change in the delivery runs
+  extra skip-eligible paths (`skip_ci_paths` in its loop settings): agent instructions, development-only
+  scripts that no build or release runs, editor configuration, and other files no build or release reads.
+  It may also record, in its local instructions with the reason, that comment-only or formatting-only
+  changes skip CI, or that a documentation publisher it runs separately covers its public docs. A delivery
+  that changes only those paths, feature documents and onboarding files carries the marker too. Any other code, test, workflow or change in the delivery runs
   normal CI, even when its last commit is documentation-only. Report a skipped run as skipped, never as a
   pass. Never bypass branch protection or rewrite a pushed commit to remove the marker.
 

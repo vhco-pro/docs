@@ -26,9 +26,9 @@ the caller's working directory. A reusable workflow has no scripts of its own:
 steps that do the work belong in an action, which the workflow calls. `./scripts/`
 after the default checkout refers to the caller's files, not the shared repo.
 
-Keep the scripting runtime already used by the repository. New JavaScript tooling
-and tests use Bun; existing Node tooling keeps working and does not have to
-migrate. Shell scripts declare Bash when they use Bash
+Keep the scripting runtime already used by the repository: where its tooling and
+tests run on Node, new tooling and tests use Node too. Bun is the default only in a
+repository with no established JavaScript runtime. Shell scripts declare Bash when they use Bash
 features, enable `set -euo pipefail`, and quote expansions. No framework is
 required for documentation or repository instructions.
 

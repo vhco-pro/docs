@@ -72,7 +72,9 @@ Types are `principle`, `guideline`, `standard`, `decision`, `guide`, or
 Decision statuses are `proposed`, `accepted`, `superseded`, or `deprecated`.
 A superseded decision points to its replacement with `superseded_by`.
 
-No mandatory team-owner, author list, review date, catalog, or pack metadata.
+These pages carry no mandatory team-owner, author list, review date, catalog, or pack metadata. A
+consuming repository may add fields its own tooling reads, such as an author credit its docs viewer
+renders.
 Filenames are stable kebab-case. Decisions use one flat `NNNN-title.md` sequence;
 create a record only for a real choice with consequences across repositories.
 Do not create a record for every ordinary implementation change.

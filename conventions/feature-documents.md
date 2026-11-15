@@ -23,7 +23,8 @@ A repository declares its feature root with one line in its root `AGENTS.md`:
 Feature documents: docs/specs/
 ```
 
-Without that line, documents live in `docs/internal/plans/<slug>.md`. Do not move existing documents to
+Without that line, documents live under `docs/internal/plans/`, as `<slug>.md` or grouped in category
+folders as `<category>/<slug>.md`. Do not move existing documents to
 reach a default. A repository that keeps its own document format declares
 `Feature document format: local` instead; this standard and its tooling then do not apply there.
 

@@ -8,6 +8,8 @@ pointers here, not copies of these instructions.
    [documentation](conventions/documentation.md) before writing documents. Edit all prose a reader
    will see, including commit messages and PR and issue bodies, with the
    [humanize prose guide](guides/humanize-prose.md).
+   Write skills, agent entry points, reviewer prompts and references an agent
+   loads with the [write for agents guide](guides/write-for-agents.md).
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
    Read [PHP](conventions/php.md) for PHP work, including specification and review.

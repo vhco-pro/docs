@@ -25,6 +25,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Evaluate one chat client for remote coding agents | [Remote coding-agent interfaces](knowledge/remote-coding-agents.md) and the [pilot guide](guides/pilot-remote-coding-agents.md) |
 | Write or reorganize documentation | [Documentation](conventions/documentation.md) and [humanize prose](guides/humanize-prose.md) |
 | Write a commit message, PR, issue or review summary | [Humanize prose](guides/humanize-prose.md) |
+| Write or edit a skill, agent entry point, reviewer prompt or a reference an agent loads | [Write for agents](guides/write-for-agents.md) and [humanize prose](guides/humanize-prose.md) |
 | Specify, plan or implement a feature | [Feature documents](conventions/feature-documents.md) and [feature delivery](conventions/delivery.md#feature-delivery) |
 | Ship a change | [Feature delivery](conventions/delivery.md#feature-delivery) and [delivery](conventions/delivery.md) |
 

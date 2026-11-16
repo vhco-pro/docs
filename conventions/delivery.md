@@ -83,6 +83,12 @@ Publish exact semantic versions. Do not create or move major/minor alias tags.
 Choose one component to decide the version and one path to publish the release;
 do not recompute or publish it independently in parallel jobs.
 
+## Static sites on Cloudflare
+
+For pipeline-driven Cloudflare static hosting, follow the
+[static-site standard](cloudflare-static-sites.md). It selects the official
+Wrangler action and includes a complete consumer pipeline example.
+
 ## Feature delivery
 
 A feature follows the [feature-document standard](feature-documents.md).

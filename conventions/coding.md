@@ -97,5 +97,6 @@ neighbours. Order the suite so the areas under change fail first. Run the whole 
 final change, as its own detached job so a tool's time limit cannot cut it short.
 
 Explain changes and their verification in the PR. Use Conventional Commits as
-defined in [delivery](delivery.md). Do not add AI credit trailers. Read
+defined in [delivery](delivery.md). Credit no AI assistant: no trailer, footer or credit line in
+commits, PRs, issues or documents. Read
 [Go](go.md) or [containers](containers.md) when they apply.

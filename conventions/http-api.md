@@ -1,7 +1,7 @@
 ---
 title: "HTTP API conventions"
 type: guideline
-description: "Status codes for duplicates and invalid payloads, and response, pagination and timestamp shapes for JSON:API services."
+description: "Status codes for duplicate and invalid writes, and timestamp form, for HTTP APIs."
 status: active
 ---
 
@@ -13,45 +13,27 @@ or shape a client depends on.
 
 ## Status codes for failed writes
 
-- **409 Conflict** answers a write that fails because the resource already exists, as RFC 9110 defines a
-  conflict with the current state of the target resource. Name the colliding field in the error.
-- **422 Unprocessable Content** answers a well-formed request whose content is invalid: a malformed
-  value or a missing required attribute.
+- **409 Conflict** answers a write that fails because the resource already exists. RFC 9110 defines 409
+  as a conflict with the current state of the target resource. This is a choice, not the only
+  practice: some public APIs answer a duplicate with 422. A new API uses 409, and an existing API keeps
+  the status its clients already handle.
+- **422 Unprocessable Content** answers a well-formed request whose content the server cannot process:
+  a malformed value or a missing required attribute.
+- Name the colliding or invalid field in the error, so the caller can fix the request.
 - Both branches of a duplicate check answer the same status. The guard that finds an existing record
   and the insert that loses a race to a concurrent request both answer 409, because the caller cannot
   observe which request won.
 
-## JSON:API services
-
-For an API that speaks JSON:API, every response takes one of four forms:
-
-| The endpoint returns | Form | Status |
-| --- | --- | --- |
-| One resource | `{"data": {"type", "id", "attributes", "relationships"?}}` | 200, or 201 on create |
-| A collection | `{"data": [resource, ...], "meta": {"pagination": {...}}}` | 200 |
-| A value with no identity of its own | `{"meta": {...}}` with no `data` member | 200 |
-| Nothing | No body | 204 |
-
-`data` holds resource objects only: never a bare string, a list of strings or a message object. A value
-has an identity when the server can address it again; a value the next request would compute afresh,
-such as a generated URL or an enrolment secret, goes in `meta`. Never invent a synthetic identifier to
-fit `data`. Errors use the JSON:API error object.
-
-A request body binds a document whose `data` member is required, so a flat body fails instead of binding
-silently to zero values. Answer a missing `data`, or a `data.type` that names another resource, with an
-error that names the member. Spell request attributes exactly as the resource's responses spell them.
-
-Every collection carries one pagination block with the same members throughout the API, such as current
-page, page size, previous and next page, total pages and total count. When the source reports no total,
-the totals are `null` and the next page is set only when more results can exist. Clients page on the
-next page until it is `null`.
-
-A body that a protocol defines, such as a log stream, a file download or a webhook payload, keeps that
-protocol's format. Record each such exception in one list in code, with the protocol as its reason.
-
 ## Timestamps
 
-Every timestamp in a body is a UTC instant in RFC 3339 with whole seconds, ending in `Z`
-(`2026-10-17T18:04:05Z`), written by one shared helper. Format the value after converting it to UTC; a
-layout that prints a literal `Z` after the local wall clock names a different instant in a process
-outside UTC. Requests accept any RFC 3339 offset.
+Every timestamp in a response is a UTC instant in RFC 3339, ending in `Z` (`2026-10-17T18:04:05Z`), at
+one precision throughout the API and written by one shared helper. Convert the value to UTC before
+formatting it; a layout that prints a literal `Z` after the local wall clock names a different instant
+in a process outside UTC. Requests accept any RFC 3339 offset.
+
+## Sources
+
+- [RFC 9110, 409 Conflict](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.10): "a conflict
+  with the current state of the target resource", with content that lets the user recognize its source.
+- [RFC 9110, 422 Unprocessable Content](https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.21):
+  the server understands the content type and syntax but cannot process the contained instructions.

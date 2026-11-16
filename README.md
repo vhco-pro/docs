@@ -13,6 +13,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Write Go | [Go](conventions/go.md) |
 | Specify, write or review PHP | [PHP](conventions/php.md) |
 | Diagnose a failure, write or change tests, or judge whether a run proves a change | [Testing](conventions/testing.md) |
+| Design or change an HTTP API | [HTTP API](conventions/http-api.md) |
 | Write TypeScript | [TypeScript](conventions/typescript.md) |
 | Build, test or review any browser frontend, including plain JavaScript and VitePress | [Frontend testing](conventions/frontend-testing.md): owned fixtures, browser scenarios and responsive visual verification |
 | Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |

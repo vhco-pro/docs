@@ -138,6 +138,9 @@ the pattern rejects a correct output is blocking, because the proof then fails a
 - [ ] T2 `path/to/file.go` - the change; T1 passes (AC-01)
 ```
 
+An implementation that flounders for want of judgment means the document is underspecified: return it to
+spec review and fix the document, rather than reaching for a stronger model.
+
 One commit per task. Each names the file it touches, a done condition that is a test or check, and the
 criteria it advances. Order by dependency, failing test first. Re-planning keeps checked tasks and changes
 only the unchecked tail; new requirements get new task IDs.

@@ -27,12 +27,30 @@ merged. Never use `git branch -D`. Remove a worktree only when the owner asks,
 only when it is clean, and only with `git worktree remove` without `--force`.
 Report any branch that cannot safely be removed.
 
-Use short-lived branches and review changes through PRs. Conventional Commit
+Treat every checkout as shared: other sessions and worktrees may hold uncommitted work in it. Sync with
+`git fetch` and `git merge --ff-only`; never run `git reset --hard` or `git checkout -- <path>` over
+changes you did not make. Set work aside on a branch or with a named commit, never with a bare
+`git stash`, because every worktree of a repository shares one stash stack. Before opening or merging a
+PR, confirm `git log --oneline origin/<default>..HEAD` lists only your commits: a branch cut from a
+local default branch that was ahead of its remote carries someone else's work. A non-feature branch
+drops such duplicates with a rebase; a feature branch merges the default branch in instead (see
+[Feature delivery](#feature-delivery)).
+
+Commit as the identity Git is configured with; never set an author name or email for a commit. Name a
+branch for its change with a Conventional Commit type prefix, such as `fix/stale-cache`, and never with
+an assistant, model or harness name.
+
+Use short-lived branches and review changes through PRs. A private repository with one developer
+and a full local check (see [CI by repository visibility](#ci-by-repository-visibility)) may record in
+its local instructions that small, contained, verified changes go straight to the default branch: one
+independently reviewable correction with a clear cause and bounded impact, every applicable local
+check passed. Features, migrations and changes to public contracts, authentication or deployment
+behavior still use a branch and a PR. Conventional Commit
 subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,
 `refactor`, and `revert` are patch; `!` on the type/scope or an uppercase
 `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer is major. `docs`, `style`, `test`,
 and `ci` do not normally bump the version. The shared action's selected config
-is authoritative.
+is authoritative. A commit body explains why the change was made, which the diff cannot show.
 
 Patch bumps for `chore`, including Renovate's `chore(deps)`, are an intentional
 personal policy so dependency updates release the changed software. A later
@@ -65,6 +83,12 @@ Publish exact semantic versions. Do not create or move major/minor alias tags.
 Choose one component to decide the version and one path to publish the release;
 do not recompute or publish it independently in parallel jobs.
 
+## Static sites on Cloudflare
+
+For pipeline-driven Cloudflare static hosting, follow the
+[static-site standard](cloudflare-static-sites.md). It selects the official
+Wrangler action and includes a complete consumer pipeline example.
+
 ## Feature delivery
 
 A feature follows the [feature-document standard](feature-documents.md).
@@ -76,7 +100,9 @@ A feature follows the [feature-document standard](feature-documents.md).
   `<conventional type>/<slug>` such as `feat/review-freshness`, starts at that commit. From then on the
   document is edited only on that branch and returns to the default branch with the PR.
 - **One PR per feature** or child feature, not per phase. Feature PRs land by merge commit or fast-forward,
-  never squash, so the commits its Review Log cites stay reachable.
+  never squash, so the commits its Review Log cites stay reachable. For the same reason, a feature branch
+  takes follow-ups as new commits and the default branch by merge; it is never amended, rebased or
+  force-pushed once a review has cited its commits.
 - **One writer per feature.** Separate features may run in parallel worktrees. A claim advertises a branch;
   it is not a lock. Another session takes over a feature only after the owner confirms the earlier writer
   has stopped. Never force-checkout, reset, prune or delete a worktree to take one over.
@@ -86,18 +112,30 @@ A feature follows the [feature-document standard](feature-documents.md).
   path that builds and publishes each one: images, packages, charts, mirrored or synced repositories, and
   the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
-  those paths has published, not when the merge's own CI passes.
-- **Skip CI only for documentation.** A delivery whose commit, outgoing push range and PR diff all change
+  those paths has published, not when the merge's own CI passes. A change that names an artifact version
+  another release publishes, such as an image tag, package or module version, merges only after that
+  release exists; until then the reference points at nothing.
+- **Skip CI when no check could change its verdict.** CI on GitHub-hosted runners costs nothing for a
+  public repository, but a private repository spends a limited budget of minutes, and a long-running suite
+  wastes time and capacity in any repository. So CI does not run for a delivery it cannot judge
+  differently; this matters most for private repositories and for suites that take long to run. A delivery whose commit, outgoing push range and PR diff all change
   only feature documents or Markdown onboarding files carries `[skip ci]`. A repository may also declare
-  extra skip-eligible paths (`skip_ci_paths` in its loop settings), such as agent instructions and other
-  files no build or release reads; a delivery that changes only those paths, feature documents and
-  onboarding files carries the marker too. Any other code, test, workflow or change in the delivery runs
+  extra skip-eligible paths (`skip_ci_paths` in its loop settings): agent instructions, development-only
+  scripts that no build or release runs, editor configuration, and other files no build or release reads.
+  It may also record, in its local instructions with the reason, that comment-only or formatting-only
+  changes skip CI, or that a documentation publisher it runs separately covers its public docs. A delivery
+  that changes only those paths, feature documents and onboarding files carries the marker too. Any other code, test, workflow or change in the delivery runs
   normal CI, even when its last commit is documentation-only. Report a skipped run as skipped, never as a
-  pass. Never bypass branch protection or rewrite a pushed commit to remove the marker.
+  pass. Never bypass branch protection or rewrite a pushed commit to remove the marker. GitHub honours the
+  marker anywhere in a commit message, so push skip-eligible commits separately from code, and before
+  squash-merging a PR that holds code, remove every `[skip ci]` from the squash message, whose default body
+  concatenates every commit message in the PR.
 
 Issue linkage: one issue per feature document. A PR says `Closes #N` only when every criterion is met and
 closure is authorised; otherwise it says `Refs #N` and names what remains. A residual needs a durable
-tracker before the feature is complete.
+tracker before the feature is complete. The same holds for every PR and tracking issue, inside a feature
+or not: a PR that resolves only part of an issue says `Refs`, so it cannot close a multi-item issue on
+merge.
 
 ## Pinning and updates
 
@@ -117,7 +155,8 @@ configuration rather than leaving a coverage gap or running both for the same
 ecosystem. Keep GitHub Actions
 digest pinning enabled with `helpers:pinGitHubActionDigests`. The hosted service
 runs the updater; do not add a Renovate workflow, runner, scheduler, or updater
-token to each repository. Project CI still validates the proposed changes.
+token to each repository. Project CI still validates the proposed changes; in a private
+repository that is the local command ([CI by repository visibility](#ci-by-repository-visibility)).
 [Repository security](repository-security.md) covers the alerts and scanning that
 sit beside the updater.
 
@@ -159,6 +198,39 @@ manifest, use a Renovate custom manager that matches the pin, and put the pin
 where that manager looks. Adding a dependency includes confirming the updater
 will propose its next version.
 
+## CI by repository visibility
+
+GitHub-hosted runners are free for public repositories, but private repositories spend a limited
+budget of Actions minutes. A repository's visibility decides where its CI runs.
+
+- **Public repositories run CI on GitHub.** Push and PR triggers stay as the repository needs them.
+- **Private repositories run CI on the developer's machine.** One read-only command, such as
+  `make verify`, runs every check the hosted workflows would run: formatting, linting of whole modules,
+  tests, builds and the secret scan. It reports problems and fixes nothing, so a local pass predicts a
+  hosted one. It runs the linters and formatters at the versions CI pins and warns when an installed
+  version differs, because one configuration can give a different verdict under another release.
+  A committed pre-commit hook runs it for the checks the staged change affects, and the full
+  command runs before every push. The hook lives in the repository (for example `.githooks/`, enabled
+  with `git config core.hooksPath .githooks`), and the local instructions name the command and the hook
+  setup. In the vh-adlc loop, declare the command as a verification rung and set `ci_trigger: manual`.
+- **Hosted checks in a private repository run only on request.** Check workflows trigger on
+  `workflow_dispatch` alone, with no `push`, `pull_request` or `schedule` trigger. Dispatch a run only
+  when hosted evidence is needed, such as an operating system the developer cannot run. Do not make a
+  branch rule require a status check that no automatic trigger produces.
+- **Publication stays on GitHub.** Workflows that tag, sign or publish keep their default-branch or tag
+  triggers, because their credentials do not belong on a developer machine. A merge to the default
+  branch is the only routine CI spend in a private repository.
+- **Validate dependency PRs locally.** A Renovate or Dependabot PR in a private repository gets no
+  automatic run. Run the local command on its branch, or dispatch a run, before treating it as checked.
+- **Report what ran.** A hosted check that did not run is not a pass. Report the local command's result
+  at the pushed commit, and hosted CI as not triggered by policy.
+- **The owner may keep hosted checks.** A private repository keeps automatic check triggers only when
+  the owner chooses that for it, recorded in its local instructions with the reason. Tooling warns about
+  a private repository on automatic CI and never blocks it.
+- **Change with the visibility.** When a private repository becomes public, restore its push and PR
+  triggers in the same change. When a public repository becomes private, make its check workflows
+  manual and move their checks into the local command before the next push.
+
 ## Workflows and permissions
 
 Keep substantial logic in scripts as defined in [coding](coding.md). Reuse the
@@ -176,8 +248,16 @@ the merge ref and never tags. Check jobs receive no tagging or signing keys.
 
 The [PR preview policy](../knowledge/tag-driven-go-releases.md#pr-preview-policy)
 uses a persistent `release:preview` label: while it is on an open PR, each push
-that passes CI gets a prerelease tag from GitVersion. Callers choose branch-push
-or PR-only CI by cost. Only the exact tag push publishes.
+that passes CI gets a prerelease tag from GitVersion. Public callers choose branch-push
+or PR-only CI by cost; in a private repository a preview needs a dispatched run
+([CI by repository visibility](#ci-by-repository-visibility)). Only the exact tag push publishes.
+
+Decide what a push releases by comparing against the last release tag, never against `HEAD~1`: one push
+can carry many commits, and a check that sees only the last one misses changes in the others. A release
+job that commits back to the default branch, such as a version or dependency bump, expects the branch to
+move while it runs: it rebases onto the current branch and retries its push a bounded number of times, and fails with a clear error
+on a conflict or when the attempts run out. Recover a failed release run with a fresh dispatch on the current head, not a re-run,
+which repeats the original checkout.
 
 Dry-run paths still compute real versions and render relevant notes. Serialize
 publication where competing runs could conflict. Test before publication,

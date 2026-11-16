@@ -159,7 +159,7 @@ Shapes and punctuation applied everywhere, whether or not the meaning asks for t
 
 ### 8. Dashes as the universal connector
 
-**Rule:** The final rewrite must not contain em dashes (U+2014) or en dashes (U+2013). In these repositories the documentation convention forbids them, so a writer's sample that uses them does not change this rule. Replace each dash with a period, comma, colon, or parentheses, or rewrite the sentence. This includes spaced dashes and double hyphens (` -- `) used as dashes. Leave dashes and hyphens inside code blocks, inline code, commands, paths, and URLs alone.
+**Rule:** The final rewrite must not contain em dashes (U+2014) or en dashes (U+2013). In these repositories the documentation convention forbids them, so a writer's sample that uses them does not change this rule. Replace each dash with a period, comma, colon, or parentheses, or rewrite the sentence. This includes double hyphens (` -- `) used as dashes. A single hyphen with a space on each side (` - `) is an accepted replacement. Leave dashes and hyphens inside code blocks, inline code, commands, paths, and URLs alone.
 **Problem:** A dash lets the writer skip choosing how two clauses relate, so a model reaches for it everywhere. Many editors and journalists also use dashes, so one dash is *weak alone*; a text full of them is not.
 **Before:**
 > The new policy [em dash] announced without warning [em dash] affects thousands of workers. The changes -- long overdue according to critics -- will take effect immediately.

@@ -56,6 +56,13 @@ the repository's analysis or feature document with its evidence. An issue states
 the work in a few lines and links that document; do not paste the reasoning into
 issue comments, where it cannot be reviewed or kept current.
 
+Every document that records a finding or plans work has a tracking issue for its follow-up: a feature
+document, an analysis or root cause, a bug report, an audit, and a survey whose verdict implies work. A
+"not now" verdict gets one too, so the decision is found again instead of re-argued. Write the document
+first, file the issue as a short summary with the document's link, then record the issue's full URL in
+the document's `issue` frontmatter field. One issue per document. `issue: null` marks work deliberately
+kept local; never invent a link.
+
 ## Metadata and placement
 
 Repositories adopting change-based documentation checks follow
@@ -72,7 +79,9 @@ Types are `principle`, `guideline`, `standard`, `decision`, `guide`, or
 Decision statuses are `proposed`, `accepted`, `superseded`, or `deprecated`.
 A superseded decision points to its replacement with `superseded_by`.
 
-No mandatory team-owner, author list, review date, catalog, or pack metadata.
+These pages carry no mandatory team-owner, author list, review date, catalog, or pack metadata. A
+consuming repository may add fields its own tooling reads, such as an author credit its docs viewer
+renders.
 Filenames are stable kebab-case. Decisions use one flat `NNNN-title.md` sequence;
 create a record only for a real choice with consequences across repositories.
 Do not create a record for every ordinary implementation change.

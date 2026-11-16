@@ -1,0 +1,9 @@
+name = "static-site-example"
+compatibility_date = "2026-11-16"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "static.example.com", custom_domain = true }]
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"

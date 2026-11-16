@@ -23,7 +23,8 @@ A repository declares its feature root with one line in its root `AGENTS.md`:
 Feature documents: docs/specs/
 ```
 
-Without that line, documents live in `docs/internal/plans/<slug>.md`. Do not move existing documents to
+Without that line, documents live under `docs/internal/plans/`, as `<slug>.md` or grouped in category
+folders as `<category>/<slug>.md`. Do not move existing documents to
 reach a default. A repository that keeps its own document format declares
 `Feature document format: local` instead; this standard and its tooling then do not apply there.
 
@@ -136,6 +137,9 @@ the pattern rejects a correct output is blocking, because the proof then fails a
 - [ ] T1 `path/to/file_test.go` - the failing test for the new behaviour; fails because it does not exist (AC-01)
 - [ ] T2 `path/to/file.go` - the change; T1 passes (AC-01)
 ```
+
+An implementation that flounders for want of judgment means the document is underspecified: return it to
+spec review and fix the document, rather than reaching for a stronger model.
 
 One commit per task. Each names the file it touches, a done condition that is a test or check, and the
 criteria it advances. Order by dependency, failing test first. Re-planning keeps checked tasks and changes

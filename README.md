@@ -12,6 +12,8 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Change code or scripts | [Coding](conventions/coding.md) |
 | Write Go | [Go](conventions/go.md) |
 | Specify, write or review PHP | [PHP](conventions/php.md) |
+| Diagnose a failure, write or change tests, or judge whether a run proves a change | [Testing](conventions/testing.md) |
+| Design or change an HTTP API | [HTTP API](conventions/http-api.md): API first, status codes for failed writes and timestamps |
 | Write TypeScript | [TypeScript](conventions/typescript.md) |
 | Build, test or review any browser frontend, including plain JavaScript and VitePress | [Frontend testing](conventions/frontend-testing.md): owned fixtures, browser scenarios and responsive visual verification |
 | Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |
@@ -19,6 +21,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md), [managed dependency updates](knowledge/managed-renovate.md), [shared delivery](knowledge/shared-delivery.md), and the [Go release pilot](knowledge/tag-driven-go-releases.md) |
+| Deploy a static site to Cloudflare from a pipeline | [Cloudflare static sites](conventions/cloudflare-static-sites.md) and the [complete pipeline example](examples/cloudflare-static/README.md) |
 | Run iOS checks or use a private hosted Mac with Codemagic | [Remote macOS development with Codemagic (draft)](conventions/codemagic-remote-macos.md) |
 | Set up Dependabot alerts, secret scanning, CodeQL or Scorecard | [Repository security](conventions/repository-security.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |
@@ -26,6 +29,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Evaluate one chat client for remote coding agents | [Remote coding-agent interfaces](knowledge/remote-coding-agents.md) and the [pilot guide](guides/pilot-remote-coding-agents.md) |
 | Write or reorganize documentation | [Documentation](conventions/documentation.md) and [humanize prose](guides/humanize-prose.md) |
 | Write a commit message, PR, issue or review summary | [Humanize prose](guides/humanize-prose.md) |
+| Write or edit a skill, agent entry point, reviewer prompt or a reference an agent loads | [Write for agents](guides/write-for-agents.md) and [humanize prose](guides/humanize-prose.md) |
 | Specify, plan or implement a feature | [Feature documents](conventions/feature-documents.md) and [feature delivery](conventions/delivery.md#feature-delivery) |
 | Ship a change | [Feature delivery](conventions/delivery.md#feature-delivery) and [delivery](conventions/delivery.md) |
 

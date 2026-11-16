@@ -72,6 +72,11 @@ action majors and unversioned branch/channel changes from being merged
 automatically. It does not turn on automerge for anything else. Existing approved
 patch/minor merge rules and grouping remain separate policy.
 
+A `schedule` limits when Renovate creates a branch, not when it updates one. By default an open branch
+is refreshed whenever one of its dependencies publishes a release, so a grouped branch can be
+force-pushed several times a day, and each push runs CI where CI runs on PRs. Set
+`"updateNotScheduled": false` beside every `schedule`; the two are one setting.
+
 The managed service needs access to the repository. A config file is not proof
 that the App is installed or that its newest run succeeded. Check the Dependency
 Dashboard or update PRs after adoption. Private registries or packages can require

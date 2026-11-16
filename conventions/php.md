@@ -17,6 +17,12 @@ Record supported PHP versions, required extensions and the host framework's vers
 syntax, dependencies or tools. Run compatibility checks against each supported target. A development
 machine with a newer interpreter cannot establish compatibility with an older appliance.
 
+PHP source runs through the PHP runtime, which compiles it to opcodes for execution. A project's build
+may install locked dependencies, generate files or assemble a deployable package. For an OPNsense
+plugin, the native build packages PHP, models, templates and metadata for the appliance. Record those
+steps separately from syntax checks and verify the resulting package on the supported runtime.
+[PHP execution and opcode caching](https://www.php.net/manual/en/book.opcache.php), [OPNsense package development](https://docs.opnsense.org/development/examples/helloworld.html).
+
 Follow the host project's declared style. For a new standalone project, select and pin a released
 PHP-FIG PER Coding Style version and a compatible checker. OPNsense explicitly uses PSR-12, so its
 plugins use PSR-12. Keep style fixes confined to touched code. Pure PHP files omit the closing tag.
@@ -141,6 +147,44 @@ contents must exclude developer dependencies and private fixtures.
 The implementation review verifies the selected coding rules, analysis coverage and native platform
 evidence alongside feature criteria. Syntax, formatting and static analysis each cover different defects.
 Report checks that were executed and remaining gaps, including a check that ran against no owned files.
+
+## Security checks
+
+PHP projects run dependency auditing, security-focused source analysis and secret scanning alongside
+the syntax, style, type and behavior checks above. Reuse equivalent checks already established in the
+repository. Record the selected tools, pinned versions and rules, scanned paths, exclusions and
+failure policy in the owning repository and run them in CI. Review verifies the actual workflow and
+its results at the assessed commit. Shared guidance alone establishes the expected approach.
+
+| Check | Expected coverage |
+| --- | --- |
+| Composer dependency audit | Run `composer audit --locked` against the committed lock file, including developer tools and transitive dependencies. Review advisories and abandoned-package findings. Record the result when the lock has no production packages. |
+| PHP security analysis | Use a PHP-capable security analyzer with rules relevant to the code, such as Semgrep or Psalm taint analysis. Verify support for the target syntax and framework boundaries and document limitations. Model user-controlled inputs reaching commands, files, XML parsers and browser output where those effects exist. |
+| Secret scanning | Use a standalone scanner such as Gitleaks when an equivalent check is absent. Declare the Git range and working-tree or artifact scope actually scanned. Redact secret values in reports and use narrowly identified allowlists for synthetic fixtures. |
+| Appliance dependencies | For hosted plugins, record the native package security audit on the disposable target. Include the interpreter, extensions and declared package dependencies in the assessment. |
+
+Composer audits packages against published advisories. PHPStan's type analysis covers the configured
+type and API rules. Keep security-rule and data-flow coverage explicit in the selected analyzer's
+configuration. Semgrep CE provides community-supported PHP analysis with single-function limits.
+Psalm supports taint analysis for flows through application code and may need framework-specific
+source, sink or sanitizer annotations. Select a compatible tool that covers the project's boundaries.
+[Composer audit](https://getcomposer.org/doc/03-cli.md#audit), [Semgrep CE language support](https://docs.semgrep.dev/semgrep-ce-languages), [Psalm security analysis](https://psalm.dev/docs/security_analysis/).
+
+Use reproducible local or immutable rules for blocking scans and verify finding-producing exit codes.
+For example, `semgrep scan` needs `--error` to fail on findings. Check failures, parser errors, timeouts,
+unreachable advisory sources and unexpectedly empty coverage remain failed or incomplete checks.
+Record the scanned files, effective rules, findings and dispositions. Each suppression needs a specific
+reason, scope and independent review. Verify scanner integration with a synthetic finding when adding
+it, and retain redacted evidence outside deployable packages.
+[Semgrep CLI behavior](https://docs.semgrep.dev/cli-reference), [Gitleaks usage](https://github.com/gitleaks/gitleaks).
+
+Review security boundaries through behavior tests too, including applicable command and option
+injection, unauthorized access, CSRF, XML entities, symlinks, credential disclosure and interrupted
+writes. For OPNsense, run native package and security checks on owned disposable appliances and
+inspect the built package for unintended files. The firmware security audit checks installed package
+versions against known vulnerabilities. Record scanner results, native integration results and
+remaining gaps.
+[OPNsense firmware audits](https://docs.opnsense.org/manual/firmware.html#status-firmware-audits).
 
 PHP applications and plugins with browser interfaces also follow the
 [frontend testing standard](frontend-testing.md), including owned fixtures and executable browser journeys.

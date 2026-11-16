@@ -44,7 +44,10 @@ crossing a service boundary as UTC.
 Configuration comes from environment variables or a thin typed loader. Validate
 required values at startup and keep secrets out of error messages and logs.
 Wrap errors with useful context while preserving the cause; do not log and
-return the same error at every layer.
+return the same error at every layer. Write the context as a gerund phrase with no prefix:
+`fmt.Errorf("getting object %q: %w", key, err)`. Wrapping concatenates, so a `failed to` prefix at
+every level produces `failed to read log: failed to get object: ...`. Change existing messages on lines
+you touch rather than in a sweep.
 
 ## Binaries and containers
 

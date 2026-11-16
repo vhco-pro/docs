@@ -32,6 +32,15 @@ repository with no established JavaScript runtime. Shell scripts declare Bash wh
 features, enable `set -euo pipefail`, and quote expansions. No framework is
 required for documentation or repository instructions.
 
+`set -e` does not reach everywhere. Bash suppresses it inside a function called from a condition (`if f`,
+`f || x`, `f && x`), so such a function checks each command it depends on. A pipeline reports its last
+command's status, so never trim a command's output with `cmd | tail` without `pipefail`; write the output
+to a file and report the command's own status. Under `pipefail`, a consumer that exits early, such as
+`grep -q`, can fail the producer with SIGPIPE: let a check read the whole stream. Bash reads a script
+while it runs, so never edit a script a process is executing; change a copy or wait for the run to end.
+Stop a process by the PID you recorded when you started it, never with `pkill -f` and a pattern your own
+command line also contains.
+
 ## Shared components
 
 A repository that publishes a component names the kind it publishes:
@@ -78,6 +87,19 @@ never substitute untrusted expressions directly into shell code. Use structured
 parsers for YAML, JSON, and tool output. Unreadable input and failed commands must
 fail the check, not become an empty success.
 
+Checks fail closed: when a check cannot determine its answer, it refuses. An exit status of 0 from an
+external tool proves only that the tool exited; before trusting it, run the tool's failure cases and see
+what it reports for them. A fallback announces itself, through a log line, a warning or a metric, so a
+feature that never ran is visible; never swallow an error around an optional dependency. A counter
+counts what happened, not what was attempted. When a change tightens a gate, list every caller of what it
+guards, including first-time and recovery flows, and test each one. A process that runs user-supplied
+code gets an explicit allowlisted environment, never the parent's environment, which holds the platform's
+credentials.
+
+Never delete persistent data, such as a database, a volume, a bucket or a backup, without the owner's
+approval naming the exact target. Prefer removing one named resource over a command that removes
+everything of its kind.
+
 Keep generated files and downloaded tools under a temporary or cache directory.
 Do not overwrite the caller's config or change the checkout's ownership. Runtime
 secrets stay in approved secret stores and never enter code, logs, or documents.
@@ -96,6 +118,17 @@ Keep its environment, load only what a fix changed, and rerun only the failing t
 neighbours. Order the suite so the areas under change fail first. Run the whole suite once, on the
 final change, as its own detached job so a tool's time limit cannot cut it short.
 
+When a path moves, such as a call that moves to another process or an old API that gets a replacement,
+find every caller and trigger of the old path and move them all in the same change, then delete the old
+path. A path left behind for one caller keeps working by accident and drifts.
+
+Treat a review finding, a spec's claim and a code comment as hypotheses. Before acting on one, read the
+code at the revision you ship, and probe the library's actual behavior when the claim depends on it; an
+interface comment is not proof of what an implementation does. Before handing off a plan, verify each of
+its file and line citations and each claim that something exists or is missing, trying to refute it, and
+check every path when the code has more than one that does the same job.
+
 Explain changes and their verification in the PR. Use Conventional Commits as
-defined in [delivery](delivery.md). Do not add AI credit trailers. Read
+defined in [delivery](delivery.md). Credit no AI assistant: no trailer, footer or credit line in
+commits, PRs, issues or documents. Read
 [Go](go.md) or [containers](containers.md) when they apply.

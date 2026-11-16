@@ -56,6 +56,13 @@ the repository's analysis or feature document with its evidence. An issue states
 the work in a few lines and links that document; do not paste the reasoning into
 issue comments, where it cannot be reviewed or kept current.
 
+Every document that records a finding or plans work has a tracking issue for its follow-up: a feature
+document, an analysis or root cause, a bug report, an audit, and a survey whose verdict implies work. A
+"not now" verdict gets one too, so the decision is found again instead of re-argued. Write the document
+first, file the issue as a short summary with the document's link, then record the issue's full URL in
+the document's `issue` frontmatter field. One issue per document. `issue: null` marks work deliberately
+kept local; never invent a link.
+
 ## Metadata and placement
 
 Repositories adopting change-based documentation checks follow

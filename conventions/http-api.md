@@ -1,7 +1,7 @@
 ---
 title: "HTTP API conventions"
 type: guideline
-description: "Status codes for duplicate and invalid writes, and timestamp form, for HTTP APIs."
+description: "API-first capabilities, recorded compatibility divergences, status codes for duplicate and invalid writes, and timestamp form, for HTTP APIs."
 status: active
 ---
 
@@ -9,7 +9,16 @@ status: active
 
 Apply this page when you design or change an HTTP API. Where the API mirrors another product's API for
 compatibility, verify that product's real behavior and mirror it; a house rule never overrules a status
-or shape a client depends on.
+or shape a client depends on. Record each such divergence from the rules below, with how it was
+verified, beside the code or in the API's compatibility notes. An unrecorded divergence reads as drift,
+and the next consistency pass "fixes" it into a compatibility break.
+
+## API first
+
+Where a product has an HTTP API and other clients, such as a web UI, a CLI or an infrastructure provider,
+every capability exists in the API first, and the clients use only that API. No setting or resource is
+UI-only: if a person can configure it, the API can read and write it. Purely presentational state, such
+as layout, theme or a collapsed panel, is exempt.
 
 ## Status codes for failed writes
 

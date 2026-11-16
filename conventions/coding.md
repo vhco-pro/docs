@@ -96,6 +96,14 @@ guards, including first-time and recovery flows, and test each one. A process th
 code gets an explicit allowlisted environment, never the parent's environment, which holds the platform's
 credentials.
 
+A scoped credential, such as an API key limited to one tenant or a delegated token, is checked against
+its scope alone. When the scope check fails, refuse; never fall back to the permissions of the person who
+owns the credential, which silently widens a narrow token to its owner's full access.
+
+Classify errors from a driver, database or library in one shared helper that inspects the error's type
+or code, never by matching message text at each call site. Message text changes between drivers and
+versions, and a copy that stops matching turns an expected error into a crash or a 500.
+
 Never delete persistent data, such as a database, a volume, a bucket or a backup, without the owner's
 approval naming the exact target. Prefer removing one named resource over a command that removes
 everything of its kind.

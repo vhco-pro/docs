@@ -50,7 +50,7 @@ subjects determine version intent: `feat` is minor; `fix`, `chore`, `perf`,
 `refactor`, and `revert` are patch; `!` on the type/scope or an uppercase
 `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer is major. `docs`, `style`, `test`,
 and `ci` do not normally bump the version. The shared action's selected config
-is authoritative.
+is authoritative. A commit body explains why the change was made, which the diff cannot show.
 
 Patch bumps for `chore`, including Renovate's `chore(deps)`, are an intentional
 personal policy so dependency updates release the changed software. A later
@@ -112,7 +112,9 @@ A feature follows the [feature-document standard](feature-documents.md).
   path that builds and publishes each one: images, packages, charts, mirrored or synced repositories, and
   the workflows between them. Before merge, a check rebuilds each artifact the way that path builds it, not
   only the way the main repository's CI builds it. After merge, the feature is delivered once every one of
-  those paths has published, not when the merge's own CI passes.
+  those paths has published, not when the merge's own CI passes. A change that names an artifact version
+  another release publishes, such as an image tag, package or module version, merges only after that
+  release exists; until then the reference points at nothing.
 - **Skip CI when no check could change its verdict.** CI on GitHub-hosted runners costs nothing for a
   public repository, but a private repository spends a limited budget of minutes, and a long-running suite
   wastes time and capacity in any repository. So CI does not run for a delivery it cannot judge
@@ -131,7 +133,9 @@ A feature follows the [feature-document standard](feature-documents.md).
 
 Issue linkage: one issue per feature document. A PR says `Closes #N` only when every criterion is met and
 closure is authorised; otherwise it says `Refs #N` and names what remains. A residual needs a durable
-tracker before the feature is complete.
+tracker before the feature is complete. The same holds for every PR and tracking issue, inside a feature
+or not: a PR that resolves only part of an issue says `Refs`, so it cannot close a multi-item issue on
+merge.
 
 ## Pinning and updates
 

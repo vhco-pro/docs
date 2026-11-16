@@ -87,6 +87,10 @@ earlier run left behind passes on a long-lived environment and fails on a fresh 
 must exist before any test loads, such as files read when a test file is collected, and create it in
 setup.
 
+Clean up only what the test created, identified by unique names or recorded identifiers. Never truncate,
+drop or sweep a store that other tests, parallel workers or people also use: a global cleanup deletes
+data another worker is still using.
+
 Check every cleanup's result. A cleanup that ignores an error leaves state behind and hides the
 cause. Clean up in an order that respects dependencies between the things created.
 

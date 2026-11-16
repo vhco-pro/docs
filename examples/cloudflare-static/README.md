@@ -1,7 +1,12 @@
 # Cloudflare static-site pipeline example
 
-Copy [deploy.yml](deploy.yml) to `.github/workflows/deploy.yml` in the consumer
+Copy [deploy.yml](.github/workflows/deploy.yml) to `.github/workflows/deploy.yml` in the consumer
 repository and adapt [wrangler.toml](wrangler.toml) at its root.
+
+This is the public-repository example. Apply
+[CI by repository visibility](../../conventions/delivery.md#ci-by-repository-visibility)
+when adapting it for a private repository. That policy keeps private PR
+verification local and allows the main-branch publication pipeline.
 
 The example assumes a Bun project with a committed `bun.lock`, an exact
 `wrangler` development dependency and these scripts.
@@ -27,5 +32,5 @@ results in the normal Actions run and Cloudflare history.
 
 Run `actionlint .github/workflows/deploy.yml` in the consumer. The docs
 repository validates this example with
-`actionlint examples/cloudflare-static/deploy.yml`. Exercise pull-request
+`actionlint examples/cloudflare-static/.github/workflows/deploy.yml`. Exercise pull-request
 verification and the real deployment after configuring an authorised target.

@@ -15,8 +15,11 @@ before proposing a shared deployment wrapper. [Official action](https://github.c
 
 ## Pipeline
 
-Run the site's verification on pull requests and its deployment branch. Deploy
-the checked-out source after those checks pass. Keep the Cloudflare credential
+Choose verification triggers through [CI by repository visibility](delivery.md#ci-by-repository-visibility).
+Public sites run hosted verification on pull requests and their deployment
+branch. Private repositories use the local verification and publication policy
+defined there. Deploy the checked-out source after its applicable checks pass.
+Keep the Cloudflare credential
 in the deployment job's GitHub environment and make the deployment job eligible
 only on the selected trusted branch or an explicitly authorised dispatch.
 Pull-request verification runs with read-only GitHub permissions.
@@ -26,6 +29,10 @@ Wrangler from the consumer's exact development dependency and committed lockfile
 The official action can use that installed version. Its `wranglerVersion` input
 also supports an explicit version when the consumer installs the tool through
 the action. Keep one authoritative tool version. [Action configuration](https://github.com/cloudflare/wrangler-action#configuration)
+
+Keep workflow examples under a mirrored `.github/workflows/` path so the
+[managed updater](../knowledge/managed-renovate.md) can discover their action
+refs through Renovate's standard GitHub Actions file patterns.
 
 For Workers Static Assets, supply the repository's Wrangler configuration and
 the native deployment command. For Pages, use its native `pages deploy` command

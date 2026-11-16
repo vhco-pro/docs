@@ -1,5 +1,7 @@
 name: Cloudflare static site
 
+# Public-repository example. Adapt triggers to the consumer's visibility policy.
+
 on:
   pull_request:
   push:

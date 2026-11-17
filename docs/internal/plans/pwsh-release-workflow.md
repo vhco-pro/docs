@@ -689,6 +689,7 @@ None.
 | 2026-11-17 | R-7 | spec | `0834a2c` | claude-opus-5-5 | procedural | Blocking: 2 blocking, 2 should-fix and 1 nit |
 | 2026-11-17 | R-8 | spec | `1bb6957` | claude-opus-5-5 | procedural | Not clean: 3 should-fix and 1 nit |
 | 2026-11-17 | R-9 | spec | `bea37e5` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
+| 2026-11-17 | R-10 | spec | `36ebfd3` | claude-opus-5-5 | procedural | Clean: 4 nits, no blocking or should-fix findings |
 
 ### R-1
 
@@ -1409,6 +1410,38 @@ SEVERITY: nit
 WHERE: Design, PDS "Every other finding is fixed" (the `Get-RDSActiveSessions` sentence: "builds and exports a report of all sessions" and "the existing `Get-RDSActiveSession` is left as it is"); Test Plan, row AC-14 ("while `Get-RDSActiveSession` keeps its own parameters")
 EVIDENCE: PSScriptAnalyzer 1.25.0 (run in mcr.microsoft.com/dotnet/sdk:9.0 over PDS 0770894, excluding PSAvoidUsingWriteHost and PSAvoidTrailingWhitespace) reports PSUseShouldProcessForStateChangingFunctions on `Get-RDSActiveSession`. The finding comes from its nested `function Set-Log` at `diagnostics/Get-RDSActiveSession.ps1:84`. The same bullet's "All 490 remaining findings ... are resolved in the code" and AC-12 therefore require a change to that file, so "left as it is" can only mean "not renamed or merged", which is what the AC-14 proof checks. The plural function also does not report all sessions: its description says it keeps sessions that have not been idle longer than `IdleThresholdMinutes` (`RDS/Get-RDSActiveSessions.ps1:6-8`). AC-12 already decides the outcome, so nothing an implementer builds changes.
 PROPOSAL: Write "is not renamed or merged" instead of "is left as it is", and "a report of active sessions" instead of "a report of all sessions".
+
+### R-10
+
+TARGET: 36ebfd34662ed1fc812c08bf1e65db7cd5c4cb7f
+
+FINDING: F-01
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Public functions" bullet ("Four files break that on `PDS@0770894`, so none of their commands is exported today" and "the names their functions declare and `pwsh/scripts/main.ps1:88` already calls")
+EVIDENCE: `PDS.psm1` exports each file's `BaseName`. `utils/Set-Log.ps1` defines `Set-LogProject` at `:6` and `Set-Log` at `:42`, so `Set-Log` is exported today. Only its second function is not, and that is the same shape as five files the bullet does not name, each with a top-level helper beside its exported command: `Azure/Show-AksInfo.ps1` (`Get-VNetSubnetDetails`), `Network/Enable-SshServer.ps1` (`Set-SshdConfigOption`), `System/Remove-WindowsBloat.ps1` (`Disable-ServiceSafe`), `System/Update-Env.ps1` (`Update-EnvDebug`) and `shell/Register-NativeCurl.ps1` (`global:ncurl`). I found these with a grep of top-level `function` lines on PDS origin/main (0770894). `git grep` on the same commit shows that `pwsh/scripts/main.ps1:88` calls `Install-AzureKubeCLI` only, and nothing outside its own help text calls `Remove-StaleADComputer`. AC-12 already settles the result (every file under `Public/` exports a command named after it), so no implementer would build something different. This text came in with the revision that applied R-9 F-02.
+PROPOSAL: Write that three files export no command named after them and that `Set-Log.ps1` also defines `Set-LogProject`, which is not exported. Then say that `main.ps1:88` already calls `Install-AzureKubeCLI`.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Public functions" bullet (`Kubernetes/Install-KubeCLI.ps1` renamed to `Install-AzureKubeCLI.ps1`); Design, PDS "Docs" bullet
+EVIDENCE: After the rename, the exported command is `Install-AzureKubeCLI`. PDS user documentation still calls it `Install-KubeCLI`: `pwsh/readme.md:43`, `pwsh/docs/readme.md:57` and `pwsh/docs/Kubernetes/Install-KubeCLI.md:9`, `:17`, `:21`, `:29` (`git grep` on PDS 0770894). The Docs bullet lists only `AGENTS.md`, the checks and release path in `pwsh/readme.md`, and `changelog.md`. `PDS/docs/internal/analysis/readme-refresh.md:22` says PDS issue 2 covers correcting the command-name documentation, but issue 2 (`gh issue view 2 -R michielvha/PDS`) is a general "Finish all documentation" checklist. These pages were already wrong before this feature, and no proof reads them.
+PROPOSAL: Add the `Install-KubeCLI` documentation pages to the Docs bullet, so they name `Install-AzureKubeCLI`. Otherwise, say they stay with PDS issue 2.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Design, Legend under the flowchart ("actionlint 1.7.12 does not know `queue` yet, so each repository ignores exactly that one message"); Design, PDS "Workflow rules" bullet ("a job that calls a reusable workflow cannot set one" and "with only the `queue` ignore the Legend describes"); Sources
+EVIDENCE: The standard says "Context and Design cite their claims: a `file:line`, or a command and its output", and that Sources lists every external page read. Neither actionlint claim has a citation, and Sources has no actionlint entry. I confirmed both claims hold. actionlint v1.7.12 (`~/go/bin/actionlint`) reported `unexpected key "queue" for "concurrency" section ... [syntax-check]` on a minimal `release.yml` and exited 1. With `.github/actionlint.yaml` holding `paths: .github/workflows/release.yml: ignore: ['unexpected key "queue" for "concurrency" section']`, it exited 0. `conventions/github-actions.md` at X, Execution, now states the queue rule. This is a citation slip only.
+PROPOSAL: Cite `conventions/github-actions.md` (Execution) for the queue ignore, and add the actionlint repository to Sources for both claims.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, `pwsh-ci-action` repository layout ("copies `go-ci-action`'s layout ... `release.yml` through `gh-release-workflow`"); Context, "The actions fall short of the conventions" (`go-ci-action` as the model); Design, PDS "Workflow rules" bullet (the whole convention applies to the five action repositories); Design, `gh-release-action` files (the `DRY_RUN` expression moved into a step)
+EVIDENCE: `git -C /home/m/code/go-ci-action show origin/main:.github/workflows/release.yml` passes `dry-run: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry-run) }}` to the `gh-release-workflow` call. That breaks "Let expressions only read values" in `conventions/github-actions.md` at X. It is the same expression the Design removes from `gh-release-action`. The four PowerShell action repositories copy this `release.yml`, and the Design names no such change for them. A reusable-workflow call job has no steps, so the fix there needs an earlier job that outputs the value. The Design already applies the whole convention to these repositories and leaves judgement rules to the implementation review, so a careful implementer reaches the same result.
+PROPOSAL: Add to the layout sentence that the copied `release.yml` gets `dry-run` from an earlier job's script output instead of the computed expression, as `gh-release-action` does.
 
 ## Sources
 

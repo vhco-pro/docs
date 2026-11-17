@@ -1,6 +1,6 @@
 ---
 status: draft
-status_description: "R-8 findings and the owner's answers applied in one revision; waiting on a new spec review."
+status_description: "R-9 findings applied in one revision; waiting on a new spec review."
 issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
@@ -289,7 +289,9 @@ flowchart TD
 - **release.yml** runs the same `checks.yml` as `ci.yml` on the exact tag before publishing, so a tag
   pushed by hand cannot publish unchecked source. Runs share one repository-wide group with
   `cancel-in-progress: false` and `queue: max`, so up to 100 wait and none is cancelled; the default
-  `queue: single` would cancel a waiting run. Start order matters only for which stable Release GitHub
+  `queue: single` would cancel a waiting run. actionlint 1.7.12 does not know `queue` yet, so each
+  repository ignores exactly that one message for `release.yml` in `.github/actionlint.yaml` until it
+  does. Start order matters only for which stable Release GitHub
   marks latest, which the Recovery bullet covers.
 
 </details>
@@ -453,7 +455,8 @@ fixed forward with a new version.
   `package-pwsh-script-action` and `gh-release-action`. Its checkable rules are AC-21: `permissions: {}`
   at the top with per-job grants, `timeout-minutes` on every job that runs steps (a job that calls a
   reusable workflow cannot set one and takes the called jobs' timeouts), `defaults.run.shell` set,
-  `actionlint` in each repository's checks, no `${{ }}` inside a `run:` block of a workflow or an action
+  `actionlint` in each repository's checks (with only the `queue` ignore the Legend describes), no `${{ }}`
+  inside a `run:` block of a workflow or an action
   metadata file (`action.yml` or `action.yaml`), no `$GITHUB_ENV` write, and `persist-credentials: false` except in a job that pushes. Its
   judgement rules, such as moving a long `run:` block to a script, are checked in the implementation
   review. The PDS steps that move unchanged are rewritten only where they break it, including: the APT
@@ -529,9 +532,16 @@ fixed forward with a new version.
   `[Diagnostics.CodeAnalysis.SuppressMessageAttribute]` is allowed only where fixing would be wrong, with
   a `Justification` that says why; no settings file exclusion is added for it. A rename keeps the old
   public name as an exported alias, because `PDS/AGENTS.md` requires public names to stay. Where the singular name is already taken, the function gets another
-  singular noun: `Get-RDSActiveSessions` builds and exports a report of all sessions, so it becomes
+  singular noun: `Get-RDSActiveSessions` builds and exports a report of active sessions, so it becomes
   `Get-RDSActiveSessionReport`, with `Get-RDSActiveSessions` as its alias, and the existing
-  `Get-RDSActiveSession` is left as it is.
+  `Get-RDSActiveSession` is not renamed or merged.
+- **Public functions.** A public function is a command the module exports: one per file under
+  `pwsh/module/Public/`, named after the file. Four files break that on `PDS@0770894`, so none of their
+  commands is exported today. `AD/Remove-StaleComputer.ps1` and `Kubernetes/Install-KubeCLI.ps1` are
+  renamed to `Remove-StaleADComputer.ps1` and `Install-AzureKubeCLI.ps1`, the names their functions
+  declare and `pwsh/scripts/main.ps1:88` already calls. `Set-LogProject` in `utils/Set-Log.ps1` has no
+  caller elsewhere and stays an internal helper. `template.ps1` is a scaffold, not a command, and moves
+  to `pwsh/templates/`.
 - **Tests.** The Pester suite lives in `pwsh/tests/`, one file per public function, and runs on
   `windows-latest`. Tests mock every call that installs software or changes the system. The loader skips
   `*.Tests.ps1`, and the commented-out `Update-Env.Tests.ps1` is deleted in favour of a real test in
@@ -545,7 +555,7 @@ fixed forward with a new version.
   controller, an RDS host, a Kubernetes cluster or a cloud tenant; downloading software from the internet
   does not count, so installers such as `Install-Choco`, `Install-Scoop` and `Install-Winget` run on the
   VM. On `PDS@0770894` the rule covers, among others,
-  `Remove-StaleComputer`, `Start-RemoteADSyncCycle`, `New-AzSession`, `Start-TaintWatcher`,
+  `Remove-StaleADComputer`, `Start-RemoteADSyncCycle`, `New-AzSession`, `Start-TaintWatcher`,
   `Get-DisabledADUsers`, `Enable-RDSHosts`, `Get-RDSActiveSessions`, `Show-AksInfo` and
   `Start-ScrollLockToggle`. A script in the PR prints both lists, the VM set and the mocked-only
   functions, each mocked-only entry with its reason and the `file:line` of the dependency or the
@@ -595,8 +605,9 @@ fixed forward with a new version.
 - [ ] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
   `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only
   `PSAvoidUsingWriteHost`, with its reason; `Invoke-ScriptAnalyzer` under it returns no unsuppressed
-  record of any severity; every in-source suppression carries a non-empty `Justification`; and every
-  public function has a test file in `pwsh/tests/` with at least one passing test that invokes it,
+  record of any severity; every in-source suppression carries a non-empty `Justification`; every file
+  under `pwsh/module/Public/` exports a command named after the file; and every public function has a
+  test file in `pwsh/tests/` with at least one passing test that invokes it,
   including `Enable-SshServer` with and without a key.
 - [ ] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action`, `setup-pwsh-action`, the two
   release-only actions and the `files` input of `gh-release-action`, and
@@ -625,7 +636,8 @@ fixed forward with a new version.
   published Release holding exactly those names unchanged, and fails on any other set without replacing
   a file. A missing path fails naming the path. With `files` empty it behaves as `v0.1.1` does.
 - [ ] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
-  `actionlint` passes in each repository's checks; every workflow sets `permissions: {}` at the top,
+  `actionlint` passes in each repository's checks, ignoring nothing but the `queue` key in
+  `release.yml`; every workflow sets `permissions: {}` at the top,
   `timeout-minutes` on every job that runs steps and `defaults.run.shell`; no `run:` block in a workflow
   or an action metadata file (`action.yml` or `action.yaml`) contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
   `persist-credentials: false` except in a job that pushes.
@@ -645,7 +657,7 @@ fixed forward with a new version.
 | AC-09 | Push a PDS branch touching `pwsh/module/`; `git ls-remote --tags` and the Gallery feed are unchanged; `grep -l` for the three secret names in `.github/workflows/` lists only `release.yml`, where they sit only in the Gallery and APT jobs; `grep -r 'secrets: inherit' .github/workflows/` finds nothing |
 | AC-10 | `git ls-remote --tags` shows the `v` baseline before the merge; after the first bumping merge, one new tag above it, one public GitHub Release with both files and notes listing the merged commits, the Gallery feed shows the version, the Pages deployment from the tag run succeeded, and the APT `Packages` index lists exactly the versions of the non-draft Releases with a `.deb` asset returned by `gh api --paginate repos/michielvha/PDS/releases` |
 | AC-11 | Label a PDS PR and push to it; `git ls-remote --tags`, the GitHub Releases list and the Gallery feed are unchanged |
-| AC-12 | `pwsh-ci-action` result on the PDS head; the settings file has no `IncludeRules`, and a scratch function with a default-rule warning fails `Invoke-ScriptAnalyzer` under it; `Invoke-ScriptAnalyzer` over the module under the settings returns no record; `-SuppressedOnly` returns only records with a non-empty `Justification`; Pester's per-file results show at least one passing test in each public function's file, and each file invokes the function it is named for |
+| AC-12 | `pwsh-ci-action` result on the PDS head; the settings file has no `IncludeRules`, and a scratch function with a default-rule warning fails `Invoke-ScriptAnalyzer` under it; `Invoke-ScriptAnalyzer` over the module under the settings returns no record; `-SuppressedOnly` returns only records with a non-empty `Justification`; Pester's per-file results show at least one passing test in each public function's file, and each file invokes the function it is named for; after `Import-Module`, `Get-Command -Module PDS` lists a command for every file under `pwsh/module/Public/` |
 | AC-13 | Read both pages in the merged docs commit for both statements: the shape for tag-published artifacts, and `gh-release-workflow` for actions and reusable workflows |
 | AC-14 | A Pester test per renamed function that invokes the old alias, with installs mocked, and asserts the new function ran, including `Get-RDSActiveSessions` reaching `Get-RDSActiveSessionReport` while `Get-RDSActiveSession` keeps its own parameters |
 | AC-15 | For the first released tag: `gh run rerun <run-id> --job` for each job, `gh run rerun <run-id>`, and `gh workflow run release.yml --ref v<version>`; compare the Release assets and their checksums, the packages and versions in the APT `Packages` index and the Gallery version list before and after |
@@ -654,7 +666,7 @@ fixed forward with a new version.
 | AC-18 | Push a throwaway tag `v0.0.1-test.1` and see no release run start; dispatch `release.yml` on it, on a throwaway `v0.0.1` on a commit outside `main`, and from a branch, and see each fail at the first job; the Releases list, the APT index and the Gallery feed are unchanged; delete both tags afterwards |
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
-| AC-21 | `actionlint` results in each repository's checks at the merge commit; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
+| AC-21 | `actionlint` results in each repository's checks at the merge commit, and `.github/actionlint.yaml` ignores only the unknown `queue` key for `release.yml`; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
 
 ## Tasks
 

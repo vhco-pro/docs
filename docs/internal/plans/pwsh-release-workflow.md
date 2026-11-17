@@ -1,6 +1,6 @@
 ---
 status: draft
-status_description: "R-5 applied: the draft Release flow is cut for a Release created last; waiting on a new spec review."
+status_description: "R-6 findings and the owner's answers applied in one revision; waiting on a new spec review."
 issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
@@ -31,8 +31,9 @@ tags `main` after the checks pass. Only an exact stable `v` tag on a `main` comm
 push or a dispatch on that tag. The release deploys the APT repository, rebuilt from every Release, and
 publishes the module to the Gallery, and only when both succeed creates the public GitHub Release with
 git-cliff notes, the tested `.deb` and the `.exe`. The shared `gh-release-action` creates it and gains
-one optional input for this, `files`, in `v0.2.0`; without it nothing changes. No draft is ever left
-half-filled, and a failed release is finished by rerunning its failed jobs. The two existing PowerShell
+one optional input for this, `files`, in `v0.2.0`; without it nothing changes. No partial Release is ever
+public: a failed release is finished by rerunning its failed jobs, a cancelled Release job can leave a
+hidden draft to delete, and a defect in the tag's own workflow is fixed forward with a new version. The two existing PowerShell
 actions become release-only and gain the repository hygiene the conventions require. The owner set this
 CI, version and tag shape as the target for every language.
 
@@ -51,12 +52,13 @@ Renovate configuration exists yet.
 
 **Migration and rollback.** PDS first pins both current actions by SHA, so their release-only versions
 cannot break it. Tags gain the `v` prefix from a baseline tag on the latest release tag. Until the new
-path has released once, rolling back means reverting the whole migration change; the `v` baseline tag
-stays. After the first release, a problem is fixed forward with a new version.
+path pushes its first `v` tag, rolling back means reverting the whole migration change; the `v` baseline
+tag stays. From that push on, a problem is fixed forward with a new version.
 
 **Proof.** Planned, not yet run: action behaviour tests over fixtures, a full PDS tag release and a rerun
 of it, and a real run on a disposable Windows 11 VM for every function whose code changes beyond
-whitespace, byte-order marks and identifier casing. Observed
+whitespace, byte-order marks and identifier casing, except four that need a domain, Azure or a cluster
+and keep to mocked tests. Observed
 so far: the analyzer and formatter baselines below, and a real-VM run that found the `Enable-SshServer`
 firewall defect a stubbed test had passed.
 
@@ -394,8 +396,10 @@ on Windows runners, because PS2EXE compiles with the .NET Framework that ships w
 One optional input, so a repository that publishes files from a tag releases through the shared action
 instead of its own `gh release create`, and gets its git-cliff notes:
 
-- `files`: paths to attach. With no published Release for the tag, the action creates the public Release
-  with these files in one `gh release create`. With files attached, gh uploads them to a hidden draft
+- `files`: one path per line, relative to the workspace, with no glob expansion. The script checks that
+  every path exists and fails naming the first missing one. With no published Release for the tag, the
+  action creates the public Release with these files in one `gh release create` call without `--draft`,
+  and never calls `gh release upload`. With files attached, gh uploads them to a hidden draft
   first and deletes that draft if an upload fails, so a Release never appears with some files missing.
   A published Release that holds exactly these file names is left as it is; any other set fails, and no
   file is replaced.
@@ -420,12 +424,13 @@ PDS keeps its packaging and test steps and changes who decides the version and w
 
 **Rollout order.** First, PDS pins `publish-pwsh-module-action` to `753afb5` and
 `package-pwsh-script-action` to the commit of `v1`, each by full SHA, in a change of its own. Only then
-does either action's release-only change merge to its `main`. Until the new path has released once,
-rollback is reverting the whole migration change: workflows, `gitversion.yml`, the release-notes
-template and the loader together. The `v` baseline tag stays; GitVersion reads both prefixes. After the
-first release a revert is not a rollback path, because the restored `gitversion.yml` reads only
-unprefixed tags and would compute a version below the public one; a problem is fixed forward with a new
-version.
+does either action's release-only change merge to its `main`. Until the first post-baseline `v` tag is
+pushed, rollback is reverting the whole migration change: workflows, `gitversion.yml`, the
+release-notes template and the loader together. The `v` baseline tag stays; GitVersion reads both
+prefixes. From that push on, a revert is not a rollback path: the APT or Gallery job may already have
+published the version even if the run failed later, and the restored `gitversion.yml` reads only
+unprefixed tags, so it would compute a version below the published one or republish it. A problem is
+fixed forward with a new version.
 
 - **`checks.yml`** is a reusable workflow holding every PDS check: ShellCheck, the package build and its
   tests, the install tests on each Ubuntu version and `pwsh-ci-action` on `windows-latest` with
@@ -438,10 +443,13 @@ version.
   tagged.
 - **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
   `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
-- **Workflow rules.** Every PDS workflow follows the [GitHub Actions convention](../../../conventions/github-actions.md)
-  added after this document's pinned revision: `permissions: {}` at the top with per-job grants,
-  `timeout-minutes` on every job, `defaults.run.shell` set, and `actionlint` over `.github/workflows/`
-  in `checks.yml`.
+- **Workflow rules.** The whole [GitHub Actions convention](../../../conventions/github-actions.md), added
+  after this document's pinned revision, applies to PDS and to the four action repositories this feature
+  creates or changes. Among other rules: `permissions: {}` at the top with per-job grants,
+  `timeout-minutes` on every job, `defaults.run.shell` set, no `${{ }}` inside a `run:` block, and
+  `actionlint` over `.github/workflows/` in each repository's checks. The PDS steps that move unchanged
+  are rewritten only where they break it, such as the APT job's `${{ secrets.GPG_PASSPHRASE }}` inside
+  `run:` (`build-apt-package.yml:254-288`), which moves to `env:`.
 - **`release.yml`** triggers on `push` of stable tags only (`v[0-9]+.[0-9]+.[0-9]+`) and on
   `workflow_dispatch`, run with `--ref v<version>`. It uses the concurrency group `release-<repository>`
   with `cancel-in-progress: false` and `queue: max`. Its first job fails unless `github.ref` is exactly
@@ -462,19 +470,24 @@ version.
 - **Recovery.** Release files are never replaced, as
   [tag-driven Go releases](../../../knowledge/tag-driven-go-releases.md) requires. A failed job is rerun
   within GitHub's 30-day limit with `gh run rerun <run-id> --failed`; the jobs that succeeded are not
-  repeated and their artifacts stay, so the Release gets the same files the APT job deployed. Every
+  repeated and their artifacts stay, so the Release gets the same files the APT job deployed. Once a rerun has created the Release, the run's
+  APT job is rerun too (`gh run rerun <run-id> --job <apt-job-id>`), because another tag's run may have
+  deployed an index without this version in between; it then uses the Release's `.deb`. Every
   publishing step is safe to repeat: the APT job uses a published Release's own `.deb` once one exists,
   the Gallery job skips a published version, and `gh-release-action` leaves a Release with the same file
   names unchanged. After 30 days, a dispatch on the tag rebuilds the files; when the tag has no Release
   yet, the APT repository then serves the rebuilt `.deb` for that version. Three cases need a person:
   - A cancelled Release job can leave a hidden draft, which is not public; delete it and rerun.
-  - A defect in the tag's own `release.yml`, `checks.yml` or action pins is fixed on `main` and released
-    as a new version. The abandoned tag gets no Release, its `.deb` drops out of the APT index at the next
-    rebuild, and a Gallery version it published stays, unlisted by hand if wanted.
+  - A defect in the tag's own `release.yml`, `checks.yml` or action pins is fixed on `main` with a
+    version-bumping commit such as `fix:`, since a `ci:` commit computes no new version, and released as
+    a new version. The abandoned tag stays and gets no Release: its `.deb` drops out of the APT index at
+    the next rebuild, a Gallery version it published stays (unlisted by hand if wanted, and its release
+    notes link to a Release that never exists), and the next Release's notes start at it, so the commits
+    before it appear in no Release's notes.
   - A stable Release created after a higher one, such as a recovered older tag, becomes GitHub's latest;
     set it back with `gh release edit v<higher> --latest`.
 - **Release notes.** `gh-release-action` renders them with its bundled git-cliff configuration, from the
-  commits since the previous stable `v` tag, so the first notes start at the `v` baseline.
+  commits since the previous stable `v` tag; normally the first notes start at the `v` baseline.
   `.github/templates/release-notes.md` and the step that filled it are removed; install instructions stay
   in the README and on the APT repository's Pages index. The Gallery's release notes are a link to the
   GitHub Release.
@@ -512,10 +525,10 @@ version.
   on the disposable Windows 11 VM before merge, and the PR records each run. The set is mechanical:
   `Enable-SshServer`, plus every public function with at least one changed line whose change is more
   than whitespace, a byte-order mark or identifier casing. A `Write-Host` changed to `Write-Output`
-  counts. A script in the PR lists that set, so the VM table can be checked against it. A function that
-  needs a domain, a remote server, a cloud account or a cluster, such as `Remove-StaleComputer`,
-  `Start-RemoteADSyncCycle`, `New-AzSession` or `Start-TaintWatcher`, runs on the VM with `-WhatIf`, which
-  this feature adds to every state-changing function. A VM run passes when it completes without error.
+  counts. A script in the PR lists that set, so the VM table can be checked against it. Four functions
+  that need a domain, a remote server, Azure or a cluster stay out of the set and rely on their mocked
+  Pester tests: `Remove-StaleComputer`, `Start-RemoteADSyncCycle`, `New-AzSession` and
+  `Start-TaintWatcher`. A VM run passes when it completes without error.
 - **Docs.** `AGENTS.md` lists the PowerShell command beside the existing checks, `pwsh/readme.md`
   describes the checks and the release path, and `changelog.md` records the change.
 
@@ -553,7 +566,7 @@ version.
   exactly one tag,
   `v<version>`, above that baseline, and that tag's run publishes the module to the Gallery, attaches the
   `.deb` and `.exe` to one public GitHub Release whose notes git-cliff rendered from the commits since the
-  baseline, and deploys an APT repository whose index lists the version of every GitHub Release that has
+  previous stable `v` tag, and deploys an APT repository whose index lists the version of every GitHub Release that has
   a `.deb` asset.
 - [ ] AC-11: A PDS PR carrying the `release:preview` label creates no tag and publishes nothing; only a
   push to `main` tags PDS.
@@ -573,9 +586,9 @@ version.
 - [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
   `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
   of packages and versions in the APT index, and the Gallery versions.
-- [ ] AC-16: Every function in the mechanical set the Design defines has completed without error on the
-  disposable Windows 11 VM, with `-WhatIf` where it needs an external service, and the PR records each
-  run and its result.
+- [ ] AC-16: Every function in the mechanical set the Design defines, which leaves out the four it names,
+  has completed without error on the disposable Windows 11 VM, and the PR records each run and its
+  result.
 - [ ] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
@@ -588,7 +601,10 @@ version.
 - [ ] AC-20: `vhco-pro/gh-release-action` `v0.2.0` is released. With `files` it creates the public Release
   with those files when none is published, leaves no Release behind when an upload fails, leaves a
   published Release holding exactly those names unchanged, and fails on any other set without replacing
-  a file. With `files` empty it behaves as `v0.1.1` does.
+  a file. A missing path fails naming the path. With `files` empty it behaves as `v0.1.1` does.
+- [ ] AC-21: PDS and the four action repositories follow the GitHub Actions convention: `actionlint`
+  passes in each repository's checks, and every workflow sets `permissions: {}` at the top,
+  `timeout-minutes` on every job and `defaults.run.shell`, with no `${{ }}` inside a `run:` block.
 
 ## Test Plan
 
@@ -613,7 +629,8 @@ version.
 | AC-17 | `setup-pwsh-action`'s behaviour test with a wrong checksum fails before `PATH` changes; each action's `test.yml` asserts `$PSVersionTable.PSVersion` equals the pin on a runner whose preinstalled `pwsh` differs; read each action's metadata for the SHA-pinned call |
 | AC-18 | Push a throwaway tag `v0.0.1-test.1` and see no release run start; dispatch `release.yml` on it, on a throwaway `v0.0.1` on a commit outside `main`, and from a branch, and see each fail at the first job; the Releases list, the APT index and the Gallery feed are unchanged; delete both tags afterwards |
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
-| AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, a failed upload leaving no Release, an existing Release with the same set, one with a different set, and the empty default |
+| AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
+| AC-21 | `actionlint` results in each repository's checks at the merge commit; read every workflow for `permissions: {}`, `timeout-minutes` on each job and `defaults.run.shell`; a search of `run:` blocks finds no `${{` |
 
 ## Tasks
 
@@ -1287,9 +1304,12 @@ PROPOSAL: Restate the cli/cli claim as the one the Design uses, and add the GitH
   [milliewalky/setup-pwsh](https://github.com/milliewalky/setup-pwsh) and
   [mchave3/setup-pwsh](https://github.com/mchave3/setup-pwsh): the closest existing PowerShell setup
   actions, each with a handful of stars. Not used.
-- [cli/cli release commands](https://github.com/cli/cli/tree/trunk/pkg/cmd/release): the `releases/tags`
-  lookup finds published releases only, and a draft created with assets is not cleaned up when an upload
-  fails.
+- [cli/cli release commands](https://github.com/cli/cli/tree/trunk/pkg/cmd/release): `create.go` uploads
+  the files of a non-draft create to a hidden draft and deletes it when an upload or the publish fails;
+  the `releases/tags` lookup finds published releases only.
+- [Re-run workflows and jobs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs):
+  runs can be re-run for 30 days; re-running failed jobs also re-runs their dependents and keeps the
+  jobs that succeeded.
 - [PS2EXE README](https://github.com/MScholtes/PS2EXE): on PowerShell Core it compiles with the .NET
   Framework that ships with Windows, so it needs a Windows runner.
 - [actions/cache README](https://github.com/actions/cache/blob/main/README.md): an exact key hit creates

@@ -623,6 +623,7 @@ None.
 | 2026-11-17 | R-2 | spec | `099d660` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 14 should-fix and 3 nits |
 | 2026-11-17 | R-3 | spec | `6cdeb70` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 13 should-fix and 2 nits |
 | 2026-11-17 | R-4 | spec | `9a49899` | claude-opus-5-5 | procedural | Not clean: 6 should-fix and 5 nits |
+| 2026-11-17 | R-5 | spec | `aa5e9aa` | claude-opus-5-5 | procedural | Not clean: 9 should-fix and 4 nits |
 
 ### R-1
 
@@ -1093,6 +1094,99 @@ SEVERITY: nit
 WHERE: Design, `setup-pwsh-action` (version and checksums matched by a `github-releases` custom manager)
 EVIDENCE: For the module pins and the PS2EXE pin, the Design says "The checksums still have to be refreshed in the same PR, so the README says how". `setup-pwsh-action` pins one checksum per operating system and architecture archive under a Renovate manager that updates only the version, and it gets no such note.
 PROPOSAL: Give `setup-pwsh-action` the same README note on refreshing checksums, pointing at the release's `hashes.sha256` asset.
+
+### R-5
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `gh-release-action` files and drafts (the `draft` bullet and the paragraph "With `files` empty and `draft: false`"); Design, PDS `release.yml` bullet, step 6; Context, Owner summary, Approach ("behaves as before without them"); Acceptance Criteria, AC-20; Test Plan, row AC-20
+EVIDENCE: In `gh-release-action` v0.1.1, `scripts/publish-release.sh` looks the tag up with `releases/tags/$TAG`, which returns published releases only, and on a 404 runs `gh release create "$TAG" --verify-tag --title --notes-file` with no assets. gh checks for an existing release only when assets are attached without `--draft` (cli/cli `pkg/cmd/release/create/create.go`, `publishedReleaseExists`). So on a tag whose Release is a draft, today's behaviour never sees the draft and creates a second, public Release with no files. The `draft` bullet says a `draft: false` run on such a tag makes the draft public, and AC-20 says both that and "With `files` empty and `draft: false` it behaves as `v0.1.1` does". Step 6 says only that the last job "calls `gh-release-action` with `draft: false`", not whether it passes `files`, so with `files` empty the two rules contradict and two implementers build different lookups. X introduced this wording, replacing "With neither input set", when it applied R-4 F-01.
+PROPOSAL: Either state that step 6 passes the same two files and that a draft is published only when `files` is set, or make the draft lookup part of every run and restate the unchanged default as "`files` empty, `draft: false` and no draft for the tag". Add the case of `files` empty with an existing draft to the AC-20 mock tests.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `gh-release-action` files and drafts (`files` bullet, "A draft that lacks some of them gets only the missing files uploaded"); Design, PDS "Release rule and recovery"; Context, Owner summary, Approach ("a draft that lost an upload gets only its missing file"); Acceptance Criteria, AC-15 and AC-20; Test Plan, rows AC-15 and AC-20
+EVIDENCE: GitHub's REST description (github/rest-api-description, `components.schemas.release-asset.properties.state`) defines an asset's state as `uploaded` or `open`. The Design decides whether a draft is complete by file names alone. An upload interrupted after GitHub has created the asset record can leave the name in place, so the rule counts the file as present: the draft passes as complete, the APT job downloads an incomplete `.deb`, and the last job publishes it. GitHub also refuses a second upload under an existing name, which is why gh deletes the existing asset before uploading again under `--clobber` (cli/cli `pkg/cmd/release/shared/upload.go`, `uploadWithDelete`). The automatic completion of a partial draft came in X with the owner's answer.
+PROPOSAL: Count an asset as present only when its state is `uploaded`. On a draft, delete an asset in any other state and upload the file again, which replaces no published file; on a public Release, fail. Add a mock case with an asset in state `open`.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action`, check 3 (Load) and the repository layout ("a module that fails to load"); Acceptance Criteria, AC-02; Test Plan, row AC-02
+EVIDENCE: Observed in `mcr.microsoft.com/dotnet/sdk:9.0` (pwsh 7.5), using PDS's own `pwsh/module/PDS.psm1` from origin/main with one function file that has a syntax error. `pwsh -Command "Import-Module ./mod/PDS.psm1"` exits 0. With `$ErrorActionPreference="Stop"` set at the top of `-Command` it exits 1. `Import-Module ./mod/PDS.psm1 -ErrorAction Stop` exits 0, and `& { $ErrorActionPreference="Stop"; Import-Module ./mod/PDS.psm1 }` exits 0. A `.psm1` that fails to parse itself exits 1 with no Stop setting at all. A fixture whose load failure is terminating therefore passes an action that has none of the Design's handling. PDS's real failure mode, the loader's non-terminating `Write-Error` (`PDS.psm1:21`), is the case the Design names, and no fixture requires it.
+PROPOSAL: Make the failing load fixture a loader that dot-sources a broken file inside `try`/`catch` and reports it with `Write-Error`, as PDS does, and name that fixture in AC-02 and its proof.
+
+FINDING: F-04
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Tests" bullet (the mechanical set); Acceptance Criteria, AC-16; Test Plan, row AC-16; Context, Owner summary, Proof
+EVIDENCE: The set holds every public function with a change beyond whitespace, byte-order marks and casing, and the Design adds `SupportsShouldProcess` to the 43 state-changing functions. On origin/main these functions lack it and so join the set: `AD/Remove-StaleComputer.ps1` (`Get-ADComputer` at :48, `Remove-ADComputer` at :59), `AD/Start-RemoteADSyncCycle.ps1` (`Start-ADSyncSyncCycle` through `Invoke-Command` to a remote server, :97 and :123), `Azure/New-AzSession.ps1` (`Connect-AzAccount`, :41) and `Kubernetes/Start-TaintWatcher.ps1`. A disposable Windows 11 VM has no domain, sync server, Azure account or cluster, and a real `Remove-StaleComputer` run deletes directory objects. AC-16 only asks that each function "has run for real ... with the result recorded", and the proof checks that every listed function has a row, so a table of "module not found" failures passes. Requiring success instead cannot be met on that VM.
+PROPOSAL: Define a passing VM run, and say how functions that need a domain, a remote server or a cloud or cluster account are proved, for example `-WhatIf` on the VM, a named lab, or an owner-approved list that stays on mocked tests. Make the AC-16 proof check the observed result, not only that a row exists.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Release rule and recovery" ("Every failure, whatever its cause, is therefore recovered the same way"); Context, Owner summary, Approach ("so every failure is recovered by running the release again"); Design, PDS `release.yml` bullet (dispatch with `--ref v<version>`; a dispatch from a branch publishes nothing); Acceptance Criteria, AC-10
+EVIDENCE: A re-run repeats the original run's workflow file, and `gh workflow run release.yml --ref v<version>` runs the `release.yml`, `checks.yml` and action pins committed at the tag. Neither recovers a failure caused by those files, such as a defect in `release.yml` or in `gh-release-action` `v0.2.0`. The first PDS release is the first time either one runs. The fix has to land on `main`, which bumps the version and creates a new tag. knowledge/tag-driven-go-releases.md (Failure and retry, at 1ccf8f3) lists "The source needs a fix: Commit the fix and release a new exact version" as a separate state. The abandoned tag can keep a draft, an APT entry until the next rebuild, and a Gallery version with no public Release, and the document does not say what happens to them. AC-10 ties its proof to the run of the first bumping tag. X kept this sentence unchanged.
+PROPOSAL: Limit the claim to failures whose cause is outside the tag's workflow files and pins. Add the state "the tag's workflow or pins need a fix" with its recovery: a new version, and what is done with the old tag's draft and any Gallery version. Say how AC-10 is judged when the first tag's release cannot complete.
+
+FINDING: F-06
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Rollout order" ("Until the new path has released once, rollback is reverting the whole migration change"); Context, Owner summary, "Migration and rollback"
+EVIDENCE: The document defines no rollback after the first release. A revert at that point restores `PDS/gitversion.yml`, whose `tag-prefix: ''` (`gitversion.yml:5`) does not read `v0.25.0`. The restored workflows would compute the next version from the unprefixed `0.24.1` (main `increment: Patch`, `gitversion.yml:23`) and publish a lower version, such as 0.24.2, to the Gallery and as a GitHub Release, below the public `v0.25.0`.
+PROPOSAL: State that after the first release a failure is fixed forward with a new version and that a revert is not a rollback path, or define a rollback that keeps the `v` tags readable.
+
+FINDING: F-07
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, `gh-release-action` files and drafts (`draft` bullet, "marks it GitHub's latest release only when its tag is the highest stable `v` version"); Design, Legend; Acceptance Criteria, AC-20; Test Plan, row AC-20
+EVIDENCE: The rule does not say what the tag is compared against. Compared with every stable `v` tag, a Release made public while a higher tag's run is queued or has failed is never marked latest, and GitHub's latest stays on an older Release until the higher one is published. Compared with published Releases, it is marked latest and replaced later. PDS has both kinds: published Releases on `v0.1.425` to `v0.1.437`, and the `v0.24.1` baseline tag that will have no Release (`git ls-remote --tags`, `gh api repos/michielvha/PDS/releases`). The marking came in X, applying R-4 F-06.
+PROPOSAL: Name the set compared, for example the published Releases with stable `v` tags plus the one being published, and add a mock case where a higher tag exists without a public Release.
+
+FINDING: F-08
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet (APT job, "plus this tag's draft"); Design, PDS "Secrets" bullet
+EVIDENCE: GitHub's REST description of "List releases" says "Only users with push access will receive listings for draft releases", so the APT job's token needs `contents: write` to find and download this tag's draft `.deb`. That job also receives `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`. The document gives no job permissions. One implementer grants the least-privilege `contents: read`, and the first release then fails at the APT job. Another grants write access to the job that holds the signing key. Taking the `.deb` from the workflow artifact instead would break the rule that later jobs use the Release's files.
+PROPOSAL: State the APT job's permissions, or have the Release job hand the Release's `.deb` to the APT job as an artifact so the signing job keeps `contents: read`.
+
+FINDING: F-09
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet (trigger on `v*.*.*`, "which `v*.*.*` matches"); Acceptance Criteria, AC-18; Test Plan, row AC-18
+EVIDENCE: conventions/github-actions.md, added on origin/main in 74d69ce after the resolved revision 1ccf8f3, says under Release triggers and recovery: "A workflow that must publish only stable versions filters on stable tags and also checks `github.ref` in its first job, because a dispatch ignores the filter." The document keeps the `v*.*.*` filter, and the AC-18 proof requires that for `v0.0.1-test.1` "each run fails at the first job". A `release.yml` that follows the newer page starts no run for that tag, so the proof fails it. The same page also asks every repository with workflows to run `actionlint`, and every workflow to set `permissions: {}`, `timeout-minutes` and `defaults.run.shell`. None of AC-01, AC-08 or the PDS `checks.yml` lists them. This is consistency with the newer page, not a breach of the pinned rules.
+PROPOSAL: Decide whether this plan follows the newer page. If it does, filter `release.yml` on stable tags, keep the first-job check for dispatches, and make the AC-18 proof accept that a prerelease tag push starts no run while a dispatch on that tag fails at the first job.
+
+FINDING: F-10
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Why `Write-Host` stays" ("a caller can still suppress it with `6>$null` or `-InformationAction Ignore`")
+EVIDENCE: Observed in pwsh 7.5: for a function with `[CmdletBinding()]`, both `-InformationAction Ignore` and `6>$null` suppress its `Write-Host`. A plain function accepts `-InformationAction Ignore` silently through `$args` and still prints the text, so only `6>$null` works there. Only the functions that gain `SupportsShouldProcess` are certain to become advanced functions.
+PROPOSAL: Say that `6>$null` suppresses it for every function and `-InformationAction Ignore` for advanced functions.
+
+FINDING: F-11
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("the tested `.deb` and `.exe`")
+EVIDENCE: Only the `.deb` is built and installed by `checks.yml` (Design, PDS `checks.yml` bullet; AC-19). The `.exe` comes from a separate Windows job and is not tested, as the mermaid label "Draft Release with the tested .deb and the .exe" says.
+PROPOSAL: Write "the tested `.deb` and the `.exe`".
+
+FINDING: F-12
+KIND: factual
+SEVERITY: nit
+WHERE: Test Plan, row AC-10 ("`gh release list --limit 1000` entries that have a `.deb` asset")
+EVIDENCE: `gh release list -R michielvha/PDS --json assets` returns `Unknown JSON field: "assets"` (gh 2.87.3), so the list cannot show assets. `gh release list` also includes drafts for a caller with push access unless `--exclude-drafts` is given.
+PROPOSAL: Name the lookup, for example `gh api --paginate repos/michielvha/PDS/releases` filtered to non-draft Releases with a `.deb` asset.
+
+FINDING: F-13
+KIND: factual
+SEVERITY: nit
+WHERE: Sources; Design, `package-pwsh-script-action` v2 ("PS2EXE compiles with the .NET Framework that ships with Windows"); Context, "Three jobs decide one version" ("`actions/cache` saves nothing on an exact key hit")
+EVIDENCE: Both claims rest on external pages, the PS2EXE README and the actions/cache README, and Sources lists neither. conventions/feature-documents.md: "Sources lists every external page read, each with the claim it supports."
+PROPOSAL: Add both pages to Sources with the claims they support.
 
 ## Sources
 

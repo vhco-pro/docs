@@ -518,6 +518,7 @@ None.
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-17 | R-1 | spec | `bae0bb0` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 16 should-fix and 4 nits |
 | 2026-11-17 | R-2 | spec | `099d660` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 14 should-fix and 3 nits |
+| 2026-11-17 | R-3 | spec | `6cdeb70` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 13 should-fix and 2 nits |
 
 ### R-1
 
@@ -795,6 +796,120 @@ SEVERITY: nit
 WHERE: Context, "No PowerShell checks exist" ("files: 81 (module: 78, scripts: 3)") and the formatter output ("files: 81")
 EVIDENCE: `git ls-tree -r --name-only b1e5857 | grep -iE '\.(ps1|psm1|psd1)$'` lists 82 files: 79 under `pwsh/module` (77 functions, `Update-Env.Tests.ps1` and `PDS.psm1`) and 3 under `pwsh/scripts`. I could not rerun the analyzer, because no PowerShell is available here.
 PROPOSAL: Correct the file count or say which file the measurement excluded.
+
+### R-3
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Acceptance Criteria, AC-10 ("deploys an APT repository whose index lists every released version"); Test Plan, row AC-10 ("the APT `Packages` index lists every version in `gh release list`"); Design, PDS `release.yml` bullet ("the APT job downloads every GitHub Release's `.deb`"); Scope ("PDS's APT deploy rebuilt from every GitHub Release's `.deb`"); Context, Owner summary, Approach ("the APT repository rebuilt from every Release")
+EVIDENCE: `gh release list -R michielvha/PDS --limit 100` returns 42 Releases. `gh release view v0.1.424 --json assets` shows no asset, so a correct APT job that builds from Release `.deb` files cannot list 0.1.424. Versions 0.24.0 and 0.24.1 are tagged (`git tag -l`) and published to the Gallery (`/api/v2/Packages(Id='PDS',Version='0.24.1')` returns 200), and the document itself calls 0.24.1 "the latest release tag", but neither has a GitHub Release or a `.deb`. So under either reading of "released version" the criterion cannot be met by the design it tests. The proof passes only by accident: bare `gh release list` returns 30 entries and stops before v0.1.424; any run with `--limit` of 42 or more fails a correct implementation. This wording came in 6cdeb70, applying R-2 F-02.
+PROPOSAL: Reword AC-10 to "lists the version of every GitHub Release that has a `.deb` asset", and have the proof list all Releases with an explicit high `--limit`, keep those with a `.deb` asset, and compare that set with the index.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-09; Test Plan, row AC-09 ("`grep -l` for the three secret names in `.github/workflows/` lists only `release.yml`"); Design, PDS `ci.yml` bullet ("appear in no job here"); Design, PDS `release.yml` bullet (calls `checks.yml` on the tag); Context, Owner summary, Permissions ("The Gallery key and the GPG signing key move to `release.yml` only")
+EVIDENCE: `secrets: inherit` passes every repository secret to a called workflow without naming any of them. If `ci.yml` calls `checks.yml` or `version-workflow` with `secrets: inherit`, or `release.yml` calls `checks.yml` that way, then `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` reach branch-push or check jobs while the grep still lists only `release.yml`. conventions/delivery.md (Workflows and permissions): "Check jobs receive no tagging or signing keys." The Design never says that the `checks.yml` call inside `release.yml` receives no secrets.
+PROPOSAL: State that only the APT and Gallery jobs receive those secrets, that `checks.yml` gets none in either caller, and that no PDS workflow uses `secrets: inherit`. Extend the AC-09 proof to fail on any `secrets: inherit`.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Every other finding is fixed" bullet ("All 490 remaining findings ... are resolved in the code"); Design, PDS "Settings" bullet (the `Rules` it configures); Design, `pwsh-ci-action` check 2 ("`Information` is reported only"); Scope ("every baseline finding resolved as the Design says"); Context, Owner summary, Defaults ("every other finding is fixed"); Acceptance Criteria, AC-12; Test Plan, row AC-12; Context, "No PowerShell checks exist" (404 `Information` records)
+EVIDENCE: Context says all 404 `PSAvoidTrailingWhitespace` findings are the 404 `Information` records, and Analyze fails only on `Error` or `Warning`. `PSAvoidTrailingWhitespace` is a formatter rule (`Engine/Formatter.cs` lists it in its rule order), but `Format` skips every rule the settings do not configure (`if (!settings.RuleArguments.ContainsKey(rule)) continue;`). The Settings bullet configures only the `CodeFormatting` preset's six rules (`Engine/Settings/CodeFormatting.psd1`), which do not include it. Neither check fails on trailing whitespace, so AC-12 ("PDS passes `pwsh-ci-action`") passes with all 404 findings left, while the Design says they are fixed.
+PROPOSAL: Either configure `PSAvoidTrailingWhitespace` under `Rules` in the PDS settings so the Format check enforces it, or make the AC-12 proof require `Invoke-ScriptAnalyzer` under the committed settings to return no unsuppressed record of any severity. Otherwise, say that `Information` findings may remain.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet ("Only then do two jobs publish from that Release"); Design, PDS "Recovery" bullet ("it uses the files already on the Release and rebuilds nothing"); Design, mermaid ("then APT deploy and Gallery publish from it"); Design, `publish-pwsh-module-action` v3 (inputs `module-path`, `tag`; "It writes the manifest"); Acceptance Criteria, AC-10 (Release holds the `.deb` and `.exe`); Context, Owner summary, Approach
+EVIDENCE: The Release holds only the `.deb` and the `.exe` (AC-10, Owner summary). The publish action v3 takes `module-path`, writes the manifest from the tag and packages the module itself, so the Gallery job has to build from the tag's checkout, not from Release files. A rerun of that job repackages the module. One implementer would add a module package to the Release to honour "publish from that Release". Another would build from source, against the Recovery sentence. This text came in 6cdeb70.
+PROPOSAL: Say that the Gallery job publishes from the tag's checkout and that rerunning it repackages the same source, or attach the module package to the Release and have the Gallery job publish that file. Make the Recovery bullet and the mermaid label match.
+
+FINDING: F-05
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Recovery" bullet; Design, PDS `release.yml` bullet (Release step, `queue: max`); Acceptance Criteria, AC-15; Test Plan, row AC-15; Context, Owner summary, Approach ("A Release is never overwritten")
+EVIDENCE: The Recovery bullet covers only two states: a failure before the Release exists (rerun the whole run) and a failure after it exists (rerun the APT or Gallery job). Three states are left undefined. (1) The Release step fails after the Release is created but before both files are attached. GitHub creates a release and uploads assets in separate calls, and knowledge/tag-driven-go-releases.md, Failure and retry, lists "A partial draft exists" as its own state. (2) GitHub allows reruns only "up to 30 days after its initial run" (github/docs `re-run-workflows-and-jobs.md`). (3) The run is cancelled after the Release exists, by hand or because the queue is full; the concurrency docs say that with `queue: max` "any additional runs are canceled" once 100 are pending. In cases (2) and (3) the only path left is a dispatch, which by design "fails at the Release step", so the tag keeps a Release with no APT entry and no Gallery version. The Recovery bullet was rewritten in 6cdeb70.
+PROPOSAL: Define the Release step's handling of a partial release (for example create it as a draft, attach both files, then publish, and stop for inspection when a draft exists), and give a recovery path for a Release whose publish jobs cannot be rerun, such as a dispatch input that skips Release creation when the Release exists with both files.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-15 ("rerunning the APT job or the Gallery job on its own succeeds and changes nothing"); Test Plan, row AC-15; Design, PDS `release.yml` bullet ("builds the aptly repository from scratch with no cache and deploys it to Pages")
+EVIDENCE: An APT job built as the Design says publishes a fresh aptly repository and deploys Pages on every run. aptly writes a new `Release` file and signature, with a new date, each time it publishes, so a rerun always changes the deployed site even when the `Packages` index is identical. The proof compares only the index. One implementer would add logic that skips the deploy when nothing changed, to satisfy "changes nothing". Another would redeploy and rely on the proof. AC-15 was rewritten in 6cdeb70.
+PROPOSAL: Reword AC-15 to name what stays unchanged: the Release and its asset checksums, the set of packages and versions in the `Packages` index, and the Gallery versions. Accept that the APT job redeploys a freshly signed repository.
+
+FINDING: F-07
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Tests" bullet (the mechanical set: ignore whitespace, byte-order marks "and lines that only touch `Write-Host`"); Design, PDS "Why `Write-Host` stays" bullet ("A `Write-Host` that emits data a caller needs is a defect and becomes `Write-Output` during the fix"); Acceptance Criteria, AC-16; Test Plan, row AC-16; Context, Owner summary, Proof ("a real run ... for every function whose behaviour changes")
+EVIDENCE: A line changed from `Write-Host` to `Write-Output` touches `Write-Host`, so the set script ignores it, yet the Design says that change puts text into the function's return value. A line that renames a shadowed automatic variable (5 `PSAvoidAssignmentToAutomaticVariable` findings in Context) inside a `Write-Host` string is ignored the same way. Those behaviour changes never reach the VM. In the other direction, `PSUseCorrectCasing` edits from the `CodeFormatting` preset survive `git diff -w`, so functions changed only by casing join the set, which goes beyond the Owner summary's "every function whose behaviour changes". The set definition came in 6cdeb70, applying R-2 F-11.
+PROPOSAL: Ignore only lines whose change is limited to whitespace, a byte-order mark or identifier casing, and keep any line whose command or arguments change, including `Write-Host` to `Write-Output`. Make the Owner summary describe that set.
+
+FINDING: F-08
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action` (pinned PowerShell paragraph: "All pins sit in one file"); Design, `publish-pwsh-module-action` v3 ("runs on the same pinned PowerShell as `pwsh-ci-action`"); Design, `package-pwsh-script-action` v2 ("on the same pinned PowerShell"); Scope ("A pinned, checksum-verified PowerShell in all three actions"); Acceptance Criteria, AC-08 and AC-17
+EVIDENCE: The Design puts the PowerShell pin and its downloader in `pwsh-ci-action`, then says the other two actions run on "the same" pinned PowerShell, without saying where their pin and installer live. AC-08 needs a custom manager for "every tool pin" in each repository, which implies a separate pin per repository. Separate Renovate PRs then let the three versions drift, so "same" cannot hold at all times. One implementer would copy the downloader and pin file into all three repositories. Another would call a shared setup step. The Design also says PowerShell is pinned "the same way, as `go-ci-action` pins Go", but `go-ci-action` delegates to `actions/setup-go` with the caller's `go-version-file` (`action.yml:25-27`), not a pin inside the action. The pinned PowerShell came in 6cdeb70 with the owner's answer to R-2 F-12.
+PROPOSAL: Name where each action's PowerShell installer and pin live, and say whether "same" means one version kept in step or each repository's own Renovate-managed pin. Correct the `go-ci-action` comparison.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-17 ("run each action with a wrong PowerShell checksum and expect a failure before any PowerShell step"); Acceptance Criteria, AC-17 ("runs its PowerShell steps on the pinned PowerShell release"); Design, `pwsh-ci-action` pinned PowerShell paragraph ("never with the runner's preinstalled `pwsh`")
+EVIDENCE: GitHub's Windows and Ubuntu runner images ship a `pwsh` (the Context cites their toolsets for its preinstalled modules). An action that downloads and verifies the pinned archive but then runs its steps with `shell: pwsh` uses the runner's binary, and it still fails the wrong-checksum test before any PowerShell step. The proof shows that verification happens, not which PowerShell runs the steps, so it passes the wrong implementation the Design forbids.
+PROPOSAL: Add a behaviour-test assertion that each action's PowerShell steps report `$PSVersionTable.PSVersion` equal to the pinned version (or run from the downloaded path) on a runner whose preinstalled version differs from the pin.
+
+FINDING: F-10
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Scope ("PDS releases stable versions from `main` only"); Context, Owner summary, Defaults ("PDS publishes stable versions from `main` only"); Design, PDS `release.yml` bullet (first job checks only that `github.ref` is `refs/tags/vMAJOR.MINOR.PATCH`); Design, Legend ("a tag pushed by hand cannot publish unchecked source"); Acceptance Criteria, AC-18; Test Plan, row AC-18
+EVIDENCE: `version-workflow` tags only the default branch when `preview-label` is empty (`version.yml`, step "Decide whether this run tags"). But `release.yml` also runs on any pushed `v*.*.*` tag and on a dispatch with `--ref` of a tag, and its guard tests only the ref string. An exact tag pushed by hand on a feature-branch commit passes the guard and `checks.yml`, then publishes a stable Release, an APT package and a Gallery version from source that is not on `main`. The Go guard has the same limit (`go-release.yml:40`), but the Go flow does not promise main-only stable releases. The guard came in 6cdeb70, applying R-2 F-04.
+PROPOSAL: Either have the first job also require the tagged commit to be reachable from `origin/main` and add that case to AC-18 and its proof, or reword Scope and the Owner summary: `version-workflow` tags only `main`, and an exact tag pushed by hand on any commit is released.
+
+FINDING: F-11
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `checks.yml` bullet ("The package build uses the fixed placeholder version `0.0.0`"); Design, PDS `release.yml` bullet ("calls `checks.yml` on the tag, builds the `.deb` and `.exe` at the tag's version"); Design, Legend; Acceptance Criteria, AC-19; Test Plan, row AC-19; Open Questions ("None.")
+EVIDENCE: `build-apt-package.yml:85-103` writes the version into `nfpm.yaml`, the `Makefile` and `usr/share/pds/VERSION` before `make test` and the install tests. In `release.yml`, `checks.yml` builds and installs a `0.0.0` package. The `.deb` attached to the Release is a second build at the tag version, which no test installs. knowledge/tag-driven-go-releases.md says checks on the tagged source "verify the source actually being released" and that the checks inside the release workflow protect the artifact. The document settles this trade-off (test a placeholder build, publish an untested one) without an Open Question, although conventions/feature-documents.md says "Every trade-off the document settles is an open question". The placeholder came in 6cdeb70.
+PROPOSAL: Give `checks.yml` a version input (default `0.0.0`) so the release run builds and tests the package at the tag version and attaches that tested file, or raise the choice as an Open Question.
+
+FINDING: F-12
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-13 ("states that every language follows the CI, version and tag-triggered release shape"); Test Plan, row AC-13 ("Read both pages"); Design, intro ("The owner set this shape as the target for every language ... `knowledge/tag-driven-pwsh-releases.md` and the release contract in `knowledge/shared-delivery.md` state that"); Context, Owner summary, Approach
+EVIDENCE: The feature's own three actions do not follow that shape. Like `go-ci-action` (`.github/workflows/release.yml`: `test`, then `gh-release.yml` on a push to `main`), they release through `gh-release-workflow`, with no `version-workflow` and no tag-triggered release. knowledge/tag-driven-go-releases.md, Component types, says a repository whose tag is the release must pass its checks before the tag exists, and knowledge/shared-delivery.md lists `gh-release-workflow` for those repositories. A page written to AC-13's wording states a rule its own reference components break, and "Read both pages" cannot catch that.
+PROPOSAL: Have AC-13 and the Design limit the statement to repositories that publish artifacts from a tag, and add that actions and reusable workflows release through `gh-release-workflow`. Make the AC-13 proof check both statements.
+
+FINDING: F-13
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-02; Test Plan, row AC-02; Design, `pwsh-ci-action` check 2 ("Information is reported only. A missing settings file fails"); Design, `pwsh-ci-action` repository layout (fixture list)
+EVIDENCE: The fixture list (formatting diff, settings with no formatting rule, analyzer warning, failed load, failing test, no tests) has no fixture with a missing settings file and none whose only finding is `Information`. An action that falls back to default rules when the settings file is absent, or that fails on `Information` records, passes every AC-02 check. The `Information` rule decides whether PDS can pass with Information-level findings left (see F-03).
+PROPOSAL: Add a missing-settings fixture that must fail and an Information-only fixture that must pass, and list both in AC-02 and its proof.
+
+FINDING: F-14
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-12 ("every public function has a Pester test in `pwsh/tests/`"); Test Plan, row AC-12 ("list public functions against test files in `pwsh/tests/`"); Design, PDS "Tests" bullet ("one file per public function"); Context, Owner summary, Defaults
+EVIDENCE: A listing of file names passes with an empty or placeholder `<Function>.Tests.ps1`. The Test check fails on zero discovered tests only across the whole run (Design check 4), not per file, so 77 empty files beside one real test pass both `pwsh-ci-action` and the listing.
+PROPOSAL: Make the proof read Pester's per-file results and require at least one passing test per public function's file, with each file invoking the function it is named for.
+
+FINDING: F-15
+KIND: factual
+SEVERITY: nit
+WHERE: Design, Legend ("so up to 100 wait in order"); Design, mermaid ("release.yml on tag push, queued in order")
+EVIDENCE: github/docs `data/reusables/actions/actions-group-concurrency.md`: runs are processed in FIFO order by the time each started waiting, and "Since the actual start time of a job or run may vary, ordering is not guaranteed." Nothing in the Design depends on order: the APT job rebuilds from every Release, and the Gallery accepts versions in any order. This text came in 6cdeb70.
+PROPOSAL: Drop "in order", or say runs usually start in arrival order and nothing depends on it.
+
+FINDING: F-16
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("The tag push alone publishes")
+EVIDENCE: The Design's `release.yml` also triggers on `workflow_dispatch` run with `--ref v<version>`, added in 6cdeb70, so a dispatch on an exact tag also publishes.
+PROPOSAL: Say "Only an exact `v` tag publishes, through its push or a dispatch on that tag".
 
 ## Sources
 

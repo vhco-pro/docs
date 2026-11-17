@@ -1,7 +1,7 @@
 ---
 status: draft
 status_description: "Owner answers to Q1-Q6 folded in 2026-11-17; waiting on spec review."
-issue: null
+issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
   - knowledge/shared-delivery.md
@@ -130,14 +130,15 @@ In scope:
 Out of scope:
 
 - A reusable `vhco-pro/pwsh-release-workflow`. PDS is the only repository that uses PowerShell, so its
-  `release.yml` composes the actions directly. A follow-up issue in `vhco-pro/docs`, filed when this
-  document lands, tracks extracting it once a second module repository appears.
+  `release.yml` composes the actions directly.
+  [vhco-pro/docs#50](https://github.com/vhco-pro/docs/issues/50) tracks extracting it once a second
+  module repository appears.
 - Prerelease publication for PDS. The publish action supports prerelease tags so another repository can
   opt in with the `release:preview` label; PDS does not.
 - Changing what the APT build and test steps do. Only their trigger, version source and release owner
   move.
 - Windows PowerShell 5.1 checks. The checks run on PowerShell 7 first; a 5.1 pass is a later input of
-  `pwsh-ci-action`, tracked by its own follow-up issue.
+  `pwsh-ci-action`, tracked by [vhco-pro/docs#51](https://github.com/vhco-pro/docs/issues/51).
 - Deleting the existing `v1`/`v2` alias tags on the two actions. Releases stop adding aliases; the old
   ones stay so a forgotten pin does not break.
 - The private `michielvha/PWSH` repository. It publishes nothing through these actions.

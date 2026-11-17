@@ -80,7 +80,8 @@ versions drift. If they ever run their own runner images, revisit this.
 - **Choose what a concurrency group may drop.** With the default queue, only the newest waiting run in a
   group survives, whatever `cancel-in-progress` says. Use `queue: max` with `cancel-in-progress: false`
   where every run must complete, such as one publication per tag. Use `cancel-in-progress: true` only for
-  check runs off the default branch.
+  check runs off the default branch. actionlint 1.7.12 does not recognise `queue` yet; until it does, ignore exactly that message
+  for the affected workflow in `.github/actionlint.yaml` and nothing else.
 - **Key caches by their content.** A cache key changes whenever the cached content should, for example a
   hash of the lockfile. Never cache state that accumulates across runs under a fixed key: an exact key hit
   saves nothing, so the state freezes at its first save. One step per job owns restoring and saving each

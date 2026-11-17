@@ -650,6 +650,7 @@ None.
 | 2026-11-17 | R-4 | spec | `9a49899` | claude-opus-5-5 | procedural | Not clean: 6 should-fix and 5 nits |
 | 2026-11-17 | R-5 | spec | `aa5e9aa` | claude-opus-5-5 | procedural | Not clean: 9 should-fix and 4 nits |
 | 2026-11-17 | R-6 | spec | `43ba4e1` | claude-opus-5-5 | procedural | Not clean: 7 should-fix and 2 nits |
+| 2026-11-17 | R-7 | spec | `0834a2c` | claude-opus-5-5 | procedural | Blocking: 2 blocking, 2 should-fix and 1 nit |
 
 ### R-1
 
@@ -1278,6 +1279,43 @@ SEVERITY: nit
 WHERE: Sources (cli/cli release commands entry); Design, `gh-release-action` files; Design, PDS "Recovery"
 EVIDENCE: The cli/cli entry records that "a draft created with assets is not cleaned up when an upload fails". The Design now relies on the opposite case: a non-draft create with assets uploads to a hidden draft and deletes it on failure (`create.go` lines 503-515 and 536-563). Recovery relies on GitHub's re-run behaviour: the 30-day limit, rerunning failed jobs with their dependents, and reuse of artifacts from succeeded jobs. Sources lists no page for these. conventions/github-actions.md cites "Re-run workflows and jobs" for the 30-day limit.
 PROPOSAL: Restate the cli/cli claim as the one the Design uses, and add the GitHub re-run page with the claims Recovery takes from it.
+
+### R-7
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Design, PDS "Tests" bullet (the mechanical set and "Four functions that need a domain, a remote server, Azure or a cluster stay out of the set"); Acceptance Criteria, AC-16; Test Plan, row AC-16; Context, Owner summary, Proof ("except four that need a domain, Azure or a cluster")
+EVIDENCE: I ran PSScriptAnalyzer 1.25.0 in mcr.microsoft.com/dotnet/sdk:9.0 over PDS origin/main (0770894) `pwsh/module/Public`, excluding PSAvoidUsingWriteHost and PSAvoidTrailingWhitespace. It reports PSUseSingularNouns on Get-DisabledADUsers, Enable-RDSHosts, Get-RDSActiveSessions and Show-AksInfo, and PSUseShouldProcessForStateChangingFunctions on Start-ScrollLockToggle and Get-RDSActiveSessions. The Design fixes these with a rename that keeps an alias and with real ShouldProcess support. Both are changed lines beyond whitespace, byte-order marks and casing, so all five functions join the mechanical set, and none of them is among the four excluded. On a disposable Windows 11 VM none of them can complete without error. `Get-DisabledADUsers.ps1:81` runs `Import-Module -Name ActiveDirectory -ErrorAction Stop`, and its catch (`:83`) calls `Write-Error` and returns. `Enable-RDSHosts.ps1:60` and `Get-RDSActiveSessions.ps1:77` run `Import-Module RemoteDesktop -ErrorAction Stop` and need RDS session hosts. `Show-AksInfo.ps1:63` runs `az aks list` and needs a signed-in Azure CLI. `Start-ScrollLockToggle.ps1:42` is `while ($true)`, so it never completes, which is the same reason `Start-TaintWatcher` was excluded. AC-16 requires every function in the set to complete without error, so it cannot be met. X introduced the fixed list of four when it replaced the `-WhatIf` route.
+PROPOSAL: Replace the fixed list with a rule: a function stays on mocked tests when it needs a domain, a remote server, a cloud account or a cluster, or never terminates. Have the set script print the resulting full list. Alternatively, give the looping functions a bounded parameter. Because the owner approved four functions by name, raise the wider exclusion as an Open Question, then update the Owner summary to match.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: blocking
+WHERE: Acceptance Criteria, AC-21 ("`timeout-minutes` on every job"); Test Plan, row AC-21 ("read every workflow for ... `timeout-minutes` on each job"); Design, PDS "Workflow rules" bullet ("`timeout-minutes` on every job"); Design, PDS `ci.yml` and `release.yml` bullets (jobs that call `checks.yml` and `version-workflow`); Design, `pwsh-ci-action` repository layout (`test.yml`, and `release.yml` through `gh-release-workflow`)
+EVIDENCE: A job that calls a reusable workflow with `uses:` may not set `timeout-minutes`. actionlint enforces this: `parse.go` `parseJob` reports "when a reusable workflow is called with \"uses\", %q is not available. only following keys are allowed: \"name\", \"uses\", \"with\", \"secrets\", \"needs\", \"if\", and \"permissions\"" for any steps-only key, and `timeout-minutes` is on that list. The Design requires such jobs in every affected repository. PDS `ci.yml` calls `checks.yml` and `version-workflow`, PDS `release.yml` calls `checks.yml`, and each action's `release.yml` calls `gh-release-workflow`. The existing shared callers have the same shape: `vhco-pro/version-workflow` `release.yml` jobs `test` (`uses: ./.github/workflows/test.yml`) and `release` (`uses: vhco-pro/gh-release-workflow/...`) carry no `timeout-minutes`. A workflow that puts `timeout-minutes` on those jobs fails `actionlint`, and one that leaves it off fails the "every job" read. No correct implementation passes both halves of AC-21. AC-21 was added in X.
+PROPOSAL: Say "`timeout-minutes` on every job that runs steps", because a job that calls a reusable workflow takes the called jobs' timeouts. Make the same change in AC-21, its proof and the Workflow rules bullet.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Workflow rules" bullet ("the four action repositories this feature creates or changes"); Acceptance Criteria, AC-21; Test Plan, row AC-21; Scope (one optional input on `vhco-pro/gh-release-action`); Design, `gh-release-action` files
+EVIDENCE: This feature creates `pwsh-ci-action` and `setup-pwsh-action` and changes `publish-pwsh-module-action`, `package-pwsh-script-action` and `gh-release-action` (Scope, first four bullets). That is five action repositories, not four. AC-08 names only the four PowerShell repositories, which suggests the four in the bullet leave out `gh-release-action`, but "creates or changes" includes it. The choice changes what gets built. `gh-release-action` `test.yml` on its default branch has no `timeout-minutes`, no `defaults.run.shell` and no `actionlint` step, and `release.yml` has no `defaults` (`gh api repos/vhco-pro/gh-release-action/contents/.github/workflows/test.yml`). One implementer would add those to the `v0.2.0` change and another would not. X introduced this wording from the owner's answer.
+PROPOSAL: Name the repositories explicitly in the bullet and in AC-21. If `gh-release-action` is out, say so. If it is in, add its workflow changes to the `gh-release-action` section and the AC-21 proof.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Workflow rules" bullet ("The whole GitHub Actions convention ... applies"; "rewritten only where they break it"); Acceptance Criteria, AC-21; Test Plan, row AC-21; Design, `publish-pwsh-module-action` v3 and the other composite actions
+EVIDENCE: The Design applies the whole of conventions/github-actions.md (origin/main, 74d69ce). AC-21 and its proof check only `actionlint`, `permissions: {}`, `timeout-minutes`, `defaults.run.shell` and `${{` in the `run:` blocks of workflows. The PDS steps that move unchanged break other rules on that page. `build-apt-package.yml:79`, `:156` and `:196` write `echo "VERSION=$VERSION" >> $GITHUB_ENV` ("Pass values between steps as outputs ... not `$GITHUB_ENV`"). The rebuild step's `run:` block is 35 lines (`:228-262`) ("Move a long `run:` block to a script"). The page applies to "every action" too, and today's `publish-pwsh-module-action` `action.yml:60-93` puts `${{ inputs.apiKey }}` and other inputs inside `run:`. AC-21's proof reads only workflows, so a v3 `action.yml` that still interpolates inputs passes it. As written, the proof passes on an implementation that leaves these breaches in place.
+PROPOSAL: Either narrow the Design to the rules AC-21 lists, or extend AC-21 and its proof with the checkable rules: no `$GITHUB_ENV` write, `persist-credentials: false` except in a job that pushes, and no `${{` in the `run:` steps of each `action.yml`. Say how the judgement rules, such as long `run:` blocks, are reviewed.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary ("Permissions and owner steps" and "Approach")
+EVIDENCE: The owner decided that the GitHub Actions convention applies to PDS and the action repositories, and AC-21 holds that decision. It brings real work: rewriting the APT job's secret handling and adding `actionlint` and the workflow settings in each repository. The Owner summary mentions only `secrets: inherit` and never says the convention applies. conventions/feature-documents.md at 1ccf8f3 asks the summary to cover owner decisions.
+PROPOSAL: Add one sentence to the Owner summary: PDS and the named action repositories adopt the GitHub Actions convention, checked by AC-21.
 
 ## Sources
 

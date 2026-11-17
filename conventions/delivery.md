@@ -233,14 +233,15 @@ budget of Actions minutes. A repository's visibility decides where its CI runs.
 
 ## Workflows and permissions
 
-Keep substantial logic in scripts as defined in [coding](coding.md). Reuse the
-verified public components listed in [shared delivery](../knowledge/shared-delivery.md),
-including those under `michielvha`; do not invent a `vhco-pro` equivalent.
+Keep substantial logic in scripts as defined in [coding](coding.md), and build actions and workflows
+as [GitHub Actions](github-actions.md) describes. Reuse the verified public components listed in
+[shared delivery](../knowledge/shared-delivery.md), including those under `michielvha`. Create new shared
+components in `vhco-pro`, and never duplicate one that already exists.
 
 Use least-privilege job permissions. A public reusable workflow can be called
 across accounts, and its token acts on the caller repository. Both caller and
 callee must permit the operation; no extra PAT is needed just to read a public
-workflow. Do not pass all secrets when none are required.
+workflow. Pass each secret by name and never use `secrets: inherit`.
 
 Use full history and tags for GitVersion and release-note ranges. Run versioning
 from branch runs, where GitVersion sees the real branch; a `pull_request` run has
@@ -256,8 +257,10 @@ Decide what a push releases by comparing against the last release tag, never aga
 can carry many commits, and a check that sees only the last one misses changes in the others. A release
 job that commits back to the default branch, such as a version or dependency bump, expects the branch to
 move while it runs: it rebases onto the current branch and retries its push a bounded number of times, and fails with a clear error
-on a conflict or when the attempts run out. Recover a failed release run with a fresh dispatch on the current head, not a re-run,
-which repeats the original checkout.
+on a conflict or when the attempts run out. Recover such a job with a fresh dispatch on the current head, not a re-run,
+which repeats the original checkout. A tag-triggered publication is different: re-run its failed jobs at
+the same tag within GitHub's 30-day limit, and after that dispatch it for the exact tag
+([GitHub Actions](github-actions.md#release-triggers-and-recovery)).
 
 Dry-run paths still compute real versions and render relevant notes. Serialize
 publication where competing runs could conflict. Test before publication,

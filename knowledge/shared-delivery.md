@@ -7,8 +7,9 @@ status: active
 
 # Shared templates and delivery components
 
-The knowledge home is `vhco-pro/docs`. Shared implementations can live under
-`michielvha` or `vhco-pro`; no repository move is required for a common convention.
+The knowledge home is `vhco-pro/docs`. New shared actions and workflows are created in `vhco-pro`;
+existing `michielvha` components keep working and move later. The rules for building them are in
+[GitHub Actions](../conventions/github-actions.md).
 
 ## Find the implementation
 
@@ -28,6 +29,26 @@ The knowledge home is `vhco-pro/docs`. Shared implementations can live under
 These are source locations, not a promise that their default branches already
 implement every convention. Existing references can be older than the reviewed
 implementation. Always inspect the revision a consumer will execute.
+
+## Anatomy of an action and a workflow
+
+Copy these shapes rather than inventing new ones:
+
+- **Action.** A composite `action.yml` whose steps call scripts, with `name`, `description` and
+  `branding`. Credentials arrive as named inputs that the script reads from environment variables, and
+  the README names the token permissions the caller grants. A value that can hold newlines, such as
+  release notes, passes between steps as a file path output. [go-ci-action](https://github.com/michielvha/go-ci-action)
+  is the reference.
+- **Action tests.** A `test.yml` callable through `workflow_call` runs the action with `uses: ./`
+  against a fixture, including at least one case that must fail, and `release.yml` needs it before
+  `gh-release-workflow` tags. Copy [gh-release-workflow's action-repo example](https://github.com/vhco-pro/gh-release-workflow/tree/main/examples/action-repo).
+- **Reusable workflow.** It sees the caller's `github` context and none of its `env`, and returns values
+  through job outputs mapped to `on.workflow_call.outputs`.
+
+Two GitHub features are not adopted yet. [Immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+would make a release job create a draft, attach every file and then publish, because files cannot be
+added afterwards. [Workflow dependency lockfiles](https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles)
+cover transitive actions but have no documented Renovate support, so SHA pins with tag comments stay.
 
 ## Release contract
 

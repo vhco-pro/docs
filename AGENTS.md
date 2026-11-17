@@ -16,6 +16,8 @@ pointers here, not copies of these instructions.
    [React](conventions/react.md) for React work, including specification and review.
    Read [HTTP API](conventions/http-api.md) when designing or changing an HTTP API.
    Read [PHP](conventions/php.md) for PHP work, including specification and review.
+   Read [GitHub Actions](conventions/github-actions.md) before writing or changing an action or a
+   workflow, including specification and review.
    For every browser frontend, including plain JavaScript and VitePress, read the
    required [frontend testing standard](conventions/frontend-testing.md).
    For command-line output or terminal interaction, read

@@ -20,6 +20,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |
+| Write or change a GitHub action or workflow | [GitHub Actions](conventions/github-actions.md) and the components in [shared delivery](knowledge/shared-delivery.md) |
 | Change CI, dependencies, or releases | [Delivery](conventions/delivery.md), [managed dependency updates](knowledge/managed-renovate.md), [shared delivery](knowledge/shared-delivery.md), and the [Go release pilot](knowledge/tag-driven-go-releases.md) |
 | Deploy a static site to Cloudflare from a pipeline | [Cloudflare static sites](conventions/cloudflare-static-sites.md) and the [complete pipeline example](examples/cloudflare-static/README.md) |
 | Run iOS checks or use a private hosted Mac with Codemagic | [Remote macOS development with Codemagic (draft)](conventions/codemagic-remote-macos.md) |

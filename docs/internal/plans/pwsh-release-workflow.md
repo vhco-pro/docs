@@ -632,6 +632,7 @@ None.
 | 2026-11-17 | R-3 | spec | `6cdeb70` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 13 should-fix and 2 nits |
 | 2026-11-17 | R-4 | spec | `9a49899` | claude-opus-5-5 | procedural | Not clean: 6 should-fix and 5 nits |
 | 2026-11-17 | R-5 | spec | `aa5e9aa` | claude-opus-5-5 | procedural | Not clean: 9 should-fix and 4 nits |
+| 2026-11-17 | R-6 | spec | `43ba4e1` | claude-opus-5-5 | procedural | Not clean: 7 should-fix and 2 nits |
 
 ### R-1
 
@@ -1195,6 +1196,71 @@ SEVERITY: nit
 WHERE: Sources; Design, `package-pwsh-script-action` v2 ("PS2EXE compiles with the .NET Framework that ships with Windows"); Context, "Three jobs decide one version" ("`actions/cache` saves nothing on an exact key hit")
 EVIDENCE: Both claims rest on external pages, the PS2EXE README and the actions/cache README, and Sources lists neither. conventions/feature-documents.md: "Sources lists every external page read, each with the claim it supports."
 PROPOSAL: Add both pages to Sources with the claims they support.
+
+### R-6
+
+FINDING: F-01
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Tests" bullet (the `-WhatIf` sentence and "A VM run passes when it completes without error"); Design, PDS "Every other finding is fixed" (real `-WhatIf` support for the 43 state-changing functions); Acceptance Criteria, AC-16; Test Plan, row AC-16; Context, Owner summary, Proof
+EVIDENCE: The four functions the Design names do their external work outside any state-changing call, so a `-WhatIf` run completes without error only if `ShouldProcess` guards the whole body. On PDS origin/main (0770894): `Remove-StaleComputer.ps1:46` runs `Import-Module ActiveDirectory` and `:48` `Get-ADComputer` before the `Remove-ADComputer` at `:59`, and neither exists on a Windows 11 VM without RSAT and a domain. `New-AzSession.ps1:39` runs `Install-Module -Name Az` and `:41` `Connect-AzAccount`. Under `-WhatIf` the install is skipped and `Connect-AzAccount` is then not found. `Start-TaintWatcher.ps1:33` is `while ($true)` around `kubectl get nodes` and `Start-Sleep`, so it never completes, with or without `-WhatIf`, unless the loop sits inside `ShouldProcess`. The usual placement guards only the state-changing call, so that for example `Remove-StaleComputer -WhatIf` lists the computers it would remove. Under that placement AC-16 cannot be met. Under the other placement it is met by a run that executes nothing. The Design picks neither, so implementers would build different functions. X introduced this route when it applied R-5 F-04.
+PROPOSAL: State where `ShouldProcess` sits for functions that need an external service: around the module import, the reads and the watch loop, or only around the change. Give `Start-TaintWatcher` a way to finish, such as a bounded iteration parameter, or prove these functions by mocked tests only, on an owner-approved list. Make AC-16 and its proof match.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Recovery" (the bullet on a defect in the tag's own `release.yml`, `checks.yml` or action pins); Design, PDS "Release notes" ("so the first notes start at the `v` baseline"); Design, Legend ("New version"); Acceptance Criteria, AC-10 ("notes git-cliff rendered from the commits since the baseline"); Test Plan, row AC-10
+EVIDENCE: `gh-release-action` v0.1.1 `scripts/select-range.sh` starts the notes at the highest stable tag merged into the release commit (`git for-each-ref --merged="$REVISION" --sort=-version:refname ... refs/tags`, first match of `^v[0-9]+\.[0-9]+\.[0-9]+$` other than the tag). It reads tags and never checks for a Release. The Recovery bullet keeps an abandoned tag without a Release. The next tag's notes therefore start at the abandoned tag, and the commits between the baseline and the abandoned tag appear in no Release's notes. AC-10 now targets "the first PDS merge ... whose release completes" yet still requires notes "from the commits since the baseline", and no implementation can meet that after a first tag is abandoned. The fix-forward also needs a bumping commit. The bundled config (`gitversion-tag-action@v7.0.4:gitversion.yml`) bumps only on `feat`, `fix`, `chore`, `perf`, `refactor`, `revert` and breaking markers, and the Legend says a `ci` commit "computes an existing version, and the tag action skips it". A workflow fix written as `ci(release): ...` creates no new tag. The abandoned version's Gallery release notes (Design: "a link to the GitHub Release") would point at a Release that never exists. X added the abandoned-tag bullet and the "whose release completes" wording.
+PROPOSAL: Decide what happens to an abandoned tag: delete it when nothing was published from it, or keep it and say that the next notes start at it. Reword AC-10 and the Release notes bullet to "since the previous stable `v` tag". Say that the fix-forward commit must be a bumping type such as `fix:`.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Rollout order" ("Until the new path has released once, rollback is reverting the whole migration change"); Context, Owner summary, "Migration and rollback"
+EVIDENCE: In `release.yml` the APT and Gallery jobs publish before the Release job runs (steps 3 to 5), so the first `v` tag's run can put `0.25.0` on the Gallery and in the APT index and then fail at the Release job or with a defect in its own files. It is unclear whether that state counts as "released once". If it does not, the document allows a revert. The restored `PDS/gitversion.yml:5` (`tag-prefix: ''`) cannot read `v0.25.0` and computes from `0.24.1`, so the old workflows publish either a lower version than the Gallery's `0.25.0` or `0.25.0` again, which the Gallery refuses. X added the fix-forward sentence but kept "released once" as the boundary.
+PROPOSAL: End the revert window at the first post-baseline `v` tag push, or at the first publish by any job. After that, say a problem is fixed forward with a new version.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Recovery" ("A failed job is rerun ... with `gh run rerun <run-id> --failed`; the jobs that succeeded are not repeated"); Design, PDS `release.yml` step 3 (APT job); Acceptance Criteria, AC-10 (index lists every Release with a `.deb`) and AC-15
+EVIDENCE: The APT job builds the index from published Releases plus its own run's `.deb`. Take tag N whose APT job succeeds and whose Gallery job fails. The queued run for N+1 then starts and deploys an index without N, because N has no Release yet. A later `gh run rerun <N> --failed` reruns only the Gallery and Release jobs. N's Release is created, but no APT job runs again, so the live index lacks a published Release's `.deb` until the next release. That breaks the invariant AC-10 states. The Recovery bullet does not cover this case and only says the Release gets "the same files the APT job deployed". The draft-free ordering that produces this came in X.
+PROPOSAL: In Recovery, say that when another tag's run deployed after the failure, the APT job is rerun once the Release exists (it then uses the Release's `.deb`), or the whole run is rerun. Alternatively, accept that the index catches up at the next release and say so.
+
+FINDING: F-05
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Workflow rules" bullet; Design, `pwsh-ci-action`, `setup-pwsh-action` and the two existing actions (repository layout, `test.yml`, `release.yml`); Acceptance Criteria, AC-01, AC-08 and AC-09; Test Plan, rows AC-01, AC-08 and AC-09
+EVIDENCE: The bullet says every PDS workflow follows conventions/github-actions.md (74d69ce) and then lists four rules after a colon. No criterion or proof checks any of them, so every box can be ticked with none applied. The page has more rules than the four: "No `${{ }}` expression in a `run:` block", "Check out with `persist-credentials: false`", "Move a long `run:` block to a script". The current APT job breaks the first one (`build-apt-package.yml:254-288` interpolates `${{ secrets.GPG_PASSPHRASE }}`, and `:173` `${{ env.VERSION }}`), and the Design says PDS "keeps its packaging and test steps". The page also says it applies to "every action, reusable workflow and workflow in a personal repository", which includes the four action repositories this feature creates or changes, but the document says only that PDS follows it. X added this bullet when it applied R-5 F-09.
+PROPOSAL: Say whether the whole page applies, to PDS only or to the action repositories as well, or name the subset. Add a criterion with a proof: `actionlint` passes in `checks.yml`, and a read of each workflow finds `permissions: {}`, `timeout-minutes`, `defaults.run.shell` and no `${{` inside a `run:` block.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-20 ("leaves no Release behind when an upload fails"); Test Plan, row AC-20; Design, `gh-release-action` files
+EVIDENCE: The draft-then-delete behaviour is gh's own, not the action's. cli/cli `pkg/cmd/release/create/create.go` sets `draftWhileUploading` only when `hasAssets && !opts.Draft` (lines 503-515) and deletes that draft on an upload or publish failure (lines 536-563). The AC-20 proof runs against the action's mock `gh`, which replaces the binary (`tests/mock-gh.sh` matches `release create` and prints a URL). A mock scripted to fail the upload "leaves no Release" whatever the action calls. A wrong implementation, such as `gh release create` without files followed by `gh release upload`, which leaves a public Release missing a file, or a `--draft` create, which gh never cleans up, passes the same mock test.
+PROPOSAL: Make the proof assert that the action makes exactly one `gh release create <tag> <files...>` call without `--draft` and never calls `gh release upload`, which is the condition under which gh cleans up. Optionally add one live run on a scratch repository with an unreadable file.
+
+FINDING: F-07
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, `gh-release-action` files (`files` bullet); Scope (one optional input `files`); Acceptance Criteria, AC-20
+EVIDENCE: The input is defined only as "paths to attach". The Design does not say how paths are separated (newlines or whitespace), whether globs expand, what paths are relative to, or what happens to a missing path. Composite inputs arrive as one string. conventions/github-actions.md (74d69ce), "Validate inputs in the script", asks the script to check every input and fail naming it. This is a new public input on a shared action that `gh-release-workflow` callers can adopt, so two implementers would ship different contracts.
+PROPOSAL: Define `files` as newline-separated paths relative to the workspace, with no glob expansion, each required to exist, and a failure that names a missing path. Add the missing-path case to the AC-20 tests.
+
+FINDING: F-08
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("No draft is ever left half-filled, and a failed release is finished by rerunning its failed jobs"); Design, PDS "Recovery"
+EVIDENCE: Recovery says "A cancelled Release job can leave a hidden draft", which can hold only some files, so "no draft is ever left half-filled" overstates it. Recovery also has a case that rerunning cannot finish: a defect in the tag's own workflow files is fixed with a new version, leaving an abandoned tag and possibly a Gallery version without a Release. The summary omits it.
+PROPOSAL: Write that no partial Release is ever public, that a cancelled job can leave a hidden draft to delete, and that a defect in the tag's own workflow is fixed forward with a new version.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: nit
+WHERE: Sources (cli/cli release commands entry); Design, `gh-release-action` files; Design, PDS "Recovery"
+EVIDENCE: The cli/cli entry records that "a draft created with assets is not cleaned up when an upload fails". The Design now relies on the opposite case: a non-draft create with assets uploads to a hidden draft and deletes it on failure (`create.go` lines 503-515 and 536-563). Recovery relies on GitHub's re-run behaviour: the 30-day limit, rerunning failed jobs with their dependents, and reuse of artifacts from succeeded jobs. Sources lists no page for these. conventions/github-actions.md cites "Re-run workflows and jobs" for the 30-day limit.
+PROPOSAL: Restate the cli/cli claim as the one the Design uses, and add the GitHub re-run page with the claims Recovery takes from it.
 
 ## Sources
 

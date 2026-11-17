@@ -473,6 +473,7 @@ None.
 | Date | Review | Kind | Commit | Model | Isolation | Outcome |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-17 | R-1 | spec | `bae0bb0` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 16 should-fix and 4 nits |
+| 2026-11-17 | R-2 | spec | `099d660` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 14 should-fix and 3 nits |
 
 ### R-1
 
@@ -622,6 +623,134 @@ SEVERITY: nit
 WHERE: Context, "A pull request runs the release" (run list) and "The actions fall short of the conventions" (code search output)
 EVIDENCE: `gh run list -R michielvha/PDS` shows a `push main success` run of Publish PowerShell Module at 2026-11-17T15:46:31Z, which published 0.24.0 at 68b1601. It came before the document's commit (3659198, 16:16 UTC) but is missing from the quoted `--limit 4` output. The second code search also returns `michielvha/package-pwsh-script-action readme.md`, which the quoted output leaves out.
 PROPOSAL: Refresh both command outputs so they match what the commands return.
+
+### R-2
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Design, Legend ("Runs queue in one repository-wide group and never cancel each other"); Design, mermaid ("release.yml on tag push, one at a time"); Design, PDS `release.yml` bullet (concurrency group `release-<repository>` with `cancel-in-progress: false`); Design, PDS "Reruns" bullet
+EVIDENCE: GitHub's concurrency docs (github/docs `data/reusables/actions/actions-group-concurrency.md`, which applies to github.com through `data/features/actions-nga.yml`: `fpt: '*'`) say that by default (`queue: single`) "any existing `pending` job or workflow in the same concurrency group will be canceled and the new queued job or workflow will take its place". Only `queue: max` keeps up to 100 runs pending. With only `cancel-in-progress: false`, three tags in quick succession leave the middle tag's run cancelled while it waits. That tag then has no Release, no APT entry and no Gallery version, and nothing in the design notices. So the Legend states something false, and fixing it changes what gets built. This text was added in 099d660 when applying R-1 F-09.
+PROPOSAL: Specify `queue: max` with `cancel-in-progress: false` for the `release.yml` group in the bullet, the Legend and the mermaid label. Alternatively, state that a cancelled pending tag run is recovered by dispatch, and say how it is detected.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Context, "Three jobs decide one version" (the `Packages` index and aptly cache sentence); Scope, out of scope ("Changing what the APT build and test steps do ... the deploy gains the concurrency and rerun rules below"); Design, PDS "Reruns" bullet ("The APT deploy adds a version the repository does not hold yet"); Acceptance Criteria, AC-10 and AC-15; Test Plan, rows AC-10 and AC-15
+EVIDENCE: `gh cache list -R michielvha/PDS` shows the only key, `aptly-repo-Linux-michielvha/PDS`, created 2026-11-05T07:40:52Z. That is 26 seconds after the 0.20.0 Release (07:40:26Z, `gh release list`), and the key was last used 2026-11-13T00:46:49Z by the 0.23.0 run. `build-apt-package.yml:218-223` restores that fixed key. actions/cache saves no new entry on an exact key hit, so every run starts from the 0.20.0 state and adds only its own package. The 0.21.0 run (2026-11-12 07:01) and the 0.23.0 run (2026-11-13 00:46) were 18 hours apart, not concurrent. The live index (`curl .../PDS/apt/dists/stable/main/binary-all/Packages`) lists exactly 0.23.0 and 0.20.0. The missing 0.21.0 therefore comes from the immutable cache, not from a missing concurrency guard, and the concurrency group added in 099d660 (R-1 F-09) does not fix it. Once every tag deploys APT, each release drops the previous one from the index. The AC-10 proof ("the APT `Packages` index lists it") and the AC-15 proof (index unchanged on rerun) both pass in that state.
+PROPOSAL: Make the deploy build the aptly repository from every GitHub Release's `.deb`, or save its state under a key that changes per version, and move that change into scope. Have the AC-10 proof check that the index lists every released version, not only the new one.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet (trigger: `push` of `v*.*.*` tags only); Design, PDS "Reruns" bullet ("recovered by a fresh dispatch of `release.yml` for that tag"); Context, Owner summary ("The tag push alone publishes"); Acceptance Criteria, AC-15; Test Plan, row AC-15 ("Dispatch `release.yml` again")
+EVIDENCE: The trigger list has no `workflow_dispatch`, and the Go model it copies (`go-release-workflow/examples/separate-workflows/release.yml`) has only `push: tags: ['v*.*.*']`. `gh workflow run` refuses a workflow without a `workflow_dispatch` trigger, so the AC-15 proof cannot run against a release.yml built to the trigger list. The design also does not say how a dispatch names the tag. A `--ref <tag>` run and a main-ref run with a tag input give different `github.ref` values to the concurrency group and to the `github-pages` tag policy. The Reruns bullet and AC-15 were added in 099d660.
+PROPOSAL: Add `workflow_dispatch` to `release.yml`, run it with `--ref v<version>`, and have the workflow refuse a ref that is not an exact tag. State this in the trigger bullet and in the AC-15 proof.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet (trigger `v*.*.*` and step order ending with the Gallery publish); Design, Legend (a tag pushed by hand is released); Design, `publish-pwsh-module-action` v3 (prerelease tag fails); Scope ("PDS releases stable versions from `main` only"); Scope, out of scope (prerelease tags); Context, Owner summary, Defaults
+EVIDENCE: The tag filter `v*.*.*` matches `v0.25.0-rc.1`, because `*` matches any characters except `/`. Prereleases are refused only by the publish action, which runs last, after the GitHub Release is created and the APT repository is deployed. A prerelease tag pushed by hand therefore publishes a Release and an APT package before failing. Debian reads `0.25.0-rc.1` as upstream `0.25.0` with revision `rc.1`, which sorts above `0.25.0`. APT clients would install the rc, and the stable `0.25.0` would look older. The stable-only default does not hold for the flow as designed.
+PROPOSAL: Make the first step of `release.yml` accept only `vMAJOR.MINOR.PATCH` and fail before any build or publish step, or narrow the trigger to exclude `-`. Add a criterion and a proof: a prerelease tag publishes nothing.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, Legend ("release.yml runs the checks again on the exact tag before publishing, so a tag pushed by hand cannot publish unchecked source"); Design, mermaid ("pwsh-ci-action on the tagged commit"); Design, PDS `ci.yml` bullet and `release.yml` bullet
+EVIDENCE: `ci.yml` runs ShellCheck and the package build and install tests. `release.yml` lists only `pwsh-ci-action` and then "the `.deb` and `.exe` builds". In `build-apt-package.yml`, ShellCheck is a separate `lint` job (:48-62), the package tests are steps of `build` (:98-103) and the install tests are a separate `test-install` job (:118-140). Whether the tag run repeats `lint` and `test-install` is undefined. knowledge/tag-driven-go-releases.md, "Check first or tag first": "the checks inside the release workflow protect the artifact ... including for a tag pushed by hand".
+PROPOSAL: State that `release.yml` runs every `ci.yml` check (ShellCheck, package tests, install tests and `pwsh-ci-action`) on the tag before any publish step, for example through one reusable checks workflow that both call.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet ("the package build and install tests moved unchanged from `build-apt-package.yml`"); Design, PDS "Version" bullet (`PDS/gitversion.yml` dropped); Scope, out of scope ("Their trigger, version source and release owner move"); Context, "Three jobs decide one version"
+EVIDENCE: The `build` job `needs: [version, lint]` (:66) and takes `needs.version.outputs.semVer` (:78, :88-92, :107). The `version` job runs `gitversion-tag-action` with `configFilePath: gitversion.yml` (:44-47). Once the migration drops that file, `gitversion-tag-action@v7.0.4:scripts/select-config.sh` exits 1 with "GitVersion config not found", so the moved jobs fail on every push and `version-workflow` never runs. `version-workflow` runs after the checks, so its output cannot feed them. Keeping a dry-run GitVersion job would bring back a second version computation, the problem Context describes.
+PROPOSAL: Name the version the CI package build uses, such as a fixed placeholder, and remove the separate GitVersion job from what moves into `ci.yml`.
+
+FINDING: F-07
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Reruns" bullet ("uploads only the assets it lacks", "adds a version the repository does not hold yet"); Acceptance Criteria, AC-15; Test Plan, row AC-15
+EVIDENCE: Every `release.yml` run rebuilds the `.deb` and `.exe`. Suppose the Release was created and the APT deploy then failed. The recovery run keeps the Release's first `.deb` but adds a freshly built one to APT, so one version maps to two files unless the build is reproducible, which the document does not claim. knowledge/tag-driven-go-releases.md, "Failure and retry", which the Design says it follows: "A public release exists: Do not overwrite its assets; collisions must fail". The design skips existing assets instead, and no Open Question records that difference. The Reruns bullet was added in 099d660.
+PROPOSAL: On a rerun, publish to APT the `.deb` already attached to the Release, or compare checksums and fail on a mismatch. Raise "skip existing assets" versus "fail on collision" as an Open Question.
+
+FINDING: F-08
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Rollout order" ("rollback is restoring the three old workflows at those pins"); Context, Owner summary, "Migration and rollback"
+EVIDENCE: All three old workflows read `gitversion.yml`: `build-apt-package.yml:46`, `package-ps1-script.yaml:36` (`config-file: 'gitversion.yml'`) and `publish-pwsh-module-action@753afb5:action.yml:44`. The migration deletes `PDS/gitversion.yml` and changes the release-notes template URL to `v{{VERSION}}`. Restoring only the workflows therefore fails at GitVersion, and if it ran, its Releases would link a `v` path that the unprefixed tags do not have.
+PROPOSAL: Define rollback as reverting the whole migration change (workflows, `gitversion.yml`, template and loader), and state that the `v` baseline tag stays.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Settings" bullet ("configures the `CodeFormatting` preset's rules under `Rules`"); Design, `pwsh-ci-action` check 2 ("A missing settings file fails, so the rule set is always explicit"); Acceptance Criteria, AC-12; Test Plan, row AC-12 ("read the settings file")
+EVIDENCE: `PowerShell/PSScriptAnalyzer` `Engine/Settings/CodeFormatting.psd1` begins with `IncludeRules` listing only the six formatting rules. A settings file built from the preset that keeps `IncludeRules` makes `Invoke-ScriptAnalyzer` run only those six rules. The 86 non-`Write-Host` warnings in the baseline (43 `PSUseShouldProcessForStateChangingFunctions`, 14 `PSUseSingularNouns` and others) would then never be checked, and Analyze passes. Neither AC-12 nor its proof rules this out.
+PROPOSAL: State that the PDS settings file has no `IncludeRules`, so the default rules run plus the formatting rules under `Rules`. Make the AC-12 proof check this, for example by showing that a default-rule warning fails under the committed settings.
+
+FINDING: F-10
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-12 ("every in-source suppression carries a `Justification`"); Test Plan, row AC-12 ("`grep` for `SuppressMessageAttribute` without `Justification` finds none"); Design, PDS "Every other finding is fixed" bullet
+EVIDENCE: PowerShell resolves an attribute name with or without the `Attribute` suffix, so `[Diagnostics.CodeAnalysis.SuppressMessage('Rule', '')]` is a valid suppression that a grep for `SuppressMessageAttribute` misses. A line grep also misses an attribute split across lines, and it accepts `Justification = ''`. A wrong implementation passes the proof.
+PROPOSAL: Prove AC-12 with `Invoke-ScriptAnalyzer -SuppressedOnly` over the module and the committed settings, requiring a non-empty `Justification` on every returned record.
+
+FINDING: F-11
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-16; Test Plan, row AC-16; Design, PDS "Tests" bullet ("the `ShouldProcess`, CIM, `Invoke-Expression` and rename fixes"); Context, Owner summary, Proof
+EVIDENCE: The Design's list leaves out other required fixes that change code paths: 5 `PSAvoidAssignmentToAutomaticVariable`, 3 `PSAvoidUsingEmptyCatchBlock`, 2 `PSReviewUnusedParameter` and 2 `PSAvoidUsingCmdletAliases` (Context baseline). Renaming a shadowed `$input` or `$args`, or adding catch handling, can change behaviour. AC-16 says "each function whose behaviour this feature changes" with no list. Its proof is a table in the PR that cannot show it is complete, so two implementers would run different VM sets.
+PROPOSAL: Define the set mechanically, for example every public function whose diff changes more than formatting, encoding or `Write-Host`. Have the proof compare the VM table against that list.
+
+FINDING: F-12
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action` (pinned module installs; "The action runs on `pwsh` on Linux, macOS and Windows runners"; "a local pass predicts the hosted one"); Design, `publish-pwsh-module-action` v3 ("It runs on `pwsh`"); Context, "No PowerShell checks exist" (measured with PowerShell 7.5.13)
+EVIDENCE: conventions/delivery.md, Pinning and updates: "Do not silently accept a different preinstalled version." The Design applies that rule to reject the runners' Pester and PSScriptAnalyzer, but it runs on whatever `pwsh` the runner image ships, and v3 publishes with the preinstalled PowerShellGet `Publish-Module`. The model, `go-ci-action`, pins its toolchain (`action.yml:25-27`, `actions/setup-go` with `go-version-file`). The parser and runtime version can change analyzer and formatter verdicts between a local and a hosted run.
+PROPOSAL: Decide whether the actions accept the runner's `pwsh` (printing and enforcing a minimum version) or install a pinned one, and the same for the publishing cmdlets. Raise the choice as an Open Question.
+
+FINDING: F-13
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `publish-pwsh-module-action` v3 (input list); Acceptance Criteria, AC-08 ("a `test.yml` that runs the action on itself"); Acceptance Criteria, AC-07; Test Plan, row AC-07 ("against a stub Gallery lookup")
+EVIDENCE: The v3 inputs are `module-path`, `tag`, `api-key`, `root-module`, `description`, `company-name`, `author` and `release-notes`. None selects a repository or a non-publishing mode. Running the action on itself in `test.yml` would either publish to the PowerShell Gallery or fail for want of a key. A "stub Gallery lookup" needs a seam the Design does not define, so implementers would invent different ones.
+PROPOSAL: Add a `repository` or `dry-run` input, or name the script seam the tests use, and say how `test.yml` runs the action end to end without publishing.
+
+FINDING: F-14
+KIND: factual
+SEVERITY: should-fix
+WHERE: Scope ("plus the repository hygiene each one lacks: SHA pins, Renovate ..., tests, `AGENTS.md`, Apache-2.0 licence and exact releases through `gh-release-workflow`"); Acceptance Criteria, AC-05 and AC-08; Test Plan, rows AC-05 and AC-08; Context, "The actions fall short of the conventions" table
+EVIDENCE: AC-01 requires Apache-2.0, full-SHA `uses:` pins and a release through `gh-release-workflow`, but only for `pwsh-ci-action`. AC-05 and AC-08 require none of these for the two existing actions. Today `gh repo view` reports no licence for either, and `reports/2026-10-23-release-rollout-handover.md:161-164` lists both as missing one. A finished implementation could leave both unlicensed and pass every proof.
+PROPOSAL: Extend AC-08 to require an Apache-2.0 `LICENSE`, full-SHA external `uses:` with release comments, and a release through `gh-release-workflow` for both actions, proved as AC-01 is.
+
+FINDING: F-15
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-02; Acceptance Criteria, AC-02
+EVIDENCE: The row reads "The action's behaviour tests over `tests/fixtures`, and `test.yml` running the composite on GitHub". It names no check that the failure message names the failed check, or that the run "changes no file". A Format step that rewrites files would pass. conventions/feature-documents.md, Test plan: "Proof names a real check: a test, a scenario with a pass condition".
+PROPOSAL: State the pass conditions: for each failing fixture the exit code is non-zero and the output names the check, and `git status --porcelain` on the fixture is empty after every run.
+
+FINDING: F-16
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("both files plus the `.exe` to one GitHub Release") and "Migration and rollback" ("PDS first pins the current publish action by SHA")
+EVIDENCE: AC-10 attaches the `.deb` and the `.exe`, two files, to the Release. "Both files plus the `.exe`" reads as three. The Design's rollout order pins both actions, not only the publish action.
+PROPOSAL: Say "the `.deb` and the `.exe` to one GitHub Release", and say that PDS pins both actions by SHA.
+
+FINDING: F-17
+KIND: factual
+SEVERITY: nit
+WHERE: Acceptance Criteria, AC-10 ("`v<latest release>` exists on the latest release commit"); Design, PDS "Version" bullet ("the commit of the latest release tag (`0.24.1` today)")
+EVIDENCE: Context separates the latest tag, `0.24.1`, from the latest GitHub Release, `0.23.0` (`gh release list`). "Latest release" in AC-10 can be read as either, while the Design means the latest release tag.
+PROPOSAL: Say "the latest release tag" in AC-10.
+
+FINDING: F-18
+KIND: factual
+SEVERITY: nit
+WHERE: Context, "No PowerShell checks exist" ("files: 81 (module: 78, scripts: 3)") and the formatter output ("files: 81")
+EVIDENCE: `git ls-tree -r --name-only b1e5857 | grep -iE '\.(ps1|psm1|psd1)$'` lists 82 files: 79 under `pwsh/module` (77 functions, `Update-Env.Tests.ps1` and `PDS.psm1`) and 3 under `pwsh/scripts`. I could not rerun the analyzer, because no PowerShell is available here.
+PROPOSAL: Correct the file count or say which file the measurement excluded.
 
 ## Sources
 

@@ -599,6 +599,7 @@ None.
 | 2026-11-17 | R-1 | spec | `bae0bb0` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 16 should-fix and 4 nits |
 | 2026-11-17 | R-2 | spec | `099d660` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 14 should-fix and 3 nits |
 | 2026-11-17 | R-3 | spec | `6cdeb70` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 13 should-fix and 2 nits |
+| 2026-11-17 | R-4 | spec | `9a49899` | claude-opus-5-5 | procedural | Not clean: 6 should-fix and 5 nits |
 
 ### R-1
 
@@ -990,6 +991,85 @@ SEVERITY: nit
 WHERE: Context, Owner summary, Approach ("The tag push alone publishes")
 EVIDENCE: The Design's `release.yml` also triggers on `workflow_dispatch` run with `--ref v<version>`, added in 6cdeb70, so a dispatch on an exact tag also publishes.
 PROPOSAL: Say "Only an exact `v` tag publishes, through its push or a dispatch on that tag".
+
+### R-4
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `gh-release-action` files and drafts (`files` and `draft` bullets); Design, PDS `release.yml` bullet (steps 2, 3 and 5); Design, PDS "Release rule and recovery"; Context, "Three jobs decide one version" ("creates the Release, keeping an existing one unchanged"); Acceptance Criteria, AC-15 and AC-20; Test Plan, rows AC-15 and AC-20
+EVIDENCE: Today the action decides whether a Release exists with `gh api "repos/$GH_REPO/releases/tags/$TAG"` and treats only a 404 as absent (`gh-release-action` v0.1.1 `scripts/publish-release.sh`). That endpoint returns published releases only. gh itself needs a separate lookup for drafts: cli/cli `pkg/cmd/release/shared/fetch.go` says "FetchRelease finds a published repository release by its tagName, or a draft release by its pending tag name" and runs `fetchDraftRelease` beside the `releases/tags` path. `create.go` checks for an existing release only when `!opts.Draft`. So if the extension keeps the current lookup, a rerun or dispatch after the draft exists sees 404 and creates a second draft with freshly built files. The `draft: false` job would see 404 too and create a new release instead of publishing the draft. The Design never says that the lookup has to change to find drafts. The AC-20 and AC-15 decision tests run against `tests/mock-gh.sh`, which answers the `releases/tags` call from `RELEASE_CASE` whatever the draft state is, so they pass on the wrong lookup. The live AC-15 reruns happen after the Release is public, so they never reach the case where a draft already exists. This draft flow came in after R-3 (6cdeb70..9a49899).
+PROPOSAL: Say that the action finds a Release for the tag whether it is a draft or published, and that it fails when more than one draft has the tag. Add mock cases where an existing draft is returned only by the draft lookup. Also give the `draft` input's default so that "neither input set" is unambiguous.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Release rule and recovery" ("any other state ... fails the job for inspection. Every failure, whatever its cause, is therefore recovered the same way: rerun"); Design, `gh-release-action` `files` bullet ("any other set fails"); Context, Owner summary, Approach ("every failure is recovered by running the release again"); Acceptance Criteria, AC-15 (second sentence); Test Plan, row AC-15
+EVIDENCE: `gh release create --draft` with assets creates the release first and uploads afterwards. `draftWhileUploading` is set only when `hasAssets && !opts.Draft` (cli/cli `pkg/cmd/release/create/create.go`), so on a draft an upload failure skips the cleanup and leaves a draft holding only some of the files. A job cancelled during the upload does the same. Under the Design's rule that state fails the Release job on every rerun and dispatch, so running the release again never recovers it. knowledge/tag-driven-go-releases.md, Failure and retry, lists "A partial draft exists: Inspect it before retrying; ... do not delete or replace the draft automatically" as a manual state. The document therefore contradicts itself, and one implementer would add uploading missing files to a draft while another keeps the hard failure.
+PROPOSAL: Name the partial draft as the one state that needs manual recovery (inspect it, then delete the draft or attach the missing file by hand, then rerun), or let the action upload missing files to a draft, which is not public, without replacing any file. Make the Owner summary and the recovery bullet say the same thing.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `release.yml` bullet, step 2 ("The Release job builds the `.exe` and calls `gh-release-action`"); Design, `package-pwsh-script-action` v2; Design, `gh-release-action` files and drafts
+EVIDENCE: PS2EXE needs Windows. Its README (line 98) says that on PowerShell Core "the compiler of .Net Framework is used (.Net Framework and Powershell 5.1 are included in Windows)", and `package-pwsh-script-action` `readme.md:119` says "The action requires a Windows runner". `gh-release-action` assumes a POSIX runner: `scripts/install-git-cliff.sh` runs `python3 -m venv` and then `"$ENVIRONMENT/bin/pip"` and `"$ENVIRONMENT/bin/git-cliff"`, but a Windows venv puts these under `Scripts\`, and its README documents only Linux and macOS. A single Release job therefore cannot both build the `.exe` and call the action. One implementer would split it into a Windows build job and a Linux release job; another would port `gh-release-action` to Windows. The Design names neither, and does not say the package action is Windows-only. This step came in after R-3 (6cdeb70..9a49899).
+PROPOSAL: Specify a Windows job that builds the `.exe` and uploads it as an artifact, followed by a Linux Release job that downloads both files and calls `gh-release-action`. Alternatively, make Windows support part of the `gh-release-action` change, with a test. State that `package-pwsh-script-action` runs only on Windows runners.
+
+FINDING: F-04
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action` ("Run locally, `ci.ps1` warns when its PowerShell differs from the pinned version"); Design, `setup-pwsh-action` ("The version and its checksums sit in one file in this action"); Acceptance Criteria, AC-17 ("`ci.ps1` warns when run under a different version"); Test Plan, row AC-17
+EVIDENCE: The PowerShell pin lives only in `setup-pwsh-action`'s file. `pwsh-ci-action` refers to that action only by a full SHA in its `action.yml`, and a developer running `ci.ps1` locally has no `setup-pwsh-action` checkout. To warn, `ci.ps1` needs the pinned version from somewhere. It could use a second copy in `pwsh-ci-action`, which no Renovate manager updates in step and which goes against delivery's "Store tool configuration once, next to its owning component". It could fetch the file at the pinned SHA over the network, or it could take a value the action passes from the `version` output, which has no local equivalent. The Design picks none of these, so implementers would build different version sources. This came in after R-3 (6cdeb70..9a49899).
+PROPOSAL: Say where `ci.ps1` gets the pinned version, both locally and in the action. One option: the action passes `setup-pwsh-action`'s `version` output, and `test.yml` checks that a local default matches it. Make the AC-17 proof cover that source.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: should-fix
+WHERE: Scope ("Renovate with custom managers for tool pins"); Scope, owner steps; Design, `pwsh-ci-action` (custom manager on the `nuget` datasource); Design, `setup-pwsh-action` (custom manager on `github-releases`); Design, `package-pwsh-script-action` v2 (PS2EXE custom manager); Context, Owner summary, "Permissions and owner steps"; Acceptance Criteria, AC-08; Test Plan, row AC-08
+EVIDENCE: `vhco-pro/version-workflow`, `gh-release-workflow`, `go-release-workflow`, `gh-release-action` and `docs` all carry `.github/dependabot.yml` and no Renovate configuration (`gh api repos/vhco-pro/<repo>/contents/.github`). `gh search issues "Dependency Dashboard" --owner vhco-pro` returns nothing, while the same search under `michielvha` returns PDS and other repositories. So there is no evidence that the managed Renovate App reaches `vhco-pro` repositories. Two of the new repositories, `pwsh-ci-action` and `setup-pwsh-action`, live there, and their PSScriptAnalyzer, Pester and PowerShell pins depend on Renovate custom managers that Dependabot cannot run. knowledge/managed-renovate.md says "A config file is not proof that the App is installed ... Check the Dependency Dashboard or update PRs after adoption", and delivery says "Adding a dependency includes confirming the updater will propose its next version". The AC-08 proof only reads `renovate.json5`, so it passes even when no updater ever runs.
+PROPOSAL: Add confirming or granting the Renovate App's access to the new `vhco-pro` repositories as an owner step. Make the AC-08 proof show each repository's Dependency Dashboard listing every custom-manager dependency.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, Legend ("Nothing depends on the order they start in"); Design, `gh-release-action` `draft` bullet ("the action makes that draft public"); Design, PDS `release.yml` bullet, step 5; Design, PDS "Release rule and recovery" (dispatch on the tag)
+EVIDENCE: `gh-release-action` marks only prerelease tags `--latest=false` (`scripts/publish-release.sh`), and its README says only a prerelease "does not become the latest release", so a stable release takes GitHub's latest marking when it is published. Each tag's release run is independent. Recovering an older tag after a newer one has gone public, which the recovery bullet allows by dispatch, makes the older draft public last. The concurrency docs say queue "ordering is not guaranteed", so a queue can publish out of order too. The Design does not say whether making a draft public sets it latest, so the GitHub latest release can end up pointing at an older version, which contradicts the Legend's claim. This text came in after R-3 (6cdeb70..9a49899).
+PROPOSAL: Say that making a draft public marks it latest only when it is the highest stable `v` version, add that case to the AC-20 mock tests, and drop or qualify "Nothing depends on the order".
+
+FINDING: F-07
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("created by the shared `gh-release-action`")
+EVIDENCE: Scope adds two inputs to `vhco-pro/gh-release-action`, released as `v0.2.0`. `gh-release-workflow` composes that action for every repository whose tag is the release (knowledge/shared-delivery.md). The Owner summary names the action as the creator of the PDS Release but never says the shared action changes.
+PROPOSAL: Add one sentence to the Approach: `gh-release-action` gains optional `files` and `draft` inputs in `v0.2.0`, and its behaviour is unchanged without them.
+
+FINDING: F-08
+KIND: factual
+SEVERITY: nit
+WHERE: Design, "Releasing the actions" ("`setup-pwsh-action` releases first, then `pwsh-ci-action` and `gh-release-action` `v0.2.0`, because the others pin them")
+EVIDENCE: Under the Design, `gh-release-action` neither pins `setup-pwsh-action` nor is pinned by the PowerShell actions. The real dependencies are that `pwsh-ci-action` and the two existing actions pin `setup-pwsh-action`, and PDS's `release.yml` pins `gh-release-action` `v0.2.0`.
+PROPOSAL: State the order and the dependency behind each step: `setup-pwsh-action` before the three PowerShell actions, and `gh-release-action` `v0.2.0` before the PDS migration.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: nit
+WHERE: Design, `setup-pwsh-action` ("the only match, `PSModule/Install-PowerShell`, has one star"); Sources
+EVIDENCE: `gh api repos/PSModule/Install-PowerShell` shows 1 star. `gh search repos setup-pwsh` also returns `milliewalky/setup-pwsh` (4 stars) and `mchave3/setup-pwsh` (2 stars), so it is not the only match, although the conclusion stands. Sources does not list this repository, the GitHub concurrency page behind `queue: max`, or the PowerShell release assets the Design relies on.
+PROPOSAL: Say "the closest matches have a handful of stars", and add the external pages read to Sources with the claims they support.
+
+FINDING: F-10
+KIND: factual
+SEVERITY: nit
+WHERE: Test Plan, row AC-20 ("`gh-release-workflow`'s own dry run passes on `v0.2.0`")
+EVIDENCE: In `gh-release-action`'s `action.yml` the "Publish the release" step has `if: ${{ inputs.dry-run != 'true' }}`, so a dry run never executes `publish-release.sh`, the script the new inputs change. The dry run shows only that the new `action.yml` loads. The mock test of the unchanged default carries the real check.
+PROPOSAL: Say that the dry run only shows the action loads under `gh-release-workflow`, or drop it from the row.
+
+FINDING: F-11
+KIND: judgement
+SEVERITY: nit
+WHERE: Design, `setup-pwsh-action` (version and checksums matched by a `github-releases` custom manager)
+EVIDENCE: For the module pins and the PS2EXE pin, the Design says "The checksums still have to be refreshed in the same PR, so the README says how". `setup-pwsh-action` pins one checksum per operating system and architecture archive under a Renovate manager that updates only the version, and it gets no such note.
+PROPOSAL: Give `setup-pwsh-action` the same README note on refreshing checksums, pointing at the release's `hashes.sha256` asset.
 
 ## Sources
 

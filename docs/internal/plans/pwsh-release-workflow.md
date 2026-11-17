@@ -1,6 +1,6 @@
 ---
 status: draft
-status_description: "R-2 findings and the owner's answers applied in one revision; waiting on a new spec review."
+status_description: "R-3 findings and three owner answers applied; Q1 (where the PowerShell pin lives) is open for the owner to debate."
 issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
@@ -24,9 +24,11 @@ pushed a junk prerelease tag and reached the publish step, skipped only because 
 PDS runs no PowerShell lint or tests, and three workflows compute its version independently.
 
 **Approach.** A new `pwsh-ci-action` checks formatting, lint, module loading and Pester tests on every
-branch push. `version-workflow` tags `main` after the checks pass. The tag push alone publishes: one
-GitHub Release holding the `.deb` and the `.exe`, the APT repository rebuilt from every Release, and the
-module on the Gallery. A Release is never overwritten. The two existing PowerShell actions become
+branch push. `version-workflow` tags `main` after the checks pass. Only an exact `v` tag on a `main`
+commit publishes, through its push or a dispatch on that tag: a draft GitHub Release holding the tested
+`.deb` and the `.exe`, the APT repository rebuilt from every Release, the module on the Gallery, and
+then the Release made public. Release files are never overwritten, and every failure is recovered by
+running the release again. The two existing PowerShell actions become
 release-only and gain the repository hygiene the conventions require. The owner set this CI, version and
 tag shape as the target for every language.
 
@@ -34,11 +36,13 @@ tag shape as the target for every language.
 until a repository wants previews ([michielvha/publish-pwsh-module-action#7](https://github.com/michielvha/publish-pwsh-module-action/issues/7)).
 The analyzer settings exclude one rule, `PSAvoidUsingWriteHost`; every other finding is fixed, and an
 in-source suppression needs a written reason why fixing is wrong. Every public PDS function gets a
-Pester test. The actions run on a pinned, checksum-verified PowerShell, not the runner's.
+Pester test. The actions run on a pinned, checksum-verified PowerShell, not the runner's; where that pin
+lives is open (Q1).
 
 **Permissions and owner steps.** PDS needs the `michielvha-repo-write` App's variable and key so its tag
 push starts the release. The `github-pages` environment must allow `v*.*.*` tags. The Gallery key and the
-GPG signing key move to `release.yml` only.
+GPG signing key move to `release.yml`, where only the Gallery and APT jobs receive them; no workflow
+uses `secrets: inherit`.
 
 **Migration and rollback.** PDS first pins both current actions by SHA, so their release-only versions
 cannot break it. Tags gain the `v` prefix from a baseline tag on the latest release tag. Until the new
@@ -46,7 +50,8 @@ path has released once, rolling back means reverting the whole migration change;
 stays.
 
 **Proof.** Planned, not yet run: action behaviour tests over fixtures, a full PDS tag release and a rerun
-of it, and a real run on a disposable Windows 11 VM for every function whose behaviour changes. Observed
+of it, and a real run on a disposable Windows 11 VM for every function whose code changes beyond
+whitespace, byte-order marks and identifier casing. Observed
 so far: the analyzer and formatter baselines below, and a real-VM run that found the `Enable-SshServer`
 firewall defect a stubbed test had passed.
 
@@ -194,7 +199,7 @@ In scope:
 - PDS made to pass the new checks: a committed settings file, every baseline finding resolved as the
   Design says, and a Pester test for every public function.
 - PDS's APT deploy rebuilt from every GitHub Release's `.deb` on each run, replacing the stale cache.
-- A pinned, checksum-verified PowerShell in all three actions.
+- A pinned, checksum-verified PowerShell in all three actions; where its installer and pin live is Q1.
 - `knowledge/shared-delivery.md` rows for the new and changed components, and a new page,
   `knowledge/tag-driven-pwsh-releases.md`.
 - Owner steps, each done with the owner's approval during implementation: the `michielvha-repo-write`
@@ -225,9 +230,11 @@ separate-workflows arrangement: each action owns one intent, workflows only orch
 push starts the release workflow, and only an exact tag publishes.
 
 The owner set this shape as the target for every language on 2026-11-17, not only Go and PowerShell:
-a language CI action on branch pushes, `version-workflow` tagging `main`, and a tag-triggered release.
-`knowledge/tag-driven-pwsh-releases.md` and the release contract in `knowledge/shared-delivery.md`
-state that, so later languages start from it.
+a repository that publishes artifacts from a tag runs a language CI action on branch pushes,
+`version-workflow` tags `main`, and a tag-triggered release publishes. Actions and reusable workflows,
+whose tag is itself the release, keep releasing through `gh-release-workflow`, as this feature's three
+actions do. `knowledge/tag-driven-pwsh-releases.md` and the release contract in
+`knowledge/shared-delivery.md` state both, so later languages start from them.
 
 | Intent | Go component | PowerShell component |
 | --- | --- | --- |
@@ -244,11 +251,13 @@ flowchart TD
     Ver --> Gate{"main, with a new version?"}
     Gate -->|No| Calc["GitVersion calculates only"]
     Gate -->|Yes| Tag["App pushes exact tag vX.Y.Z"]
-    Tag --> Rel["release.yml on tag push, queued in order"]
-    Rel --> Guard{"Exact vX.Y.Z tag?"}
+    Tag --> Rel["release.yml on tag push, queued"]
+    Rel --> Guard{"Exact vX.Y.Z tag on a main commit?"}
     Guard -->|No| Refuse["Fail, publish nothing"]
-    Guard -->|Yes| Recheck["checks.yml on the tagged commit"]
-    Recheck --> Pub["Build, GitHub Release, then APT deploy and Gallery publish from it"]
+    Guard -->|Yes| Recheck["checks.yml at the tag version"]
+    Recheck --> Draft["Draft Release with the tested .deb and the .exe"]
+    Draft --> Pub["APT deploy and Gallery publish"]
+    Pub --> Public["Release made public"]
 ```
 
 <details>
@@ -260,8 +269,8 @@ flowchart TD
   version, and the tag action skips it.
 - **release.yml** runs the same `checks.yml` as `ci.yml` on the exact tag before publishing, so a tag
   pushed by hand cannot publish unchecked source. Runs share one repository-wide group with
-  `cancel-in-progress: false` and `queue: max`, so up to 100 wait in order and none is cancelled; the
-  default `queue: single` would cancel a waiting run.
+  `cancel-in-progress: false` and `queue: max`, so up to 100 wait and none is cancelled; the default
+  `queue: single` would cancel a waiting run. Nothing depends on the order they start in.
 
 </details>
 
@@ -302,20 +311,23 @@ Blocking checks, in order:
 4. **Test.** `Invoke-Pester` 5 with a configuration object, failing on any failed test, and failing
    when it discovers no tests unless `allow-no-tests` is `true`.
 
-PowerShell itself is pinned the same way, as `go-ci-action` pins Go: the action downloads the exact
-PowerShell release archive for the runner's operating system and architecture, checks its SHA-256 and
-runs `ci.ps1` with it, never with the runner's preinstalled `pwsh`. PSScriptAnalyzer and Pester install
-at exact versions from `nupkg` files whose SHA-256 the action pins and checks before import, as
-[delivery](../../../conventions/delivery.md#pinning-and-updates) requires. All pins sit in one file;
-Renovate custom managers match it, on the `github-releases` datasource for `PowerShell/PowerShell` and
-the `nuget` datasource with the Gallery's v2 feed for the modules. The checksums still have to be
+PowerShell itself is pinned rather than taken from the runner: every PowerShell step runs with an exact
+PowerShell release, downloaded for the runner's operating system and architecture and checked against
+its SHA-256, never with the runner's preinstalled `pwsh`. Where that installer and its pin live is Q1;
+`go-ci-action`, for comparison, gets Go from `actions/setup-go` rather than installing it itself. A
+Renovate custom manager on the `github-releases` datasource for `PowerShell/PowerShell` tracks the pin
+wherever it lives. PSScriptAnalyzer and Pester install at exact versions from `nupkg` files whose
+SHA-256 the action pins and checks before import, as
+[delivery](../../../conventions/delivery.md#pinning-and-updates) requires; those pins sit in one file
+that a custom manager on the `nuget` datasource with the Gallery's v2 feed matches. The checksums still have to be
 refreshed in the same PR, so the README says how. Run locally, `ci.ps1` warns when its PowerShell
 differs from the pinned version. The action supports Linux, macOS and Windows runners; the caller picks
 the runner.
 
 The repository copies `go-ci-action`'s layout: `tests/` with a passing fixture module and failing
-fixtures (a formatting diff, a settings file with no formatting rule, an analyzer warning, a module
-that fails to load, a failing test, a module with no tests), a `test.yml` that runs the composite on
+fixtures (a formatting diff, a settings file with no formatting rule, a missing settings file, an
+analyzer warning, a module that fails to load, a failing test, a module with no tests), a fixture whose
+only finding is `Information`, which must pass, a `test.yml` that runs the composite on
 each fixture and then `ci.ps1` directly on the same fixture and compares the two verdicts, `release.yml` through `gh-release-workflow`, `AGENTS.md`,
 `README.md`, `renovate.json5` and an Apache-2.0 `LICENSE`.
 
@@ -325,8 +337,7 @@ A release-only major, like `goreleaser-action` v2. It no longer checks out, runs
 reads the commit message. Inputs: `module-path`, `tag` (the exact tag, such as `v0.25.0`), `api-key`,
 `root-module`, `description`, `company-name`, a new `author` input that replaces the hardcoded value,
 an optional `release-notes` string written into the manifest, and `repository` (default `PSGallery`).
-It runs on the same pinned PowerShell as `pwsh-ci-action` and publishes with that release's bundled
-PSResourceGet (`Find-PSResource`, `Publish-PSResource`), not the runner's PowerShellGet.
+It runs on the pinned PowerShell (Q1) and publishes with that release's bundled PSResourceGet (`Find-PSResource`, `Publish-PSResource`), not the runner's PowerShellGet.
 
 It turns the tag into `ModuleVersion`: `v0.25.0` becomes `0.25.0`. A prerelease tag, a tag without the
 `v` prefix or a version that is not three-part SemVer fails before anything is written, naming the tag.
@@ -339,7 +350,7 @@ end, publishing once and then hitting the already-published path, so no test tou
 
 ### `package-pwsh-script-action` v2
 
-Release-only as well, on the same pinned PowerShell: inputs `script-path`, `name` and `tag`; it installs
+Release-only as well, on the pinned PowerShell (Q1): inputs `script-path`, `name` and `tag`; it installs
 PS2EXE at a pinned version and checksum, builds `<name>-<version>.exe` without the `v`, and returns the file path for the caller to
 attach. It no longer tags or uploads a workflow artifact. The PS2EXE pin sits in a file that a Renovate
 custom manager on the same `nuget` datasource matches, with the same checksum-refresh note.
@@ -364,27 +375,37 @@ template and the loader together. The `v` baseline tag stays; GitVersion reads b
 
 - **`checks.yml`** is a reusable workflow holding every PDS check: ShellCheck, the package build and its
   tests, the install tests on each Ubuntu version and `pwsh-ci-action` on `windows-latest` with
-  `module-manifest: pwsh/module/PDS.psm1` and `tests: pwsh/tests`. The package build uses the fixed
-  placeholder version `0.0.0`; there is no GitVersion job in it, so only `version-workflow` computes a
-  version.
-- **`ci.yml`** on `push` to any branch calls `checks.yml`, then `version-workflow` with
-  `preview-label: ''` and the App's variable and key, so only `main` is tagged. The Gallery key
-  (`API_KEY`) and the GPG keys (`GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`) appear in no job here.
+  `module-manifest: pwsh/module/PDS.psm1` and `tests: pwsh/tests`. It takes a `version` input, default
+  `0.0.0`, builds the `.deb` at that version, installs and tests that file, and uploads it as a workflow
+  artifact. It has no GitVersion job, so only `version-workflow` computes a version, and it receives no
+  secrets in either caller.
+- **`ci.yml`** on `push` to any branch calls `checks.yml` with the default version, then
+  `version-workflow` with `preview-label: ''` and only the App's variable and key, so only `main` is
+  tagged.
+- **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
+  `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
 - **`release.yml`** triggers on `push` of `v*.*.*` tags and on `workflow_dispatch`, run with
   `--ref v<version>`. It uses the concurrency group `release-<repository>` with
   `cancel-in-progress: false` and `queue: max`. Its first job fails unless `github.ref` is exactly
-  `refs/tags/vMAJOR.MINOR.PATCH`, so a prerelease tag such as `v0.25.0-rc.1` (which `v*.*.*` matches) or
-  a dispatch from a branch publishes nothing. Then it calls `checks.yml` on the tag, builds the `.deb`
-  and `.exe` at the tag's version and creates the GitHub Release with both attached. Only then do two
-  jobs publish from that Release: the APT job downloads every GitHub Release's `.deb`, builds the aptly
-  repository from scratch with no cache and deploys it to Pages, and the Gallery job publishes the
-  module. The three old workflows are removed.
-- **Recovery.** A Release is never overwritten, as
+  `refs/tags/vMAJOR.MINOR.PATCH` and the tagged commit is an ancestor of `origin/main`
+  (`git merge-base --is-ancestor`), so a prerelease tag such as `v0.25.0-rc.1` (which `v*.*.*` matches),
+  an exact tag on a commit outside `main`, or a dispatch from a branch publishes nothing. Then:
+  1. `checks.yml` at the tag's version.
+  2. The Release job builds the `.exe` and applies the Release rule below to the tested `.deb` and the
+     `.exe`.
+  3. The APT job downloads the `.deb` of every published GitHub Release that has one, plus this tag's
+     draft, builds the aptly repository from scratch with no cache and deploys it to Pages.
+  4. The Gallery job publishes the module from the tag's checkout; a rerun packages the same source again.
+  5. After both succeed, the last job makes the Release public.
+  The three old workflows are removed.
+- **Release rule and recovery.** Release files are never overwritten, as
   [tag-driven Go releases](../../../knowledge/tag-driven-go-releases.md) requires for failure and retry.
-  A failed APT or Gallery job is rerun on its own (`gh run rerun <run-id> --job <job-id>`); it uses the
-  files already on the Release and rebuilds nothing. A failure before the Release exists is recovered by
-  rerunning the whole run. A whole-run rerun after the Release exists fails at the Release step and
-  changes nothing.
+  With no Release for the tag, the Release job creates a draft and attaches the two files. A draft or
+  public Release that holds exactly those two file names is reused as it is, and the later jobs use its
+  files. Any other state, such as a missing or extra file, fails the job for inspection. Every failure,
+  whatever its cause, is therefore recovered the same way: rerun the failed job, rerun the whole run, or
+  dispatch `release.yml` on the tag. The APT job may redeploy a freshly signed repository with the same
+  packages; the Gallery job skips a published version.
 - **Release notes.** The template keeps its sections; its download URL uses the `v` tag
   (`releases/download/v{{VERSION}}/`) and the file name the unprefixed version. The Gallery's release
   notes are a link to that GitHub Release.
@@ -396,8 +417,9 @@ template and the loader together. The `v` baseline tag stays; GitVersion reads b
   module `0.25.0`).
 - **Settings.** `PSScriptAnalyzerSettings.psd1` at the repository root configures the `CodeFormatting`
   preset's rules under `Rules` (open and close brace placement, consistent indentation and whitespace,
-  aligned assignments, correct casing) and excludes one rule, `PSAvoidUsingWriteHost`, with its reason
-  in a comment. It has no `IncludeRules`: the preset's own `IncludeRules` lists only the six formatting
+  aligned assignments, correct casing) plus `PSAvoidTrailingWhitespace`, so the Format check enforces the
+  404 whitespace findings, and excludes one rule, `PSAvoidUsingWriteHost`, with its reason in a comment.
+  It has no `IncludeRules`: the preset's own `IncludeRules` lists only the six formatting
   rules, and copying it would switch every default rule off.
 - **Why `Write-Host` stays.** The rule's documentation says `Write-Host` is "designed to produce
   display-only output in the host" and recommends `Write-Output` for objects and `Write-Verbose` for
@@ -418,9 +440,9 @@ template and the loader together. The `v` baseline tag stays; GitVersion reads b
   `*.Tests.ps1`, and the commented-out `Update-Env.Tests.ps1` is deleted in favour of a real test in
   `pwsh/tests/`. Because stubbed tests miss real Windows behaviour, a set of functions also runs for real
   on the disposable Windows 11 VM before merge, and the PR records each run. The set is mechanical:
-  `Enable-SshServer`, plus every public function whose diff from the merge base still changes after
-  ignoring whitespace (`git diff -w`), byte-order marks and lines that only touch `Write-Host`. A script
-  in the PR lists that set, so the VM table can be checked against it.
+  `Enable-SshServer`, plus every public function with at least one changed line whose change is more
+  than whitespace, a byte-order mark or identifier casing. A `Write-Host` changed to `Write-Output`
+  counts. A script in the PR lists that set, so the VM table can be checked against it.
 - **Docs.** `AGENTS.md` lists the PowerShell command beside the existing checks, `pwsh/readme.md`
   describes the checks and the release path, and `changelog.md` records the change.
 
@@ -429,10 +451,10 @@ template and the loader together. The `v` baseline tag stays; GitVersion reads b
 - [ ] AC-01: `michielvha/pwsh-ci-action` exists, public, Apache-2.0, with a released exact `v` tag
   published through `gh-release-workflow`, and every `uses:` reference to another repository's action or
   workflow pinned by full SHA with its release as a comment.
-- [ ] AC-02: Run against its fixtures, the action passes the clean module and fails each failing fixture
-  (formatting diff, analyzer warning, module that fails to load, failing test, no tests) with a message
-  naming the failed check, and changes no file. A settings file with no formatting rule fails the Format
-  check.
+- [ ] AC-02: Run against its fixtures, the action passes the clean module and the Information-only fixture
+  and fails each failing fixture (formatting diff, settings with no formatting rule, missing settings,
+  analyzer warning, module that fails to load, failing test, no tests) with a message naming the failed
+  check, and changes no file.
 - [ ] AC-03: `pwsh ./ci.ps1` run directly on a fixture gives the same verdict as the composite on that
   fixture.
 - [ ] AC-04: The action refuses to import PSScriptAnalyzer or Pester when the downloaded package's
@@ -450,59 +472,64 @@ template and the loader together. The `v` baseline tag stays; GitVersion reads b
   reference to another repository pinned by full SHA with its release as a comment, and releases
   published through `gh-release-workflow`.
 - [ ] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
-  publishes nothing, and `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` appear in no workflow except
-  `release.yml`.
+  publishes nothing; `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` appear in no workflow except
+  `release.yml`, and there only in the Gallery and APT jobs; and no PDS workflow uses `secrets: inherit`.
 - [ ] AC-10: Before the migration merges, `v<latest release tag>` exists on the latest release tag's
   commit. The first PDS merge to `main` carrying a version-bumping commit creates exactly one tag,
   `v<version>`, above that baseline, and that tag's run publishes the module to the Gallery, attaches the
-  `.deb` and `.exe` to one GitHub Release and deploys an APT repository whose index lists every released
-  version.
+  `.deb` and `.exe` to one public GitHub Release and deploys an APT repository whose index lists the
+  version of every GitHub Release that has a `.deb` asset.
 - [ ] AC-11: A PDS PR carrying the `release:preview` label creates no tag and publishes nothing; only a
   push to `main` tags PDS.
 - [ ] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
-  `CodeFormatting` rules, has no `IncludeRules` and excludes only `PSAvoidUsingWriteHost`, with its
-  reason; every in-source suppression carries a non-empty `Justification`; and every public function has
-  a Pester test in `pwsh/tests/`, including `Enable-SshServer` with and without a key.
+  `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only
+  `PSAvoidUsingWriteHost`, with its reason; `Invoke-ScriptAnalyzer` under it returns no unsuppressed
+  record of any severity; every in-source suppression carries a non-empty `Justification`; and every
+  public function has a test file in `pwsh/tests/` with at least one passing test that invokes it,
+  including `Enable-SshServer` with and without a key.
 - [ ] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action` and the two release-only actions and
-  states that every language follows the CI, version and tag-triggered release shape, and
+  states that every repository publishing artifacts from a tag follows the CI, version and tag-triggered
+  release shape while actions and reusable workflows release through `gh-release-workflow`, and
   `knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow and links the PDS workflows as
   the reference consumer.
 - [ ] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
-- [ ] AC-15: For an already released tag, rerunning the APT job or the Gallery job on its own succeeds and
-  changes nothing, and a whole-run rerun fails at the Release step without changing the Release, its
-  assets, the APT index or the Gallery.
+- [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
+  `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
+  of packages and versions in the APT index, and the Gallery versions. A draft or Release whose files are
+  not exactly the expected two makes the Release job fail without changing anything.
 - [ ] AC-16: Every function in the mechanical set the Design defines has run for real on the disposable
   Windows 11 VM, with the result recorded in the PR.
 - [ ] AC-17: Each of the three actions runs its PowerShell steps on the pinned PowerShell release after
-  checking its SHA-256, and `ci.ps1` warns when run under a different version.
-- [ ] AC-18: A prerelease tag such as `v0.0.1-test.1`, or a `release.yml` dispatch from a branch, fails at
-  the first job and publishes nothing.
-- [ ] AC-19: `release.yml` runs the same `checks.yml` as `ci.yml`, and no publishing job starts before it
-  passes.
+  checking its SHA-256, those steps report the pinned version in `$PSVersionTable.PSVersion` on a runner
+  whose preinstalled `pwsh` differs, and `ci.ps1` warns when run under a different version.
+- [ ] AC-18: A prerelease tag such as `v0.0.1-test.1`, an exact tag on a commit outside `main`, or a
+  `release.yml` dispatch from a branch fails at the first job and publishes nothing.
+- [ ] AC-19: `release.yml` runs the same `checks.yml` as `ci.yml`, no publishing job starts before it
+  passes, and the `.deb` on the Release is the file `checks.yml` built and tested at the tag version.
 
 ## Test Plan
 
 | Criterion | Proof |
 | --- | --- |
 | AC-01 | `gh repo view` and `gh release view` on the new repository; every `uses:` line not starting with `./` carries a 40-character SHA and a release comment |
-| AC-02 | `test.yml` on GitHub and the behaviour tests: for each failing fixture the exit code is non-zero and the output names the failed check; the clean fixture exits zero; `git status --porcelain` on the fixture is empty after every run |
+| AC-02 | `test.yml` on GitHub and the behaviour tests: for each failing fixture the exit code is non-zero and the output names the failed check; the clean and Information-only fixtures exit zero; `git status --porcelain` on the fixture is empty after every run |
 | AC-03 | `test.yml` runs the composite and then `ci.ps1` on each fixture and fails when the two exit codes differ |
 | AC-04 | A behaviour test that pins a wrong checksum and expects a failure before import |
 | AC-05 | `gh release view v3.0.0` and `gh release view v2.0.0`; read each action's metadata file (`action.yml` or `action.yaml`) at the released SHA; their tests call them with a `tag` input |
 | AC-06 | Unit tests of the tag-to-version function in the publish action's suite, one per accepted and rejected form |
 | AC-07 | The publish action's `test.yml` against a local folder repository: the first run publishes, the second reports already published and succeeds; and the AC-15 Gallery job rerun |
 | AC-08 | For each of the three repositories at its released SHA: `gh repo view --json licenseInfo` shows Apache-2.0; read the README and `renovate.json5` and match each tool pin against a custom manager; every `uses:` line not starting with `./` carries a 40-character SHA and a release comment; `gh release view` shows a release from `gh-release-workflow` |
-| AC-09 | Push a PDS branch touching `pwsh/module/`; `git ls-remote --tags` and the Gallery feed are unchanged; `grep -l` for the three secret names in `.github/workflows/` lists only `release.yml` |
-| AC-10 | `git ls-remote --tags` shows the `v` baseline before the merge; after the first bumping merge, one new tag above it, one GitHub Release with both files, the Gallery feed shows the version, the Pages deployment from the tag run succeeded, and the APT `Packages` index lists every version in `gh release list` |
+| AC-09 | Push a PDS branch touching `pwsh/module/`; `git ls-remote --tags` and the Gallery feed are unchanged; `grep -l` for the three secret names in `.github/workflows/` lists only `release.yml`, where they sit only in the Gallery and APT jobs; `grep -r 'secrets: inherit' .github/workflows/` finds nothing |
+| AC-10 | `git ls-remote --tags` shows the `v` baseline before the merge; after the first bumping merge, one new tag above it, one public GitHub Release with both files, the Gallery feed shows the version, the Pages deployment from the tag run succeeded, and the APT `Packages` index lists exactly the versions of `gh release list --limit 1000` entries that have a `.deb` asset |
 | AC-11 | Label a PDS PR and push to it; `git ls-remote --tags`, the GitHub Releases list and the Gallery feed are unchanged |
-| AC-12 | `pwsh-ci-action` result on the PDS head; the settings file has no `IncludeRules`, and a scratch function with a default-rule warning fails `Invoke-ScriptAnalyzer` under it; `Invoke-ScriptAnalyzer -SuppressedOnly` over the module returns only records with a non-empty `Justification`; list public functions against test files in `pwsh/tests/` |
-| AC-13 | Read both pages in the merged docs commit |
+| AC-12 | `pwsh-ci-action` result on the PDS head; the settings file has no `IncludeRules`, and a scratch function with a default-rule warning fails `Invoke-ScriptAnalyzer` under it; `Invoke-ScriptAnalyzer` over the module under the settings returns no record; `-SuppressedOnly` returns only records with a non-empty `Justification`; Pester's per-file results show at least one passing test in each public function's file, and each file invokes the function it is named for |
+| AC-13 | Read both pages in the merged docs commit for both statements: the shape for tag-published artifacts, and `gh-release-workflow` for actions and reusable workflows |
 | AC-14 | A Pester test per renamed function that invokes the old alias, with installs mocked, and asserts the new function ran |
-| AC-15 | For the first released tag: `gh run rerun <run-id> --job` for the APT job and then the Gallery job, then `gh run rerun <run-id>` for the whole run; compare the Release assets and their checksums, the APT `Packages` index and the Gallery version list before and after |
+| AC-15 | For the first released tag: `gh run rerun <run-id> --job` for each job, `gh run rerun <run-id>`, and `gh workflow run release.yml --ref v<version>`; compare the Release assets and their checksums, the packages and versions in the APT `Packages` index and the Gallery version list before and after. A test of the Release job's decision over its three states: no Release, the expected two files, any other set |
 | AC-16 | Run the PR's set script at the merge commit and compare its output with the PR body's table of VM runs (function, command, observed result); every listed function has a row |
-| AC-17 | The behaviour tests run each action with a wrong PowerShell checksum and expect a failure before any PowerShell step; run `ci.ps1` locally under another PowerShell version and see the warning |
-| AC-18 | Push a throwaway tag `v0.0.1-test.1` to PDS and dispatch `release.yml` from a branch; both runs fail at the first job; `gh release list`, the APT index and the Gallery feed are unchanged; delete the tag afterwards |
-| AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it |
+| AC-17 | The behaviour tests run each action with a wrong PowerShell checksum and expect a failure before any PowerShell step, and with the right one on a runner whose preinstalled `pwsh` differs, asserting each step's `$PSVersionTable.PSVersion` equals the pin; run `ci.ps1` locally under another PowerShell version and see the warning |
+| AC-18 | Push throwaway tags `v0.0.1-test.1` and `v0.0.1` (the latter on a commit outside `main`) to PDS and dispatch `release.yml` from a branch; each run fails at the first job; `gh release list`, the APT index and the Gallery feed are unchanged; delete both tags afterwards |
+| AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 
 ## Tasks
 
@@ -510,7 +537,20 @@ None yet; written once the document is planned.
 
 ## Open Questions
 
-None.
+### Q1: Where should the pinned PowerShell installer and its pin live?
+
+**Recommendation:** A. A setup action is how GitHub Actions shares a toolchain (`actions/setup-go`,
+`setup-node`, `setup-python`), and `go-ci-action` itself gets Go that way. One installer and one pin
+replace three copies kept in step. No maintained one exists: GitHub publishes none, and the only match,
+`PSModule/Install-PowerShell`, has one star.
+
+| Option | You get | It costs |
+| --- | --- | --- |
+| **A. New `michielvha/setup-pwsh-action`** | One downloader, pin and checksum; the three actions call it by SHA and stay on one version; other repositories can reuse it | A fourth repository with its own tests, licence, Renovate and releases, which must publish before the three actions use it |
+| **B. Own pin per action** | No new component; each action stays self-contained | The downloader, pin and checksum copied into three repositories; versions drift between Renovate PRs; a fix lands three times |
+
+**Why this is yours:** It decides whether the feature adds a fourth shared component. The owner asked to
+debate it before deciding.
 
 ## Review Log
 

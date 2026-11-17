@@ -1,6 +1,6 @@
 ---
 status: draft
-status_description: "R-6 findings and the owner's answers applied in one revision; waiting on a new spec review."
+status_description: "R-7 findings and the owner's answers applied in one revision; waiting on a new spec review."
 issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
@@ -47,7 +47,8 @@ not the runner's. Release notes are a real changelog, not the APT template's fix
 **Permissions and owner steps.** PDS needs the `michielvha-repo-write` App's variable and key so its tag
 push starts the release. The `github-pages` environment must allow `v*.*.*` tags. The Gallery key and the
 GPG signing key move to `release.yml`, where only the Gallery and APT jobs receive them; no workflow
-uses `secrets: inherit`. The managed Renovate App must reach the new `vhco-pro` repositories, where no
+uses `secrets: inherit`. PDS and the five action repositories this feature touches adopt the GitHub
+Actions convention, checked by AC-21. The managed Renovate App must reach the new `vhco-pro` repositories, where no
 Renovate configuration exists yet.
 
 **Migration and rollback.** PDS first pins both current actions by SHA, so their release-only versions
@@ -57,8 +58,8 @@ tag stays. From that push on, a problem is fixed forward with a new version.
 
 **Proof.** Planned, not yet run: action behaviour tests over fixtures, a full PDS tag release and a rerun
 of it, and a real run on a disposable Windows 11 VM for every function whose code changes beyond
-whitespace, byte-order marks and identifier casing, except four that need a domain, Azure or a cluster
-and keep to mocked tests. Observed
+whitespace, byte-order marks and identifier casing, except those that need a domain, a remote server, a
+cloud account or a cluster, or never terminate, which keep to mocked tests. Observed
 so far: the analyzer and formatter baselines below, and a real-VM run that found the `Enable-SshServer`
 firewall defect a stubbed test had passed.
 
@@ -404,7 +405,9 @@ instead of its own `gh release create`, and gets its git-cliff notes:
   A published Release that holds exactly these file names is left as it is; any other set fails, and no
   file is replaced.
 
-With `files` empty the action behaves as `v0.1.1` does, so `gh-release-workflow` is unaffected. A stable
+With `files` empty the action behaves as `v0.1.1` does, so `gh-release-workflow` is unaffected. The same
+change brings its own workflows up to the GitHub Actions convention: `timeout-minutes` and
+`defaults.run.shell` in `test.yml` and `release.yml`, and `actionlint` in its checks. A stable
 Release still becomes GitHub's latest when it is created, as today. It ships as `v0.2.0` through its own
 release workflow, with behaviour tests against its mock `gh` for creating with files, a failed upload, an
 existing Release with the same set, an existing Release with a different set, and the empty default.
@@ -444,12 +447,18 @@ fixed forward with a new version.
 - **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
   `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
 - **Workflow rules.** The whole [GitHub Actions convention](../../../conventions/github-actions.md), added
-  after this document's pinned revision, applies to PDS and to the four action repositories this feature
-  creates or changes. Among other rules: `permissions: {}` at the top with per-job grants,
-  `timeout-minutes` on every job, `defaults.run.shell` set, no `${{ }}` inside a `run:` block, and
-  `actionlint` over `.github/workflows/` in each repository's checks. The PDS steps that move unchanged
-  are rewritten only where they break it, such as the APT job's `${{ secrets.GPG_PASSPHRASE }}` inside
-  `run:` (`build-apt-package.yml:254-288`), which moves to `env:`.
+  after this document's pinned revision, applies to PDS and to the five action repositories this feature
+  creates or changes: `pwsh-ci-action`, `setup-pwsh-action`, `publish-pwsh-module-action`,
+  `package-pwsh-script-action` and `gh-release-action`. Its checkable rules are AC-21: `permissions: {}`
+  at the top with per-job grants, `timeout-minutes` on every job that runs steps (a job that calls a
+  reusable workflow cannot set one and takes the called jobs' timeouts), `defaults.run.shell` set,
+  `actionlint` in each repository's checks, no `${{ }}` inside a `run:` block of a workflow or an
+  `action.yml`, no `$GITHUB_ENV` write, and `persist-credentials: false` except in a job that pushes. Its
+  judgement rules, such as moving a long `run:` block to a script, are checked in the implementation
+  review. The PDS steps that move unchanged are rewritten only where they break it: the APT job's
+  `${{ secrets.GPG_PASSPHRASE }}` inside `run:` (`build-apt-package.yml:254-288`) moves to `env:`, the
+  `VERSION` writes to `$GITHUB_ENV` (`:79`, `:156`, `:196`) become outputs, and the 35-line repository
+  rebuild block (`:228-262`) becomes a script.
 - **`release.yml`** triggers on `push` of stable tags only (`v[0-9]+.[0-9]+.[0-9]+`) and on
   `workflow_dispatch`, run with `--ref v<version>`. It uses the concurrency group `release-<repository>`
   with `cancel-in-progress: false` and `queue: max`. Its first job fails unless `github.ref` is exactly
@@ -525,10 +534,13 @@ fixed forward with a new version.
   on the disposable Windows 11 VM before merge, and the PR records each run. The set is mechanical:
   `Enable-SshServer`, plus every public function with at least one changed line whose change is more
   than whitespace, a byte-order mark or identifier casing. A `Write-Host` changed to `Write-Output`
-  counts. A script in the PR lists that set, so the VM table can be checked against it. Four functions
-  that need a domain, a remote server, Azure or a cluster stay out of the set and rely on their mocked
-  Pester tests: `Remove-StaleComputer`, `Start-RemoteADSyncCycle`, `New-AzSession` and
-  `Start-TaintWatcher`. A VM run passes when it completes without error.
+  counts. A function in that set stays on its mocked Pester tests instead when it needs a domain, a remote
+  server, a cloud account or a cluster, or never terminates; on `PDS@0770894` that covers, among others,
+  `Remove-StaleComputer`, `Start-RemoteADSyncCycle`, `New-AzSession`, `Start-TaintWatcher`,
+  `Get-DisabledADUsers`, `Enable-RDSHosts`, `Get-RDSActiveSessions`, `Show-AksInfo` and
+  `Start-ScrollLockToggle`. A script in the PR prints both lists, the VM set and the mocked-only
+  functions with the reason for each, so the VM table can be checked against them. A VM run passes when
+  it completes without error.
 - **Docs.** `AGENTS.md` lists the PowerShell command beside the existing checks, `pwsh/readme.md`
   describes the checks and the release path, and `changelog.md` records the change.
 
@@ -586,9 +598,9 @@ fixed forward with a new version.
 - [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
   `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
   of packages and versions in the APT index, and the Gallery versions.
-- [ ] AC-16: Every function in the mechanical set the Design defines, which leaves out the four it names,
-  has completed without error on the disposable Windows 11 VM, and the PR records each run and its
-  result.
+- [ ] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
+  Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
+  records each run and its result.
 - [ ] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
@@ -602,9 +614,11 @@ fixed forward with a new version.
   with those files when none is published, leaves no Release behind when an upload fails, leaves a
   published Release holding exactly those names unchanged, and fails on any other set without replacing
   a file. A missing path fails naming the path. With `files` empty it behaves as `v0.1.1` does.
-- [ ] AC-21: PDS and the four action repositories follow the GitHub Actions convention: `actionlint`
-  passes in each repository's checks, and every workflow sets `permissions: {}` at the top,
-  `timeout-minutes` on every job and `defaults.run.shell`, with no `${{ }}` inside a `run:` block.
+- [ ] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
+  `actionlint` passes in each repository's checks; every workflow sets `permissions: {}` at the top,
+  `timeout-minutes` on every job that runs steps and `defaults.run.shell`; no `run:` block in a workflow
+  or an `action.yml` contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
+  `persist-credentials: false` except in a job that pushes.
 
 ## Test Plan
 
@@ -625,12 +639,12 @@ fixed forward with a new version.
 | AC-13 | Read both pages in the merged docs commit for both statements: the shape for tag-published artifacts, and `gh-release-workflow` for actions and reusable workflows |
 | AC-14 | A Pester test per renamed function that invokes the old alias, with installs mocked, and asserts the new function ran |
 | AC-15 | For the first released tag: `gh run rerun <run-id> --job` for each job, `gh run rerun <run-id>`, and `gh workflow run release.yml --ref v<version>`; compare the Release assets and their checksums, the packages and versions in the APT `Packages` index and the Gallery version list before and after |
-| AC-16 | Run the PR's set script at the merge commit and compare its output with the PR body's table of VM runs (function, command, observed result); every listed function has a row whose result is a completed run without error |
+| AC-16 | Run the PR's set script at the merge commit and compare its two lists with the PR body: every function in the VM set has a row whose result is a completed run without error, and every mocked-only function is listed with its reason |
 | AC-17 | `setup-pwsh-action`'s behaviour test with a wrong checksum fails before `PATH` changes; each action's `test.yml` asserts `$PSVersionTable.PSVersion` equals the pin on a runner whose preinstalled `pwsh` differs; read each action's metadata for the SHA-pinned call |
 | AC-18 | Push a throwaway tag `v0.0.1-test.1` and see no release run start; dispatch `release.yml` on it, on a throwaway `v0.0.1` on a commit outside `main`, and from a branch, and see each fail at the first job; the Releases list, the APT index and the Gallery feed are unchanged; delete both tags afterwards |
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
-| AC-21 | `actionlint` results in each repository's checks at the merge commit; read every workflow for `permissions: {}`, `timeout-minutes` on each job and `defaults.run.shell`; a search of `run:` blocks finds no `${{` |
+| AC-21 | `actionlint` results in each repository's checks at the merge commit; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and `action.yml` files finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
 
 ## Tasks
 

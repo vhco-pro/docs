@@ -665,6 +665,7 @@ None.
 | 2026-11-17 | R-5 | spec | `aa5e9aa` | claude-opus-5-5 | procedural | Not clean: 9 should-fix and 4 nits |
 | 2026-11-17 | R-6 | spec | `43ba4e1` | claude-opus-5-5 | procedural | Not clean: 7 should-fix and 2 nits |
 | 2026-11-17 | R-7 | spec | `0834a2c` | claude-opus-5-5 | procedural | Blocking: 2 blocking, 2 should-fix and 1 nit |
+| 2026-11-17 | R-8 | spec | `1bb6957` | claude-opus-5-5 | procedural | Not clean: 3 should-fix and 1 nit |
 
 ### R-1
 
@@ -1330,6 +1331,38 @@ SEVERITY: nit
 WHERE: Context, Owner summary ("Permissions and owner steps" and "Approach")
 EVIDENCE: The owner decided that the GitHub Actions convention applies to PDS and the action repositories, and AC-21 holds that decision. It brings real work: rewriting the APT job's secret handling and adding `actionlint` and the workflow settings in each repository. The Owner summary mentions only `secrets: inherit` and never says the convention applies. conventions/feature-documents.md at 1ccf8f3 asks the summary to cover owner decisions.
 PROPOSAL: Add one sentence to the Owner summary: PDS and the named action repositories adopt the GitHub Actions convention, checked by AC-21.
+
+### R-8
+
+TARGET: 1bb6957375f00d29d5b979fed7b95dad4e812cc0
+
+FINDING: F-01
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Tests" bullet (the rule "needs a domain, a remote server, a cloud account or a cluster, or never terminates" and "A script in the PR prints both lists ... with the reason for each"); Acceptance Criteria, AC-16; Test Plan, row AC-16; Context, Owner summary, Proof ("except those that need a domain, a remote server, a cloud account or a cluster, or never terminate")
+EVIDENCE: The rule decides which functions in the mechanical set skip the real VM run, but "a remote server" has no definition. Read literally, every installer needs one. On PDS origin/main (0770894), `Install-Choco.ps1:26` runs `iex` on a download from `https://community.chocolatey.org/install.ps1`, `Install-Scoop.ps1:27` pipes `Invoke-RestMethod -Uri https://get.scoop.sh` into `Invoke-Expression`, and `Install-Winget.ps1:83` calls `Invoke-WebRequest`. All three are in the mechanical set: PSScriptAnalyzer 1.25.0 (run in mcr.microsoft.com/dotnet/sdk:9.0, excluding PSAvoidUsingWriteHost and PSAvoidTrailingWhitespace) reports PSAvoidUsingInvokeExpression and PSAvoidUsingCmdletAliases on Install-Choco, PSAvoidUsingInvokeExpression on Install-Scoop and PSAvoidUsingEmptyCatchBlock on Install-Winget. The fixes, such as replacing `iex` on a downloaded script, change real behaviour, which is exactly the class of change the "Stubbed tests miss real Windows behaviour" context says needs a VM run. One implementer would run these on the VM. Another would list them as mocked-only because they need a remote download server, and the PR's script would print that reason. The AC-16 proof compares the script's lists with the PR body. The implementer writes both, and nothing checks that a stated reason is true, so the proof passes on either set. The rule traces to this revision, which replaced the named list of four with the owner's rule (R-7 F-01).
+PROPOSAL: Define "a remote server" as a server the function manages or queries that a standalone, internet-connected Windows 11 VM lacks (a domain controller, an RDS host, a Kubernetes cluster, a cloud tenant), and say that downloading software from the internet does not count. Require each mocked-only reason to cite the `file:line` of the dependency or the unbounded loop, and have the AC-16 proof check each cited line.
+
+FINDING: F-02
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS "Every other finding is fixed" ("A rename keeps the old public name as an exported alias"); Acceptance Criteria, AC-12 and AC-14; Test Plan, rows AC-12 and AC-14
+EVIDENCE: PSScriptAnalyzer 1.25.0 reports PSUseSingularNouns on `Get-RDSActiveSessions` (`pwsh/module/Public/RDS/Get-RDSActiveSessions.ps1`). The singular name already belongs to a different public function, `pwsh/module/Public/diagnostics/Get-RDSActiveSession.ps1`, with different parameters: the plural has `-ExportPath` and `-NoTranscript`, the singular has `-QuickMode` (`diff` of the two files; 181 and 124 lines). The loader exports one function per file `BaseName` (`PDS.psm1:26-29`), so both cannot hold the name. The Design's rename rule does not cover a target name that is already taken. One implementer would merge the two functions, which changes the parameters callers of the old name rely on even if the alias still resolves. Another would choose a different noun, and a third would add an in-source suppression with a `Justification`. All three can pass AC-12 and AC-14 but ship different public interfaces.
+PROPOSAL: State how `Get-RDSActiveSessions` is resolved: merge it into `Get-RDSActiveSession` and keep the old parameters working, rename it to another singular noun, or suppress PSUseSingularNouns there with a justification. Add the chosen behaviour to AC-14's proof.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-21 ("no `run:` block in a workflow or an `action.yml` contains `${{`"); Test Plan, row AC-21 ("a search of `run:` blocks in workflows and `action.yml` files"); Design, PDS "Workflow rules" bullet ("no `${{ }}` inside a `run:` block of a workflow or an `action.yml`")
+EVIDENCE: `package-pwsh-script-action` keeps its metadata in `action.yaml`, not `action.yml`. `git ls-tree --name-only origin/HEAD` in /home/m/code/package-pwsh-script-action lists only `action.yaml` and `readme.md`, and the Context cites `package-pwsh-script-action@v1:action.yaml:38`. Nothing in the Design renames the file, and the AC-05 proof already says "`action.yml` or `action.yaml`". A literal AC-21 search over `action.yml` files skips this action, so a v2 `action.yaml` that still interpolates `${{ inputs.script-path }}` into `run:` passes the proof. This revision added the `action.yml` clause when it applied R-7 F-04.
+PROPOSAL: Write "an action metadata file (`action.yml` or `action.yaml`)" in AC-21, its proof and the Workflow rules bullet, as the AC-05 proof does.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Workflow rules" bullet ("rewritten only where they break it: ..."); Design, `gh-release-action` files ("brings its own workflows up to the GitHub Actions convention: `timeout-minutes` and `defaults.run.shell` ... and `actionlint`")
+EVIDENCE: Both lists read as complete, but they are not. In PDS `build-apt-package.yml` on origin/main, `${{ }}` also appears inside `run:` at `:78`, `:88-92`, `:133`, `:139`, `:155`, `:195` and `:313-314`, and `:212` runs `echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import`, a secret interpolated into shell code in the APT job. The rebuild block cited as `:228-262` is the `run:` at `:228-258`, because `:259` starts the separate "Download new package" step. `gh-release-action` `release.yml` computes `DRY_RUN: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry-run) }}`, which breaks "Let expressions only read values" in conventions/github-actions.md at X, and the Design's list for that repository leaves it out. AC-21 and the implementation review still catch these, so nothing an implementer builds changes. This revision added both lists.
+PROPOSAL: Say "including" before each list, or complete them: name the GPG private key at `:212`, correct the range to `:228-258`, and add the `DRY_RUN` expression to the `gh-release-action` changes.
 
 ## Sources
 

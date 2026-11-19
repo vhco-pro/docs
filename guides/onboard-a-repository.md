@@ -71,6 +71,15 @@ For Claude, add `CLAUDE.md` containing `@AGENTS.md`. These are thin harness
 bridges, not duplicated conventions. Other agents use the root file explicitly;
 do not assume every tool follows external links without being instructed.
 
+## Onboard a browser frontend
+
+Follow the [frontend testing standard](../conventions/frontend-testing.md).
+Document the pinned Playwright setup and how to build and serve the production
+artifact. Add or reuse an anonymous smoke scenario with a visible assertion and
+document how to run it on the build and an explicitly selected deployment. Name
+any expected responses and the location of the retained evidence. Enable
+additional tools when the project needs their checks.
+
 ## Choose where CI runs
 
 Check the visibility with `gh repo view OWNER/NAME --json visibility`. A public

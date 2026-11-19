@@ -108,6 +108,44 @@ labels, console errors and horizontal overflow. Test supported themes where the
 change affects them. Use the built frontend or final application/container for
 deployment-sensitive paths; a Vite-only pass cannot prove its production server.
 
+## Smoke checks for build and deployment
+
+Reuse the repository's pinned Playwright setup. Start with one anonymous route
+and a visible assertion that confirms the expected page rendered. A static site
+can start with its homepage and Chromium. Add the public journeys, browser
+engines and viewport sizes the site needs using the existing suite.
+
+Use the same route assertions on two named targets:
+
+- Before release, build and serve the production artifact with the project's
+  release server and relevant runtime configuration. Document the commands,
+  readiness check and configuration inputs.
+- After deployment, run the public smoke scenarios against an explicitly
+  selected owned origin. Check the deployed redirects, HTTPS and required
+  response headers where they are part of the deployment contract.
+
+Start each public visit in a fresh anonymous browser context. Capture uncaught
+page errors, console errors, failed requests and HTTP error responses. Retain
+the tested route, browser, artifact or release identity when available, and a
+sanitized request URL, method, resource type and status or browser error. A
+successful page navigation still needs its visible assertion and resource checks.
+
+Document expected responses per target. An expected signed-out session
+response must match the method, origin, full path and query, resource type,
+status and anonymous context, with redirects excluded unless the scenario
+explicitly asserts them. Keep the observation in the report. An asset request
+or a different route with the same status keeps its own verdict. If a deployment
+only serves public frontend routes, record private or authenticated journeys
+as out of scope for that profile. Exercise those journeys in their own
+environment when the application supports them.
+
+Start a new check in report mode while confirming the baseline. Use the
+repository's existing verification and delivery entry points when enabling
+enforcement. A missing browser or incomplete required check stays visible and
+prevents an enforced pass. Accessibility, SEO, built-file secret checks and
+additional header analysis can be adopted independently. Reuse established local
+tools and document the version and purpose of each selected tool.
+
 ## Responsive visual quality
 
 Keep a project-owned viewport matrix that records both width and height in CSS

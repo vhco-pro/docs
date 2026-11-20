@@ -1,7 +1,8 @@
 ---
-status: planned
-status_description: "Accepted by the owner on 2026-11-20 at R-10; tasks next."
+status: in-progress
+status_description: "Claimed 2026-11-20; implementing task by task on feat/pwsh-release-workflow in each repository."
 issue: https://github.com/vhco-pro/docs/issues/49
+branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
   - knowledge/shared-delivery.md

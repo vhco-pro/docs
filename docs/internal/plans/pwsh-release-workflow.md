@@ -670,7 +670,43 @@ fixed forward with a new version.
 
 ## Tasks
 
-None yet; written once the document is planned.
+Paths are `<repository>:<path>`. Creating a repository, an owner step, a tag push and a merge each wait
+for the owner's go when they come up.
+
+- [ ] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
+- [ ] T2 `vhco-pro/setup-pwsh-action:tests/` - behaviour tests for a wrong checksum failing before `PATH` changes and for `pwsh` reporting the pinned version; they fail because the action does not exist (AC-17)
+- [ ] T3 `vhco-pro/setup-pwsh-action:action.yml` `vhco-pro/setup-pwsh-action:scripts/` `vhco-pro/setup-pwsh-action:pins` - download, checksum, `PATH` and the `version` output; T2 passes (AC-17)
+- [ ] T4 `vhco-pro/setup-pwsh-action:.github/` `vhco-pro/setup-pwsh-action:AGENTS.md` `vhco-pro/setup-pwsh-action:README.md` `vhco-pro/setup-pwsh-action:LICENSE` `vhco-pro/setup-pwsh-action:renovate.json5` - `test.yml`, `release.yml` through `gh-release-workflow`, actionlint, Renovate custom manager and checksum note; actionlint passes and `v0.1.0` is released (AC-08, AC-17, AC-21)
+- [ ] T5 `vhco-pro/pwsh-ci-action:tests/` - fixtures (clean, Information-only, formatting diff, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) and a wrong-checksum case; the tests fail because `ci.ps1` does not exist (AC-02, AC-04)
+- [ ] T6 `vhco-pro/pwsh-ci-action:ci.ps1` `vhco-pro/pwsh-ci-action:action.yml` `vhco-pro/pwsh-ci-action:pins` - the four checks, pinned module installs and the `setup-pwsh-action` call; T5 passes (AC-02, AC-04)
+- [ ] T7 `vhco-pro/pwsh-ci-action:.github/` `vhco-pro/pwsh-ci-action:AGENTS.md` `vhco-pro/pwsh-ci-action:README.md` `vhco-pro/pwsh-ci-action:LICENSE` `vhco-pro/pwsh-ci-action:renovate.json5` - `test.yml` comparing the composite with `ci.ps1` per fixture, `release.yml`, actionlint and Renovate; `test.yml` passes and `v0.1.0` is released (AC-01, AC-03, AC-08, AC-21)
+- [ ] T8 `vhco-pro/gh-release-action:tests/` - `files` cases (create, same set, different set, missing path, empty default) and the call-log assertion; the new cases fail (AC-20)
+- [ ] T9 `vhco-pro/gh-release-action:action.yml` `vhco-pro/gh-release-action:scripts/publish-release.sh` - the `files` input; T8 passes (AC-20)
+- [ ] T10 `vhco-pro/gh-release-action:.github/workflows/` - timeouts, default shell, actionlint and `DRY_RUN` as a step output; actionlint passes and `v0.2.0` is released (AC-20, AC-21)
+- [ ] T11 `michielvha/publish-pwsh-module-action:refs/tags/v2.0.0` - exact baseline tag on `78d4a6f` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
+- [ ] T12 `michielvha/publish-pwsh-module-action:tests/` - tag-to-version unit tests and a local folder repository end-to-end case; they fail against the current action (AC-06, AC-07)
+- [ ] T13 `michielvha/publish-pwsh-module-action:action.yml` `michielvha/publish-pwsh-module-action:scripts/` - release-only v3 on `setup-pwsh-action` and PSResourceGet, a breaking commit; T12 passes (AC-05, AC-06, AC-07, AC-17)
+- [ ] T14 `michielvha/publish-pwsh-module-action:.github/` `michielvha/publish-pwsh-module-action:AGENTS.md` `michielvha/publish-pwsh-module-action:readme.md` `michielvha/publish-pwsh-module-action:LICENSE` `michielvha/publish-pwsh-module-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v3.0.0` is released (AC-05, AC-08, AC-21)
+- [ ] T15 `michielvha/package-pwsh-script-action:refs/tags/v1.0.0` - exact baseline tag on `70c9121` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
+- [ ] T16 `michielvha/package-pwsh-script-action:tests/` - a Windows test building `<name>-<version>.exe` from a `tag` input and a wrong PS2EXE checksum case; they fail against the current action (AC-05)
+- [ ] T17 `michielvha/package-pwsh-script-action:action.yaml` `michielvha/package-pwsh-script-action:scripts/` - release-only v2 on `setup-pwsh-action`, a breaking commit; T16 passes (AC-05, AC-17)
+- [ ] T18 `michielvha/package-pwsh-script-action:.github/` `michielvha/package-pwsh-script-action:AGENTS.md` `michielvha/package-pwsh-script-action:readme.md` `michielvha/package-pwsh-script-action:LICENSE` `michielvha/package-pwsh-script-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v2.0.0` is released (AC-05, AC-08, AC-21)
+- [ ] T19 `vhco-pro/setup-pwsh-action:Dependency Dashboard` `vhco-pro/pwsh-ci-action:Dependency Dashboard` - owner grants the Renovate App access; each Dependency Dashboard lists every tool pin (AC-08)
+- [ ] T20 `michielvha/PDS:PSScriptAnalyzerSettings.psd1` `michielvha/PDS:pwsh/module/PDS.psm1` `michielvha/PDS:pwsh/module/Public/` `michielvha/PDS:pwsh/templates/` - settings file, the two file renames, the template move and the loader skipping `*.Tests.ps1`; `Get-Command -Module PDS` lists a command per file under `Public/` (AC-12)
+- [ ] T21 `michielvha/PDS:pwsh/tests/` - a Pester file per public function with system calls mocked, and old-alias tests; the alias tests fail until the renames land (AC-12, AC-14)
+- [ ] T22 `michielvha/PDS:pwsh/` - formatter, trailing whitespace and byte-order mark fixes; `Invoke-Formatter` under the settings changes no file (AC-12)
+- [ ] T23 `michielvha/PDS:pwsh/module/Public/` - `SupportsShouldProcess` and `$PSCmdlet.ShouldProcess` in the state-changing functions; their `ShouldProcess` findings are gone and T21 still passes (AC-12)
+- [ ] T24 `michielvha/PDS:pwsh/module/Public/` - the remaining analyzer fixes and the renames with aliases, including `Get-RDSActiveSessionReport`; `Invoke-ScriptAnalyzer` under the settings returns no record and T21 passes (AC-12, AC-14)
+- [ ] T25 `michielvha/PDS:scripts/vm-set.ps1` - prints the VM set and the mocked-only list with `file:line` reasons; every VM-set function completes on the Windows VM and the PR records each run (AC-16)
+- [ ] T26 `michielvha/PDS:.github/workflows/checks.yml` `michielvha/PDS:.github/actionlint.yaml` - reusable checks with a `version` input, no GitVersion job and no secrets; actionlint passes with only the `queue` ignore (AC-19, AC-21)
+- [ ] T27 `michielvha/PDS:.github/workflows/ci.yml` - branch-push CI calling `checks.yml` then `version-workflow` with `preview-label: ''`; a branch push runs `pwsh-ci-action` and creates no tag (AC-09, AC-11)
+- [ ] T28 `michielvha/PDS:.github/workflows/release.yml` `michielvha/PDS:scripts/build-apt-repo.sh` - stable-tag trigger, dispatch, the guard, queued concurrency, the APT, Gallery and Release jobs with their permissions and secrets in `env:`; actionlint passes (AC-15, AC-18, AC-19, AC-21)
+- [ ] T29 `michielvha/PDS:gitversion.yml` `michielvha/PDS:.github/templates/release-notes.md` `michielvha/PDS:.github/workflows/` `michielvha/PDS:AGENTS.md` `michielvha/PDS:pwsh/readme.md` `michielvha/PDS:changelog.md` - remove the custom GitVersion file, the template and the three old workflows, and update the docs; the AC-09 and AC-21 greps pass (AC-09, AC-21)
+- [ ] T30 `michielvha/PDS:settings` - owner adds `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and a `v*.*.*` tag policy on `github-pages`; `gh variable list`, `gh secret list` and the environment's policies show them (AC-10)
+- [ ] T31 `michielvha/PDS:refs/tags/v0.24.1` - the `v` baseline on the latest release tag's commit before the migration merges; GitVersion on the migration branch computes a version above it (AC-10)
+- [ ] T32 `michielvha/PDS:refs/tags` - throwaway-tag and labelled-PR checks; a prerelease tag starts no run, the three dispatches fail at the first job, a labelled PR tags nothing, then the throwaway tags are deleted (AC-11, AC-18)
+- [ ] T33 `michielvha/PDS:releases` - after the merge, the first bumping release and its reruns; one tag, one public Release with notes, `.deb` and `.exe`, the Gallery version, an APT index matching the Releases, and reruns changing nothing (AC-10, AC-15, AC-19)
+- [ ] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
 
 ## Open Questions
 

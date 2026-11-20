@@ -674,7 +674,8 @@ fixed forward with a new version.
 Paths are `<repository>:<path>`. Creating a repository, an owner step, a tag push and a merge each wait
 for the owner's go when they come up.
 
-- [ ] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
+- [x] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
+  Evidence: `grep -n -E '@(main|v1)\r?$'` over the two workflows, `michielvha/PDS@4e6f8d7` (branch `feat/pwsh-release-workflow`), found both references before the change (exit 0) and nothing after (exit 1); `actionlint` 1.7.12 on both files exits 0; CRLF endings kept; not pushed.
 - [ ] T2 `vhco-pro/setup-pwsh-action:tests/` - behaviour tests for a wrong checksum failing before `PATH` changes and for `pwsh` reporting the pinned version; they fail because the action does not exist (AC-17)
 - [ ] T3 `vhco-pro/setup-pwsh-action:action.yml` `vhco-pro/setup-pwsh-action:scripts/` `vhco-pro/setup-pwsh-action:pins` - download, checksum, `PATH` and the `version` output; T2 passes (AC-17)
 - [ ] T4 `vhco-pro/setup-pwsh-action:.github/` `vhco-pro/setup-pwsh-action:AGENTS.md` `vhco-pro/setup-pwsh-action:README.md` `vhco-pro/setup-pwsh-action:LICENSE` `vhco-pro/setup-pwsh-action:renovate.json5` - `test.yml`, `release.yml` through `gh-release-workflow`, actionlint, Renovate custom manager and checksum note; actionlint passes and `v0.1.0` is released (AC-08, AC-17, AC-21)

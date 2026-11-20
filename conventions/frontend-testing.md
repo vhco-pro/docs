@@ -121,14 +121,20 @@ Use the same route assertions on two named targets:
   release server and relevant runtime configuration. Document the commands,
   readiness check and configuration inputs.
 - After deployment, run the public smoke scenarios against an explicitly
-  selected owned origin. Check the deployed redirects, HTTPS and required
-  response headers where they are part of the deployment contract.
+  selected owned origin. Declare any additional origins needed by the run.
+  Keep test traffic within that scope and record out-of-scope redirects. Check
+  the deployed redirects, HTTPS and required response headers where they are
+  part of the deployment contract.
 
 Start each public visit in a fresh anonymous browser context. Capture uncaught
 page errors, console errors, failed requests and HTTP error responses. Retain
 the tested route, browser, artifact or release identity when available, and a
 sanitized request URL, method, resource type and status or browser error. A
 successful page navigation still needs its visible assertion and resource checks.
+Set a deadline for each route and name any requests that must be observed. A
+request that was never seen is missing coverage, even if the page rendered.
+Sanitize retained URLs and diagnostics. Distinguish reports with partial coverage
+from runs that stopped before writing a complete report.
 
 Document expected responses per target. An expected signed-out session
 response must match the method, origin, full path and query, resource type,
@@ -141,8 +147,9 @@ environment when the application supports them.
 
 Start a new check in report mode while confirming the baseline. Use the
 repository's existing verification and delivery entry points when enabling
-enforcement. A missing browser or incomplete required check stays visible and
-prevents an enforced pass. Accessibility, SEO, built-file secret checks and
+enforcement. A finished report can contain findings. A missing browser or
+incomplete required check still makes the run unsuccessful. When enforcement
+is enabled, a failed required rule also makes the run unsuccessful. Accessibility, SEO, built-file secret checks and
 additional header analysis can be adopted independently. Reuse established local
 tools and document the version and purpose of each selected tool.
 

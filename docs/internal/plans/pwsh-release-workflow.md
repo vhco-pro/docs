@@ -734,7 +734,8 @@ for the owner's go when they come up.
 - [ ] T31 `michielvha/PDS:refs/tags/v0.24.1` - the `v` baseline on the latest release tag's commit before the migration merges; GitVersion on the migration branch computes a version above it (AC-10)
 - [ ] T32 `michielvha/PDS:refs/tags` - throwaway-tag and labelled-PR checks; a prerelease tag starts no run, the three dispatches fail at the first job, a labelled PR tags nothing, then the throwaway tags are deleted (AC-11, AC-18)
 - [ ] T33 `michielvha/PDS:releases` - after the merge, the first bumping release and its reruns; one tag, one public Release with notes, `.deb` and `.exe`, the Gallery version, an APT index matching the Releases, and reruns changing nothing (AC-10, AC-15, AC-19)
-- [ ] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
+- [x] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
+  Evidence: `node scripts/check-docs.mjs` on `feat/pwsh-release-workflow`: "Checked 44 Markdown files: local links, metadata, and writing constraints pass." `knowledge/shared-delivery.md` gains rows for `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, the `files` input on the `gh-release-workflow` row, and the release contract's two statements; `knowledge/tag-driven-pwsh-releases.md` states both and links the PDS workflows. AC-13 is ticked once these pages merge.
 
 ## Open Questions
 

@@ -18,10 +18,14 @@ existing `michielvha` components keep working and move later. The rules for buil
 | Start a Go application | [michielvha/template-go-app](https://github.com/michielvha/template-go-app) | Template files are a starting point; apply the bootstrap guide. |
 | Compute a version and tag | [michielvha/gitversion-tag-action](https://github.com/michielvha/gitversion-tag-action) | The selected action ref and its bundled/custom GitVersion config decide behavior. |
 | Check Go source | [michielvha/go-ci-action](https://github.com/michielvha/go-ci-action) | The new pilot action owns blocking Go CI checks. Shared workflows compose it; they do not duplicate its commands. |
+| Install a pinned PowerShell | [vhco-pro/setup-pwsh-action](https://github.com/vhco-pro/setup-pwsh-action) | Checksum-verified PowerShell put first on `PATH`; the PowerShell actions call it, so consumers rarely need it directly. |
+| Check PowerShell source | [vhco-pro/pwsh-ci-action](https://github.com/vhco-pro/pwsh-ci-action) | Owns blocking formatting, PSScriptAnalyzer, module-load and Pester checks with pinned modules. |
+| Publish a PowerShell module for an exact tag | [michielvha/publish-pwsh-module-action](https://github.com/michielvha/publish-pwsh-module-action) | Release-only since v3: takes the tag, refuses prereleases, skips a published version. |
+| Package a PowerShell script as an executable for an exact tag | [michielvha/package-pwsh-script-action](https://github.com/michielvha/package-pwsh-script-action) | Release-only since v2: Windows runners, pinned PS2EXE, outputs `<name>-<version>.exe`. |
 | Publish Go binaries | [michielvha/goreleaser-action](https://github.com/michielvha/goreleaser-action) | Inspect its selected metadata and signing requirements before wiring it. |
 | Build and publish containers | [michielvha/docker-release-action](https://github.com/michielvha/docker-release-action) | Use the required [container security profile](container-release.md); inspect the selected ref. |
 | Deploy static content to Cloudflare | [cloudflare/wrangler-action](https://github.com/cloudflare/wrangler-action) | Follow the [static-site standard](../conventions/cloudflare-static-sites.md) for Workers Static Assets or Pages. |
-| Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Replaces `reusable-release.yml` in `vhco-pro/.github`. |
+| Tag and publish a GitHub Release for a repository whose tag is the release | [vhco-pro/gh-release-workflow](https://github.com/vhco-pro/gh-release-workflow), composing [vhco-pro/gh-release-action](https://github.com/vhco-pro/gh-release-action) | Tests run first; copy its example folder. Replaces `reusable-release.yml` in `vhco-pro/.github`. Since `v0.2.0` the action's `files` input attaches files when it creates the Release, for a repository that publishes artifacts from a tag. |
 | Tag after checks, with labelled PR previews | [vhco-pro/version-workflow](https://github.com/vhco-pro/version-workflow) | Decides when a run tags and calls `gitversion-tag-action`; copy its example folder. |
 | Check and publish a Go release for an exact tag | [vhco-pro/go-release-workflow](https://github.com/vhco-pro/go-release-workflow) | Composes `go-ci-action` and `goreleaser-action`; one example folder per arrangement. |
 | Reuse org workflows | [vhco-pro/.github](https://github.com/vhco-pro/.github) | CodeQL and Scorecard workflows under `.github/workflows/`; discover the actual file before pinning it. [Repository security](../conventions/repository-security.md) says which repositories use them. |
@@ -51,6 +55,12 @@ added afterwards. [Workflow dependency lockfiles](https://docs.github.com/en/act
 cover transitive actions but have no documented Renovate support, so SHA pins with tag comments stay.
 
 ## Release contract
+
+Every repository that publishes artifacts from a tag, in any language, runs a language CI action on
+branch pushes, tags `main` with `version-workflow` and publishes from a tag-triggered release workflow.
+Actions and reusable workflows, whose tag is itself the release, release through
+`gh-release-workflow`. The [tag-driven Go](tag-driven-go-releases.md) and
+[tag-driven PowerShell](tag-driven-pwsh-releases.md) releases are the two implementations.
 
 The shared release design uses GitVersion once, pushes only an exact version
 tag, and renders Conventional Commit notes with verified `git-cliff`. A public

@@ -1,6 +1,6 @@
 ---
-status: draft
-status_description: "R-9 findings applied in one revision; waiting on a new spec review."
+status: planned
+status_description: "Accepted by the owner on 2026-11-20 at R-10; tasks next."
 issue: https://github.com/vhco-pro/docs/issues/49
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
@@ -690,6 +690,7 @@ None.
 | 2026-11-17 | R-8 | spec | `1bb6957` | claude-opus-5-5 | procedural | Not clean: 3 should-fix and 1 nit |
 | 2026-11-17 | R-9 | spec | `bea37e5` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 | 2026-11-17 | R-10 | spec | `36ebfd3` | claude-opus-5-5 | procedural | Clean: 4 nits, no blocking or should-fix findings |
+| 2026-11-20 | R-10 | spec | `36ebfd3` | n/a | n/a | accepted by owner |
 
 ### R-1
 

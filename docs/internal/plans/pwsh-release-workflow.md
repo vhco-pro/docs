@@ -629,10 +629,11 @@ fixed forward with a new version.
 - [ ] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
   Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
   records each run and its result.
-- [ ] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
+- [x] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
   preinstalled `pwsh` differs.
+  Evidence: `gh release view v0.1.0 -R vhco-pro/setup-pwsh-action` (public, Apache-2.0, `a90bb07`); its behaviour test with zeroed checksums fails naming the checksum with `GITHUB_PATH` unwritten (`tests/test-install.sh`, Linux and macOS in CI). `pwsh-ci-action`, `publish-pwsh-module-action` and `package-pwsh-script-action` call it at `a90bb07` (v0.1.0) in their action metadata. `tests/Assert-PinnedPwsh.ps1` in each, run after the action in `test.yml` (vhco-pro/pwsh-ci-action#3, michielvha/publish-pwsh-module-action#10, michielvha/package-pwsh-script-action#12, merged as `478c546`, `0daf679`, `3504263`), reported "pwsh steps run the pinned PowerShell 7.7.0" from the tool cache on Windows and Linux runners whose preinstalled pwsh is 7.6.10.
 - [ ] AC-18: Pushing a prerelease tag such as `v0.0.1-test.1` starts no release run; a `release.yml`
   dispatch on that tag, on an exact tag outside `main` or from a branch fails at the first job; none of
   them publishes anything.

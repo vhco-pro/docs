@@ -1,7 +1,7 @@
 ---
 title: "Colour in interfaces"
 type: guideline
-description: "Give colour to status, severity and outcome, keep descriptive content neutral, allow identity colour, and never rely on colour alone."
+description: "Give colour to status, severity and outcome, keep descriptive content neutral or colour only its icons, allow identity colour, and never rely on colour alone."
 status: active
 ---
 
@@ -26,7 +26,18 @@ commit, competes with the status beside it and can read as a second status.
 
 Show descriptive facts in neutral text or on a neutral surface: a version, an identifier, an author,
 a branch, the machine that ran a job. When several such facts sit together, give them one shared
-recipe of shape, spacing and muted icon instead of a colour each.
+recipe of shape, spacing and icon instead of a colour each.
+
+## Coloured icons are the lighter option
+
+When fully neutral facts are hard to scan and tinted chips or coloured text would be too much
+colour, colour only the icons. The text, border and surface stay neutral, and each fact type keeps
+one icon colour wherever it appears, such as teal for the machine that ran a job and pink for a pull
+request. A small icon carries far less weight than a tinted chip, so the status keeps its place as
+the strongest colour on the screen while the reader can still find a fact by its colour and shape.
+
+Do not give an icon the colour of a status shown next to it, or it reads as a second status. The
+icon colour helps scanning; the label still says what the fact is.
 
 ## Identity colour is allowed
 
@@ -46,7 +57,7 @@ borders in every theme the product offers.
 ## Review
 
 When reviewing a changed screen, list its colours and name what each one means. Neutralise any
-colour that has no meaning, unless it is identity colour as described above.
+colour that has no meaning, unless it is identity colour or a fact-type icon colour as described above.
 
 ## Sources
 

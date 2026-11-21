@@ -802,6 +802,7 @@ None.
 | 2026-11-17 | R-10 | spec | `36ebfd3` | claude-opus-5-5 | procedural | Clean: 4 nits, no blocking or should-fix findings |
 | 2026-11-20 | R-10 | spec | `36ebfd3` | n/a | n/a | accepted by owner |
 | 2026-11-21 | R-11 | spec | `f089ab9` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 6 should-fix and 5 nits |
+| 2026-11-21 | R-12 | spec | `00f14af` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 5 should-fix and 1 nit |
 
 ### R-1
 
@@ -1642,6 +1643,57 @@ SEVERITY: nit
 WHERE: Tasks, T7 note ("that Design wording needs a spec revision before completion"); Tasks, T35 and T36 layout
 EVIDENCE: This revision makes the T7 note's Pester change, so the note is now out of date. A blank line separates T35 and T36 from the T1 to T34 list, and T36 is followed straight away by `## Open Questions` with no blank line (lines 758 to 761). `vh-adlc lint` passes, so this is formatting only.
 PROPOSAL: Say in the T7 note that the 2026-11-21 revision made the change, remove the blank line before T35, and add one after T36.
+
+### R-12
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Test Plan, row AC-22 ("on the PDS branch, read the job lists of a PowerShell-only and a documentation-only push"); Tasks, T35 ("PDS branch runs for a PowerShell-only and a documentation-only push show only the selected jobs"); Acceptance Criteria, AC-22; Context, Owner summary, Proof ("Planned: pushes that show the change selection")
+EVIDENCE: The revision applying R-11 F-01 (diff 17872e5..00f14af) judges every branch push on its whole diff from the merge base with `main`. The PDS feature branch's diff from its merge base 747168e touches `.github/` (12 files), `pwsh/` (176), `scripts/` (4), `tests/`, `packaging/` and more (`git diff --name-only 747168e 975907b`), so `.github/` selects every group on every push of that branch. The live runs show it. Run 44878629035 at 827ca45, which implements the merge-base base, ran every job. Run 44878020475 at 975907b, a documentation-only push under the old previous-tip base, ran only actionlint, and the current Design no longer allows that. A branch cut from PDS `main` cannot show the selection before the merge either, because `ci.yml` and `checks.yml` do not exist there (`git ls-tree origin/main .github/workflows/` lists only `build-apt-package.yml`, `package-ps1-script.yaml`, `publish-pwsh-module.yaml` and `validate-docs.temp`). So the live part of the proof cannot be executed where and when the row and T35 put it. T35's commits have to land in the migration PR before the merge, but its done condition can only be observed after the merge.
+PROPOSAL: Move the live observation after the merge: on a branch cut from `main` once the migration has merged, push a PowerShell-only change and a documentation-only change and read each run's job list. Put that in a new post-merge task, or in T35's unchecked text with T35 ordered after the merge. Leave the pre-merge proof as the script test plus reading `checks.yml`.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet (groups by directory; "Any other path, including `readme.md` and `docs/`, is documentation and selects nothing"); Acceptance Criteria, AC-22 ("documentation-only changes, `readme.md` included, run no check"); Test Plan, row AC-22; frontmatter `goal` ("checks every push that changes PowerShell code"); Context, Owner summary, Approach ("a documentation-only change runs nothing"); Scope, In scope ("Branch and `main` pushes run only the checks their changes need")
+EVIDENCE: The Design picks groups by top-level directory, but AC-22 and the owner's 2026-11-21 answer to R-11 F-07 talk about documentation. These two readings disagree in both directions. Most PDS documentation lives inside check groups. `git ls-files '*.md'` at PDS 827ca45 shows 53 Markdown files under `pwsh/` (50 of them in `pwsh/docs`), 3 under `packaging/` and 5 under `bash/`. Under the Design, a change that touches only `pwsh/docs/*.md` is a documentation-only change that still runs `pwsh-ci-action`, and AC-22 read literally says it runs no check. In the other direction, a PowerShell file under `docs/`, `examples/` or `darwin/` counts as documentation and selects nothing. Yet `pwsh-ci-action` runs on `path` `.` (PDS passes no `path`, and the Format and Analyze checks recurse; T22's evidence counts 161 files across the repository), so the tag's `release.yml` checks that file. That contradicts the goal's "every push that changes PowerShell code". Today the only PowerShell files outside `pwsh/` are `PSScriptAnalyzerSettings.psd1` and `scripts/vm-set.ps1`. The Test Plan row tests documentation only with root `docs/` and `readme.md`, so an implementation that classifies by directory and one that classifies `*.md` as documentation both pass it.
+PROPOSAL: Choose one classification and state it the same way everywhere. Either classify by file type (`*.md` anywhere is documentation, and `*.ps1`, `*.psm1` and `*.psd1` anywhere select PowerShell), or keep the directory rule and say in AC-22 and the goal that documentation means paths outside the listed directories. Add a `pwsh/docs` Markdown case and a PowerShell-file-outside-`pwsh/` case to the AC-22 row with their expected outputs.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Rollout order" ("First, PDS pins `publish-pwsh-module-action` to `753afb5` ... in a change of its own. Only then does either action's release-only change merge"); Context, Owner summary, Migration and rollback ("PDS first pins both current actions by SHA, so their release-only versions cannot break it"); Tasks, T1
+EVIDENCE: The safeguard did not happen on PDS `main`. `git grep -n 'uses:.*pwsh' origin/main -- .github/workflows` at PDS 747168e still shows `michielvha/publish-pwsh-module-action@main` (`publish-pwsh-module.yaml:27`) and `package-pwsh-script-action@v1` (`package-ps1-script.yaml:32`). T1's evidence says the pin was made on the feature branch and "not pushed". The release-only change has since merged: T14 merged it as `1bf4e8d` and released `v3.0.0`, and `gh api repos/michielvha/publish-pwsh-module-action/commits/main` gives `0daf679` (2026-11-20). Its `action.yml` requires `module-path`, `tag`, `api-key`, `root-module`, `description`, `company-name` and `author`. PDS `main` passes none of these; it passes `psd1Path`, `psm1Path`, `apiKey`, `description`, `rootModule` and `companyName`. So the next PDS `main` push under `pwsh/module/**` runs v3 with no tag and cannot publish the module. `package-pwsh-script-action@v1` is unaffected because the alias stays. The document still describes the pin as a step that comes before the action changes and protects PDS, and it defines no path for module releases from PDS `main` before the migration merges.
+PROPOSAL: Record the actual state in Rollout order and the Owner summary. Add an unchecked task that lands T1's SHA pin on PDS `main` as its own change, with the owner's go, or state that PDS module releases are paused until the migration merges.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T31 (`michielvha/PDS:refs/tags/v0.24.1`); Design, PDS "Version" bullet ("the commit of the latest release tag (`0.24.1` today)"); Acceptance Criteria, AC-10; Context, "Three jobs decide one version" ("The latest tag is `0.24.1`") and "A pull request runs the release" (every `PullRequest` tag deleted); Context, Owner summary, Migration and rollback
+EVIDENCE: `git ls-remote --tags origin` on PDS shows `0.25.0` on `b53c839` and `0.25.1` on `747168e`, both after `0.24.1`. `gh release list -R michielvha/PDS` shows "PDS 0.25.1 Latest" from 2026-11-20, created by the "Build APT Package" run 44750920262 for a storage-only merge. The Gallery feed's newest PDS is 0.25.0. AC-10 requires `v<latest release tag>` on the latest release tag's commit, but T31 names `v0.24.1`. A baseline made by following T31 fails AC-10, and `gh-release-action`'s first notes would start at `v0.24.1`, repeating the 0.25.0 and 0.25.1 commits. The old APT workflow still tags on `main` pushes, so the latest release tag can move again before the migration merges. A new junk tag, `0.25.0-PullRequest56.2` on `aea6173`, came from PR 56's run on 2026-11-18, while the Context says every such tag was deleted.
+PROPOSAL: Make T31 create `v<latest release tag>` taken just before the merge (0.25.1 today) and update the "today" value in the Version bullet. Record the new `PullRequest` tag and whether it is deleted.
+
+FINDING: F-05
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet ("On `main` it compares with the commit of the latest stable `vX.Y.Z` tag the pushed commit contains"); Design, Legend, `ci.yml` bullet ("so a tag follows only passing checks for its whole release range"); Design, PDS "Recovery" bullet; Acceptance Criteria, AC-22
+EVIDENCE: The base on `main` treats any stable tag as checked, including a tag pushed by hand (the Legend expects these) and an abandoned tag whose `release.yml` failed in `checks.yml`. Here is the sequence. Tag A is pushed by hand on a commit whose PowerShell checks failed on `main`. Its `release.yml` fails, so A gets no Release. Merge B then changes only `bash/` and is compared with A. It runs only the package checks, passes, and `version-workflow` tags it. Its `release.yml` fails on the same PowerShell defect. Every later merge that does not touch `pwsh/` repeats this. The same thing happens after the documentation case the owner accepted: a broken `readme.md` fails the package build in a tag's `release.yml`, and every later tag fails the same way until someone fixes it. The owner accepted that it "first fails in a tag's `release.yml`", but not that every later tag fails too. Recovery lists only a defect in `release.yml`, `checks.yml` or the action pins. It says an abandoned tag drops its commits from every Release's notes, but not that several abandoned tags can pile up while the defect waits for a fix.
+PROPOSAL: Either compare `main` with the latest stable tag that has a published GitHub Release (and run every check when none exists), so commits after a failed tag are checked again, or keep the stable-tag base and add this case to Recovery as an accepted consequence. Either way, state the choice for the owner.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22 ("read each `checks.yml` job's `if:` (... ShellCheck, package and install on `package` ...)", "a force-pushed branch judged on its new diff from `main`", "`main` judged from its latest stable tag (a prerelease tag ignored)"); Design, PDS `checks.yml` bullet ("`package` gates ShellCheck, the package build and the install tests")
+EVIDENCE: In both PDS implementations, the install job has no `if:`. It is gated only by `needs: [package]` (`checks.yml` at 975907b and at 827ca45, `install:` at line 136), and run 44878020475 shows "Test installation skipped" when the package input was `'false'`. A reviewer who reads the row literally finds no `if:` on the install job and cannot confirm the gating, even though the implementation is correct. A second implementer might add a redundant `if:` just to satisfy the row. The row also gives no expected outputs for the force-push case or the `main` case, which R-11 F-02 asked for.
+PROPOSAL: Say that a job is gated by its own `if:` or by a `needs:` chain to a gated job. Give expected outputs for the force-push case (for example, a force push that drops a `bash/` change gives false/true/false) and for the `main` case.
+
+FINDING: F-07
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("a workflow or script change runs both plus actionlint"; "on `main` over everything since the latest release tag"); Context, Owner summary, Changes since the 2026-11-20 acceptance ("any change the selection cannot judge runs every check")
+EVIDENCE: The Design and AC-22 say `scripts/` selects PowerShell and package but not actionlint ("one under `scripts/` every check but actionlint"). The summary says a script change also runs actionlint. Under the Design, only a dispatch or a base that cannot be resolved runs every check (the owner's answer to R-11 F-03), and any unlisted path counts as documentation and runs nothing (the answer to R-11 F-07). "Any change the selection cannot judge" can be read as unlisted paths, which is the opposite. "Latest release tag" is not the Design's "latest stable `vX.Y.Z` tag", which includes a tag that has no Release. The summary also leaves out the trade-off the owner accepted: a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`.
+PROPOSAL: Say a script change runs the PowerShell and package checks, that a dispatch or an unresolvable base runs every check, and that `main` is compared with the latest stable tag. Add the accepted `readme.md` trade-off as an owner decision of 2026-11-21.
 
 ## Sources
 

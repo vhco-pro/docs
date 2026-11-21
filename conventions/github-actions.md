@@ -96,10 +96,12 @@ versions drift. If they ever run their own runner images, revisit this.
   per component, and each check job gates on its group. On a branch the script judges the whole diff from
   its merge base with the default branch, so a later push never hides an earlier change. On the default
   branch it judges everything since the latest stable tag that has a published Release, so a tag follows
-  passing checks for its whole range and commits after a failed release are checked again. A change to
-  the workflows selects every group, a change to a shared script every group that uses it, and
-  documentation none; classify by file type first, so Markdown inside a component's directory is
-  documentation and a component's source file outside it still selects its group. A dispatch, or a base the script cannot resolve, selects every
+  passing checks for its whole range and commits after a failed release are checked again. Count both
+  sides of every rename, so moving a file out of a component selects it. Each changed file takes the
+  first rule that matches: documentation such as Markdown anywhere selects nothing, a file under the
+  workflow directory selects every group, a file under a shared scripts directory every group that uses
+  it, a component's source file anywhere else, by type, selects its group, and a file under a
+  component's directory selects that component. Directories count from the repository root. A dispatch, or a base the script cannot resolve, selects every
   group, and a tag-triggered release runs every check. PDS's `scripts/detect-changes.sh` is the reference.
 - **Check environment policies when a job moves.** A deployment environment can limit which branches
   and tags deploy. When a job moves to another trigger or ref, check the policies of every environment it

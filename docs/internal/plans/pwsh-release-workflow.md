@@ -1,6 +1,6 @@
 ---
-status: in-progress
-status_description: "Claimed 2026-11-20; implementing task by task on feat/pwsh-release-workflow in each repository."
+status: draft
+status_description: "Revising on 2026-11-21 at the owner's request: ci.yml runs only the checks a push's changes need, and the Design names Pester 6. Implemented tasks stay checked."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."

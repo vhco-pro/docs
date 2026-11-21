@@ -202,7 +202,9 @@ Link images at fixed commits so the record survives later changes:
 - A capture the repository already commits, such as a guide screenshot, is
   linked at the base and head commit SHAs.
 - Any other capture is committed to a ref outside `refs/heads`, one per pull
-  request (`refs/pr-visuals/<branch>`), and linked at that ref's commit.
+  request and named by its number (`refs/pr-visuals/<number>`), and linked at
+  that ref's commit. A branch name can be reused after a merge; a PR number
+  cannot.
   Ordinary clones do not fetch such refs, and GitHub still serves their files
   to anyone who can read the repository. Keep the ref after merge: it is the
   record.

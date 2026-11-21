@@ -831,6 +831,7 @@ None.
 | 2026-11-21 | R-11 | spec | `f089ab9` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 6 should-fix and 5 nits |
 | 2026-11-21 | R-12 | spec | `00f14af` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 5 should-fix and 1 nit |
 | 2026-11-21 | R-13 | spec | `174bfed` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
+| 2026-11-21 | R-14 | spec | `925d2d0` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 
 ### R-1
 
@@ -1761,6 +1762,45 @@ SEVERITY: nit
 WHERE: Context, "Three jobs decide one version" ("By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`, the latest with a Release (`git ls-remote --tags origin`)")
 EVIDENCE: `git ls-remote --tags origin` lists tags but not Releases. The claim itself holds: `gh release list -R michielvha/PDS` shows `0.25.1` as Latest and no Release for `0.25.0`. This is a citation slip only.
 PROPOSAL: Cite `gh release list -R michielvha/PDS` for "the latest with a Release", and keep `git ls-remote --tags origin` for the two tags.
+
+### R-14
+
+TARGET: 925d2d049cfb4d4fcb6ac2e98e340dc287481172
+
+FINDING: F-01
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Tasks, T37 ("the flow text and diagram describe the change selection and a tag running every check"); Acceptance Criteria, AC-13 ("`knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow"); Test Plan, row AC-13; Design, PDS "Workflow rules" bullet ("The whole GitHub Actions convention ... applies to PDS")
+EVIDENCE: The dispatch says the covered page is still as R-13 saw it at X, but that is not so. `git merge-base --is-ancestor 8086967 925d2d0` exits 0, and `git log --oneline 925d2d0 -- knowledge/tag-driven-pwsh-releases.md` lists 8086967. So at X the page already holds the T37 text, and it already meets T37's literal done condition. Three problems remain. First, `knowledge/tag-driven-pwsh-releases.md:69-70` at X says "This follows the GitHub Actions convention's rule to run only the checks a change needs", but `conventions/github-actions.md` at X has no such rule; its Execution section ends with timeouts and environment policies. Second, the rule exists only on `origin/main` (ff88d82, 7075171), which are not ancestors of X (`git merge-base --is-ancestor 7075171 925d2d0` exits 1). There, `conventions/github-actions.md:94-102` says "classify by file type first, so Markdown inside a component's directory is documentation and a component's source file outside it still selects its group", has no rename rule, and names "PDS's `scripts/detect-changes.sh` is the reference". The revision applying R-13 F-01 and F-02 (`git diff 3384178 925d2d0`) moved `.github/` and `scripts/` ahead of the PowerShell type rule and counted both sides of a rename. Once the branch merges `main`, the convention it declares applicable will describe a different order from the document and its reference script. Third, the page (`:62-68`) lists the groups with no order and no rename rule. Nothing in T37, AC-13 or the AC-13 row requires the page or the convention to match the Design, so T37 can be ticked as it stands.
+PROPOSAL: Make T37 require that the page state the Design's first-match order and the rename rule, and that it cite the convention only at a revision that holds the rule. Raise as an Open Question, or add as a task, bringing `conventions/github-actions.md`'s "Run only the checks a change needs" in line with the first-match order and rename handling, because the convention names the PDS script as its reference.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22 (cases "`main` whose newer stable tag has no Release judged from the older released tag" and "a prerelease tag ignored"); Acceptance Criteria, AC-22 ("on `main` over the diff from the latest stable tag with a published Release"); Design, PDS `ci.yml` bullet ("compares with the commit of the latest stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release")
+EVIDENCE: The row says the test "asserts the script's three outputs", and every other case gives expected outputs. These two cases give none. A test can build a history in which the older released tag and the newer unreleased one, or the prerelease tag, select the same groups. Such a test passes on a script that takes the newest stable tag whatever its Release state, or that treats a prerelease as a base. That is the defect the owner's released-tag decision of 2026-11-21 exists to prevent. R-12 F-06 asked for expected outputs on the `main` cases, and only the "only `pwsh/` changed since" case received them. Both cases predate this revision (they are in the 174bfed row) and have no expected outputs at X.
+PROPOSAL: Give each case a history whose outputs tell the bases apart, with expected outputs. For example: released `v1.0.0`, a `bash/` change, stable `v1.1.0` with no Release, then a `pwsh/` change gives true/true/false. A `bash/` change, `v1.1.0-rc.1` with a published prerelease Release, then a `pwsh/` change also gives true/true/false.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Recovery" bullet ("Three cases need a person:")
+EVIDENCE: Four bullets follow that line at X: the cancelled Release job's draft, a defect in the tag's own workflow, a stable Release created after a higher one, and the broken Markdown file the package reads (lines 544-556). The revision applying R-13 F-03 (`git diff 3384178 925d2d0`) added the fourth bullet and left the count unchanged.
+PROPOSAL: Change "Three cases need a person" to "Four cases need a person", or drop the count.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("The changed files are both sides of every rename and copy (`git diff --no-renames --name-only`)"); Acceptance Criteria, AC-22 ("with both sides of every rename counted")
+EVIDENCE: The cited command never prints the source of a copy. In a scratch repository (git 2.56.0), I copied `bash/common/x.sh` to `darwin/x.sh` and committed. `git diff --no-renames --name-only HEAD~1 HEAD` printed only `darwin/x.sh`, and so did the same command under `-c diff.renames=copies`. Only `git diff -C --find-copies-harder --name-status` showed `C100 bash/common/x.sh darwin/x.sh`. The prose and the command disagree for copies, and AC-22 names renames only. The source of a copy is unchanged, so selection is unaffected either way. This traces to the revision applying R-13 F-02.
+PROPOSAL: Say "both sides of every rename" to match AC-22 and the command, or say that a copy counts only its new path.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("a file under `.github/`", "a file under `scripts/`", "any other file under `pwsh/`", "a file under `packaging/`, `bash/` or `tests/`"); Acceptance Criteria, AC-22 (same clauses); Test Plan, row AC-22
+EVIDENCE: The rules never say that the directories are counted from the repository root. Nested directories with the same names exist: `git ls-files` in the PDS worktree lists 6 files under `pwsh/scripts/`, 3 under `packaging/scripts/` and 78 under `pwsh/tests/`. Read from the root, `pwsh/scripts/main.ps1` gives false/true/false and `packaging/scripts/postinstall.sh` gives true/false/false. Read as any path segment, the `scripts/` rule matches first and gives true/true/false for both. The implementation anchors at the root (`case` pattern `scripts/*`, `scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`, line 65). No row case uses a nested path. Every other path in the document is written from the root, so this is a wording gap.
+PROPOSAL: Say that the directories are top-level paths from the repository root, and add `pwsh/scripts/main.ps1` false/true/false to the AC-22 row.
 
 ## Sources
 

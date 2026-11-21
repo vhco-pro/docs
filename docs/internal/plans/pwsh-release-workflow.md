@@ -1,6 +1,6 @@
 ---
-status: planned
-status_description: "Revision accepted by the owner on 2026-11-21 (R-17 at bddd922): change-selected CI and Pester 6. Implementation resumes on feat/pwsh-release-workflow."
+status: in-progress
+status_description: "Implementing the accepted 2026-11-21 revision on feat/pwsh-release-workflow; the PDS migration is merging, with the release waiting on the App key."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push that changes PowerShell code with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."

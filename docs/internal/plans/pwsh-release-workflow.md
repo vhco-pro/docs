@@ -1,6 +1,6 @@
 ---
-status: draft
-status_description: "Revising on 2026-11-21 at the owner's request: ci.yml runs only the checks a push's changes need, and the Design names Pester 6. Implemented tasks stay checked."
+status: planned
+status_description: "Revision accepted by the owner on 2026-11-21 (R-17 at bddd922): change-selected CI and Pester 6. Implementation resumes on feat/pwsh-release-workflow."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push that changes PowerShell code with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
@@ -843,6 +843,7 @@ None.
 | 2026-11-21 | R-15 | spec | `cd3e373` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 | 2026-11-21 | R-16 | spec | `9e489a4` | claude-opus-5-5 | procedural | Not clean: 1 should-fix and 2 nits |
 | 2026-11-21 | R-17 | spec | `bddd922` | claude-opus-5-5 | procedural | Clean: 2 nits, no blocking or should-fix findings |
+| 2026-11-21 | R-17 | spec | `bddd922` | n/a | n/a | accepted by owner |
 
 ### R-1
 

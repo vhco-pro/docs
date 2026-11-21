@@ -1,6 +1,6 @@
 ---
 status: in-progress
-status_description: "Implementing the accepted 2026-11-21 revision on feat/pwsh-release-workflow; the PDS migration is merging, with the release waiting on the App key."
+status_description: "PDS releases through the new path (v0.26.1, 2026-11-21) and the docs are merged. Open: AC-08 (Renovate App access, T19), AC-15 (per-job APT rerun, provable on the next release) and AC-10 (abandoned v0.26.0, accepted by the owner)."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push that changes PowerShell code with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
@@ -681,12 +681,13 @@ fixed forward with a new version.
   test file in `pwsh/tests/` with at least one passing test that invokes it,
   including `Enable-SshServer` with and without a key.
   Evidence: PDS `main` CI runs `pwsh-ci-action` v0.1.1 green on every PowerShell change (for example [run 44932953352](https://github.com/michielvha/PDS/actions/runs/44932953352) for PR #66). `PSScriptAnalyzerSettings.psd1` configures the `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only `PSAvoidUsingWriteHost` with its reason in a comment. On the Windows 11 VM at `94a04f7` (after [PDS #66](https://github.com/michielvha/PDS/pull/66) named the last positional arguments), `Invoke-ScriptAnalyzer` over `pwsh/module` under the settings returns 0 records of any severity (`PSUseCorrectCasing` excluded as the action does, the formatter covering casing) and `-SuppressedOnly` returns 0, so no suppression exists. Importing the module lists 78 functions, one per file under `Public/` and named after it, plus the 12 aliases. `pwsh/tests/` has a file per public function (a script maps all 78), each invoking its function, and the suite gives 379 tests, 368 passed, 0 failed, 11 skipped (non-elevated branches); `Enable-SshServer.Tests.ps1` covers a run without a key and runs with keys.
-- [ ] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action`, `setup-pwsh-action`, the two
+- [x] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action`, `setup-pwsh-action`, the two
   release-only actions and the `files` input of `gh-release-action`, and
   states that every repository publishing artifacts from a tag follows the CI, version and tag-triggered
   release shape while actions and reusable workflows release through `gh-release-workflow`, and
   `knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow and links the PDS workflows as
   the reference consumer.
+  Evidence: in the merged docs commit `28854c6` ([#55](https://github.com/vhco-pro/docs/pull/55)), `knowledge/shared-delivery.md` lists `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, notes the `files` input on the `gh-release-workflow` row, and states in its release contract (`:59-63`) that every repository publishing artifacts from a tag runs a language CI action, `version-workflow` and a tag-triggered release while actions and reusable workflows release through `gh-release-workflow`; `knowledge/tag-driven-pwsh-releases.md` states both (`:18-22`), describes the PowerShell flow and links the PDS workflows.
 - [x] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
   Evidence: Each of the twelve renamed functions' test files ends with `It 'still runs under its old name'`, which asserts `Get-Command <old> -Module PDS` is an alias resolving to the new name and runs it with the installs mocked; all pass on `main` (CI and the VM suite). `Get-RDSActiveSessionReport.Tests.ps1` reaches it through `Get-RDSActiveSessions`, while `Get-RDSActiveSession.Tests.ps1` tests the unchanged singular function with its own `-QuickMode` parameter.
 - [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching

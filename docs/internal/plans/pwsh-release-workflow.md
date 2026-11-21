@@ -838,6 +838,7 @@ None.
 | 2026-11-21 | R-13 | spec | `174bfed` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 | 2026-11-21 | R-14 | spec | `925d2d0` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 | 2026-11-21 | R-15 | spec | `cd3e373` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
+| 2026-11-21 | R-16 | spec | `9e489a4` | claude-opus-5-5 | procedural | Not clean: 1 should-fix and 2 nits |
 
 ### R-1
 
@@ -1832,6 +1833,31 @@ SEVERITY: nit
 WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("accepting that a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`"); Context, Owner summary, Approach (no rename rule); Design, PDS "Recovery" bullet (fourth case: "every tag after it fails at the package build until a version-bumping commit such as `fix:` restores the file"); Design, PDS `ci.yml` bullet ("The changed files include both sides of every rename")
 EVIDENCE: The summary says a broken packaged Markdown file "first fails" in a tag's `release.yml`. The Recovery bullet says every later tag fails the same way until a version-bumping commit restores the file. Both follow from the owner's decision, but the summary leaves out the repeated failure. The summary also never mentions that both sides of a rename count, a selection rule the Design, AC-22, the knowledge page (`knowledge/tag-driven-pwsh-releases.md:65`) and the shared convention (`conventions/github-actions.md:99-100` at X) all state. Neither omission contradicts the normative sections.
 PROPOSAL: In the summary, say that each later tag also fails until a `fix:` restores the file, and add the rename rule to Approach or to the changes since acceptance.
+
+### R-16
+
+TARGET: 9e489a471174f770c489f491354f16ebe0ebb1d4
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `checks.yml` bullet ("runs the selection script's behaviour test, so the script that decides which checks run is checked whenever `scripts/` changes"); Design, PDS `ci.yml` bullet (the selection job runs `scripts/detect-changes.sh`); Scope, Out of scope ("apart from ShellCheck also linting the new root `scripts/` and running the selection script's test"); Test Plan, row AC-22 ("read the `shell` job for the ShellCheck of root `scripts/*.sh` and `tests/detect-changes.test.sh` and the run of that test"); Design, PDS "Recovery" bullet ("Four cases need a person"); Tasks, T35
+EVIDENCE: The selection script decides on its own change. `ci.yml:45` at `michielvha/PDS@90ebd69` runs the pushed commit's `scripts/detect-changes.sh`. The only CI run of its test is in the `shell` job, which is gated on the package group (`checks.yml:52`, `:68-69`). I copied the script and test at 90ebd69 into a scratch repository, deleted the `scripts/*)` case line on a branch and committed only that change. The edited script printed `package=false powershell=false workflows=false: changes since the merge base with main`, so the `shell` job would be skipped and the run would pass with no check at all. Running the test against the edited script gives "FAIL: script change (got false false false, expected true true false)" and "2 case(s) failed". The same thing happens on `main` after the merge, because `main` runs the same broken script. Every later tag's `release.yml`, which runs every check, then fails on the test. That is a repeated abandoned tag, and Recovery covers repeated abandoned tags only for a packaged Markdown file and for a defect in the tag's own workflow. So the claim "checked whenever `scripts/` changes" is false for exactly the change it is meant to catch. This traces to the revision applying R-15 F-02 (`git diff 602f5a4 9e489a4`), which added the sentence. The unmodified test passes at 90ebd69 (26 cases, `bash tests/detect-changes.test.sh` run from a scratch TMPDIR), and so does CI run 44885634387.
+PROPOSAL: Run `tests/detect-changes.test.sh` in the selection job before the script selects, so a broken selection fails the run whatever it would select, and have the AC-22 row read that step. Otherwise drop the "checked whenever" claim and add a self-hiding selection defect to Recovery.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: nit
+WHERE: Acceptance Criteria, AC-22; Test Plan, row AC-22 ("read the `shell` job for the ShellCheck of root `scripts/*.sh` and `tests/detect-changes.test.sh` and the run of that test"); Design, PDS `checks.yml` bullet ("The package group's ShellCheck job also lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`"); Scope, Out of scope ("ShellCheck also linting the new root `scripts/` and running the selection script's test")
+EVIDENCE: The AC-22 text says nothing about linting root `scripts/` or running the selection test in CI, so only the Test Plan row checks that Design requirement, and a reviewer judging the criterion text alone can mark AC-22 met without it. The Design calls the job "the package group's ShellCheck job", but the row calls it "the `shell` job", which is the implementation's job id (`checks.yml:50` at 90ebd69) and is named nowhere in the Design. The Out of scope line names only root `scripts/` and leaves out the lint of `tests/detect-changes.test.sh`. It also counts running the test as part of ShellCheck.
+PROPOSAL: Add a clause to AC-22 (or to AC-19) saying the package group lints root `scripts/*.sh` and the selection test and runs that test, and use one name for the job in the Design and the row. Make the Out of scope line list both lint targets and the test run.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("that `main` is judged from the latest tag with a published Release"); Context, Owner summary, Approach ("on `main` over everything since the latest stable tag that has a published Release"); Design, PDS `ci.yml` bullet ("the latest stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release"); Acceptance Criteria, AC-22 ("the latest stable tag with a published Release"); Scope, Out of scope (ShellCheck exception)
+EVIDENCE: The Changes paragraph drops "stable". Read that way, a prerelease tag with a published Release could be the base, which the Approach, the Design, AC-22 and the row case "`v1.1.0-rc.1` with a published prerelease Release ... (the prerelease is no base)" all rule out. The same paragraph also omits a scope change made since the accepted R-10 baseline: ShellCheck now also lints root `scripts/` and runs the selection test, which is a new exception in the Out of scope line. The standard asks the summary to explain material changes since the last accepted scope.
+PROPOSAL: Write "the latest stable tag with a published Release" in the Changes paragraph, and add one clause saying the package group's ShellCheck now also covers root `scripts/` and runs the selection test.
 
 ## Sources
 

@@ -833,6 +833,7 @@ None.
 | 2026-11-21 | R-12 | spec | `00f14af` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 5 should-fix and 1 nit |
 | 2026-11-21 | R-13 | spec | `174bfed` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 | 2026-11-21 | R-14 | spec | `925d2d0` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
+| 2026-11-21 | R-15 | spec | `cd3e373` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 
 ### R-1
 
@@ -1802,6 +1803,31 @@ SEVERITY: nit
 WHERE: Design, PDS `ci.yml` bullet ("a file under `.github/`", "a file under `scripts/`", "any other file under `pwsh/`", "a file under `packaging/`, `bash/` or `tests/`"); Acceptance Criteria, AC-22 (same clauses); Test Plan, row AC-22
 EVIDENCE: The rules never say that the directories are counted from the repository root. Nested directories with the same names exist: `git ls-files` in the PDS worktree lists 6 files under `pwsh/scripts/`, 3 under `packaging/scripts/` and 78 under `pwsh/tests/`. Read from the root, `pwsh/scripts/main.ps1` gives false/true/false and `packaging/scripts/postinstall.sh` gives true/false/false. Read as any path segment, the `scripts/` rule matches first and gives true/true/false for both. The implementation anchors at the root (`case` pattern `scripts/*`, `scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`, line 65). No row case uses a nested path. Every other path in the document is written from the root, so this is a wording gap.
 PROPOSAL: Say that the directories are top-level paths from the repository root, and add `pwsh/scripts/main.ps1` false/true/false to the AC-22 row.
+
+### R-15
+
+TARGET: cd3e373985a6ca63d82e82fd06c82ae747d4d6d4
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T38 ("on a throwaway branch cut from `main`, a PowerShell-only push runs only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push runs no check while its version job succeeds"); Test Plan, row AC-22 (After the merge: "on a branch cut from `main`, push a PowerShell-only change and a documentation-only change and read each run's job list"); Acceptance Criteria, AC-22 ("A branch's later push still runs the checks for every group the whole branch changed"); Design, PDS `ci.yml` bullet ("every push of a branch ... is judged on the whole branch diff")
+EVIDENCE: The post-merge proof puts both pushes on one branch and lists the PowerShell-only push first. Under the Design and AC-22, every push of a branch is compared with its merge base with `main`, so a Markdown-only push made after the PowerShell-only push on the same branch still has the `pwsh/` change in its diff and selects `pwsh-ci-action`. The AC-22 row's own script case says so: "a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false". The reference script does the same: `scripts/detect-changes.sh:55` at `michielvha/PDS@90ebd69` takes `git merge-base "$main_ref" "$head"` for every branch push, and `:70` diffs from it. Run in the order T38 gives, a correct implementation runs the PowerShell checks on the Markdown-only push, and T38's done condition ("runs no check") is not met. The proof passes only if the executor pushes the Markdown-only change first or uses two branches, and neither T38 nor the row says so.
+PROPOSAL: Make T38 and the AC-22 row cut two throwaway branches from `main`, one per push, or push the Markdown-only change first and the PowerShell-only change second, and say which.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `checks.yml` bullet ("a reusable workflow holding every PDS check: ShellCheck, the package build and its tests, the install tests ... and `pwsh-ci-action`"; "`package` gates ShellCheck, the package build and the install tests"); Design, PDS `ci.yml` bullet ("a file under `scripts/` selects PowerShell and package"); Scope, Out of scope ("Changing what the package build, ShellCheck and install tests check"); Acceptance Criteria, AC-22 ("a file under `scripts/` selects every check but actionlint"); Test Plan, row AC-22 (cases "`scripts/vm-set.ps1` true/true/false" and "`scripts/` true/true/false"); Tasks, T35; Context, Owner summary, Approach ("a script change runs both"); `knowledge/tag-driven-pwsh-releases.md:69` ("A file under `scripts/` selects ShellCheck, the package jobs and `pwsh-ci-action`")
+EVIDENCE: Root `scripts/` is new in this feature. `git ls-tree --name-only origin/main scripts/` in PDS prints nothing, and at `michielvha/PDS@90ebd69` it holds `build-apt-repo.sh`, `check-release-ref.sh`, `detect-changes.sh` and `vm-set.ps1`. The ShellCheck the Out of scope line keeps unchanged is `cd packaging; make lint; make lint-image-provisioning` (`build-apt-package.yml:58-62` on PDS `main`). There, `scripts/*.sh` resolves to `packaging/scripts/` (`packaging/Makefile:77`, `:87`), so no package-group check reads root `scripts/`. The Design gives no check that covers the three new Bash scripts or runs the selection script's own test (`tests/detect-changes.test.sh`) in CI. The rule that `scripts/` selects the package group therefore assumes a check the document never specifies. The implementation adds it: `checks.yml:67-69` at `90ebd69` runs `shellcheck scripts/*.sh tests/detect-changes.test.sh` and `bash tests/detect-changes.test.sh` in the package-gated `shell` job. That changes what ShellCheck checks, which Scope puts out of scope. An implementer who follows the document strictly builds a package group that ignores root `scripts/`. Then `detect-changes.sh`, which decides which checks run, gets no ShellCheck and no behaviour test in CI, and selecting the package group for `scripts/` buys nothing. `conventions/coding.md:15-21` at the pin moves workflow logic into scripts precisely so they "can be linted with `shellcheck`".
+PROPOSAL: In the `checks.yml` bullet, state that the package group's ShellCheck also covers root `scripts/*.sh` and `tests/detect-changes.test.sh` and that the package group runs the selection script's test. Qualify the Out of scope line to match, and have AC-22's row read that gate.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("accepting that a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`"); Context, Owner summary, Approach (no rename rule); Design, PDS "Recovery" bullet (fourth case: "every tag after it fails at the package build until a version-bumping commit such as `fix:` restores the file"); Design, PDS `ci.yml` bullet ("The changed files include both sides of every rename")
+EVIDENCE: The summary says a broken packaged Markdown file "first fails" in a tag's `release.yml`. The Recovery bullet says every later tag fails the same way until a version-bumping commit restores the file. Both follow from the owner's decision, but the summary leaves out the repeated failure. The summary also never mentions that both sides of a rename count, a selection rule the Design, AC-22, the knowledge page (`knowledge/tag-driven-pwsh-releases.md:65`) and the shared convention (`conventions/github-actions.md:99-100` at X) all state. Neither omission contradicts the normative sections.
+PROPOSAL: In the summary, say that each later tag also fails until a `fix:` restores the file, and add the rename rule to Approach or to the changes since acceptance.
 
 ## Sources
 

@@ -777,6 +777,7 @@ None.
 | 2026-11-17 | R-9 | spec | `bea37e5` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 | 2026-11-17 | R-10 | spec | `36ebfd3` | claude-opus-5-5 | procedural | Clean: 4 nits, no blocking or should-fix findings |
 | 2026-11-20 | R-10 | spec | `36ebfd3` | n/a | n/a | accepted by owner |
+| 2026-11-21 | R-11 | spec | `f089ab9` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 6 should-fix and 5 nits |
 
 ### R-1
 
@@ -1529,6 +1530,94 @@ SEVERITY: nit
 WHERE: Design, `pwsh-ci-action` repository layout ("copies `go-ci-action`'s layout ... `release.yml` through `gh-release-workflow`"); Context, "The actions fall short of the conventions" (`go-ci-action` as the model); Design, PDS "Workflow rules" bullet (the whole convention applies to the five action repositories); Design, `gh-release-action` files (the `DRY_RUN` expression moved into a step)
 EVIDENCE: `git -C /home/m/code/go-ci-action show origin/main:.github/workflows/release.yml` passes `dry-run: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry-run) }}` to the `gh-release-workflow` call. That breaks "Let expressions only read values" in `conventions/github-actions.md` at X. It is the same expression the Design removes from `gh-release-action`. The four PowerShell action repositories copy this `release.yml`, and the Design names no such change for them. A reusable-workflow call job has no steps, so the fix there needs an earlier job that outputs the value. The Design already applies the whole convention to these repositories and leaves judgement rules to the implementation review, so a careful implementer reaches the same result.
 PROPOSAL: Add to the layout sentence that the copied `release.yml` gets `dry-run` from an earlier job's script output instead of the computed expression, as `gh-release-action` does.
+
+### R-11
+
+TARGET: f089ab985000cbc81e0c594ae39223dbf067351e
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Design, PDS `ci.yml` bullet ("compares the pushed commit with the branch's previous tip (`github.event.before`)"); Acceptance Criteria, AC-22; Test Plan, row AC-22; Tasks, T35; Context, Owner summary, Approach ("Each branch push runs the checks its changes need" and "`version-workflow` tags `main` after the checks pass"); Design, flowchart ("All checks pass?" -> "No version, no tag"); Design, Legend, `ci.yml` bullet ("A PR shows the push checks on its head commit")
+EVIDENCE: The revision compares every push with the previous tip, on `main` as well as on branches. Two consequences follow. On a branch, push 1 changes `pwsh/` and its PowerShell checks fail. Push 2 changes only `docs/`, so it is compared with push 1 and runs only actionlint, which passes. The PR head commit now shows a green run while the PowerShell code in the PR diff was never checked at that commit. The in-progress PDS test asserts exactly this selection: `tests/detect-changes.test.sh` at `michielvha/PDS@6ac7626`, case 'second push of a branch', expects `package=false powershell=true` for `bash/` then `pwsh/`. On `main` it gets worse. Merge A carries a `feat:` and fails its PowerShell checks, so nothing is tagged. Merge B carries a `fix:` under `bash/`, so it is compared with A, runs only the package checks, passes, and `version-workflow` tags a version that includes A's failing code. `release.yml` then runs every check, fails, and leaves a stable tag with no Release. That is the abandoned-tag case the Recovery bullet handles by hand, and the document defines no path for it. This contradicts the Owner summary and the flowchart, which say a tag follows only passing checks. It also breaks the pinned delivery rule (`conventions/delivery.md` at 1ccf8f3, "Skip CI only for documentation"): whether CI may skip is decided by the commit, the outgoing push range and the PR diff together, and "Any other code, test, workflow or change in the delivery runs normal CI, even when its last commit is documentation-only." The 2026-11-21 revision introduced this (diff f2db9f8..f089ab9).
+PROPOSAL: Compare a branch push with its merge base with `main`, so the head always runs the checks the whole branch diff needs. On `main`, either run every check or compare with the commit of the latest `v` tag, so nothing is tagged until every check its release range needs has passed. Update AC-22, its Test Plan row, the Owner summary, the Legend and the flowchart to match.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-22 ("one changing `.github/` or `scripts/`, a new branch's first push compared with `main`, and a dispatch run every check"); Design, PDS `ci.yml` bullet ("or with its merge base with `main` when there is no previous tip ... and outputs which groups changed"); Test Plan, row AC-22 ("a new branch (zero `before`)"); Context, Owner summary, Approach
+EVIDENCE: Read as written, AC-22 says a new branch's first push runs every check. The Design instead compares that push with the merge base and outputs only the groups that changed, so a new branch that changes only `pwsh/` would run only the PowerShell checks. The implementation follows the Design: `scripts/detect-changes.sh` at `michielvha/PDS@6ac7626` takes the merge-base branch and emits the changed groups, and the 'new branch' test case gets `true true` only because its history changes both `bash/` and `pwsh/`. The Test Plan row names the new-branch case without its expected outputs, so it does not settle the question. An implementation reviewer who reads AC-22 literally marks a correct implementation not met.
+PROPOSAL: Reword AC-22 to say a new branch's first push, and a force push, are compared with the merge base with `main` and run the checks for the groups that changed (or for every check, if that is the intent, with the Design changed to match). Give the Test Plan row the expected outputs for each case.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet; Acceptance Criteria, AC-22; Test Plan, row AC-22
+EVIDENCE: The Design names two bases, the previous tip and the merge base with `main`. It does not say what happens when neither can be resolved, for example after a default shallow checkout (`fetch-depth: 1`) or without `origin/main`. It also does not require a full-history checkout. The implementation picks "every check runs" (`scripts/detect-changes.sh:37` at `michielvha/PDS@6ac7626`, "no previous tip and no merge base with main, so every check runs") and checks out with `fetch-depth: 0` in `ci.yml`. A second careful implementer could print `false`/`false` for an empty or failed diff and skip every check apart from actionlint. The Test Plan row has no case for an unresolvable base.
+PROPOSAL: State that the selection job checks out full history and that any base it cannot resolve selects every check. Add that case to the AC-22 criterion and its script test.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22; Acceptance Criteria, AC-22; Design, PDS `checks.yml` bullet ("Two boolean inputs, both default `true`, select its jobs ... actionlint always runs")
+EVIDENCE: The proof checks the script's outputs over throwaway histories, then observes only two live runs, a PowerShell-only push and a documentation-only push. It never checks how outputs map to jobs, the `if:` on each `checks.yml` job, for a packaging-only, `.github/` or dispatch run. Consider a `pwsh-ci-action` job gated on `package || powershell`. It passes the script test and both observed runs, yet runs the PowerShell checks on a packaging-only push, against AC-22. "Read `release.yml` for a `checks.yml` call without inputs" shows that a tag runs every check only if both inputs default to true, and the row does not read those defaults.
+PROPOSAL: Add to the row: read each `checks.yml` job's condition (actionlint unconditional, ShellCheck, package and install on the package input, `pwsh-ci-action` on the PowerShell input) and both input defaults, or observe a packaging-only push's job list as well.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action` check 4 (Test: "`Invoke-Pester` 6, at the version `modules.pins` pins" and "The tests run under PowerShell's default error preference"); Acceptance Criteria, AC-02; Test Plan, row AC-02
+EVIDENCE: The revision adds two normative requirements to the Test step, Pester 6 and the default error preference, but no criterion or Test Plan row checks either. AC-02's fixture list (formatting diff, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) has no case where a test checks a written error. Yet `pwsh-ci-action` v0.1.1 (`origin/main` `0d93cdc`; `ci.ps1:198-206` sets `Continue` for the Pester run and restores the caller's preference afterwards) added a fixture for exactly that (pwsh-ci-action#4, `2067ed8`, cited in T21's evidence). If an implementation went back to running Pester under `$ErrorActionPreference = 'Stop'`, every current criterion would still pass, although the PDS suite would fail. The 2026-11-21 revision introduced this text (diff f2db9f8..f089ab9).
+PROPOSAL: Add the written-error fixture to AC-02 and its row. Either add the Pester major to a criterion (for example, read `modules.pins` for Pester 6.x) or say the version is informational.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T34 (checked) and T35; Acceptance Criteria, AC-13 ("`knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow"); frontmatter `covers` and `goal` ("checks every push with a shared PowerShell CI action")
+EVIDENCE: `knowledge/tag-driven-pwsh-releases.md` at X, a covered file and the target of AC-13, still says ":11 every branch push runs the checks, `version-workflow` tags `main` after they pass" and ":60-61 `ci.yml` runs on every branch push and calls `checks.yml`". Its flowchart (`:42`, "All checks pass?") does not match the change selection either. T34 is checked, and T35 touches only PDS files, so no task brings the page up to date with the revised flow. AC-13 can be read as met on its two statements, or as not met because the page describes the old flow. The frontmatter `goal` still says every push is checked with the PowerShell CI action, but a packaging-only push now skips it.
+PROPOSAL: Add a task that updates the page's flow description and diagram to the change selection, with AC-13 among its criteria, and reword the `goal` so it matches the selection.
+
+FINDING: F-07
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet (package group "`packaging/`, `bash/`, `tests/`"); Acceptance Criteria, AC-22 ("one changing only other documentation runs only actionlint")
+EVIDENCE: The `.deb` contains the root readme: `packaging/nfpm.yaml:92` `- src: ../readme.md` (dst `/usr/share/doc/pds/README.md`). The package group leaves it out, and the in-progress test treats it as documentation only ('documentation only' case with `docs/a.md readme.md` expecting `false false`, `tests/detect-changes.test.sh` at `michielvha/PDS@6ac7626`). Renaming or deleting `readme.md` would break the package build, yet branch CI and `main` CI would skip that build, and the break would first show in a tag's `release.yml`, leaving an abandoned tag.
+PROPOSAL: Put `readme.md` in the package group, or define the package group as every path `packaging/nfpm.yaml` and the package tests read, and add that case to the AC-22 script test.
+
+FINDING: F-08
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `checks.yml` bullet ("Two boolean inputs, both default `true`")
+EVIDENCE: Job outputs are strings. The implementation at `michielvha/PDS@6ac7626` declares `package` and `powershell` as `type: string` with `default: 'true'` and gates on `inputs.package == 'true'` (`checks.yml:14-21`, `:47`, `:68`, `:84`), so it already differs from the Design's boolean inputs. The behaviour is the same either way, but the implementation review will find the mismatch.
+PROPOSAL: Either say string inputs `'true'`/`'false'`, or keep booleans and pass `fromJSON(needs.changes.outputs.<group>)` from `ci.yml`.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary (Approach and Proof)
+EVIDENCE: The standard asks the summary to "Explain material changes since the last accepted scope". The summary works the change selection into Approach but never says what changed since the R-10 acceptance. It does not mention Pester 6 or the error-preference rule at all. It also leaves out that a documentation-only push runs only actionlint, that `tests/` selects the package checks, and how a push is compared (previous tip or merge base), which is the trade-off behind F-01.
+PROPOSAL: Add a sentence naming the 2026-11-21 changes (change selection with its comparison base and its documentation-only case, Pester 6 under the default error preference) and say that every criterion tick was reset.
+
+FINDING: F-10
+KIND: factual
+SEVERITY: nit
+WHERE: Scope, In scope (PDS bullets) and Out of scope ("Changing what the package build, ShellCheck and install tests check")
+EVIDENCE: The revision adds `scripts/detect-changes.sh` and conditional `checks.yml` jobs (Design, PDS `checks.yml` and `ci.yml` bullets; AC-22; T35), but Scope's in-scope list does not mention change selection. The out-of-scope line still says these checks only "move into a shared checks workflow with a placeholder version", although they now also run conditionally on branch pushes.
+PROPOSAL: Add an in-scope bullet for branch-push change selection, with every check on a tag, and qualify the out-of-scope line.
+
+FINDING: F-11
+KIND: factual
+SEVERITY: nit
+WHERE: Design, `pwsh-ci-action` check 4 ("6.2.0, the latest stable release on 2026-11-21"); Sources
+EVIDENCE: Context and Design must cite their claims, but this claim has neither a citation nor a Sources entry. The claim itself is true. I checked: `curl "https://www.powershellgallery.com/api/v2/FindPackagesById()?id='Pester'&$orderby=Published desc"` lists 6.2.0 (IsPrerelease false, published 2026-09-09) as the newest stable version, ahead of 6.2.0-alpha2 and 6.1.0. `modules.pins` at `pwsh-ci-action` `origin/main` (v0.1.1) pins `Pester 6.2.0`. This is a citation slip only.
+PROPOSAL: Add the Gallery's Pester page or feed to Sources with the version and date it shows.
+
+FINDING: F-12
+KIND: factual
+SEVERITY: nit
+WHERE: Tasks, T7 note ("that Design wording needs a spec revision before completion"); Tasks, T35 and T36 layout
+EVIDENCE: This revision makes the T7 note's Pester change, so the note is now out of date. A blank line separates T35 and T36 from the T1 to T34 list, and T36 is followed straight away by `## Open Questions` with no blank line (lines 758 to 761). `vh-adlc lint` passes, so this is formatting only.
+PROPOSAL: Say in the T7 note that the 2026-11-21 revision made the change, remove the blank line before T35, and add one after T36.
 
 ## Sources
 

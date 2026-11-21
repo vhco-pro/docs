@@ -842,6 +842,7 @@ None.
 | 2026-11-21 | R-14 | spec | `925d2d0` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 | 2026-11-21 | R-15 | spec | `cd3e373` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 | 2026-11-21 | R-16 | spec | `9e489a4` | claude-opus-5-5 | procedural | Not clean: 1 should-fix and 2 nits |
+| 2026-11-21 | R-17 | spec | `bddd922` | claude-opus-5-5 | procedural | Clean: 2 nits, no blocking or should-fix findings |
 
 ### R-1
 
@@ -1861,6 +1862,24 @@ SEVERITY: nit
 WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("that `main` is judged from the latest tag with a published Release"); Context, Owner summary, Approach ("on `main` over everything since the latest stable tag that has a published Release"); Design, PDS `ci.yml` bullet ("the latest stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release"); Acceptance Criteria, AC-22 ("the latest stable tag with a published Release"); Scope, Out of scope (ShellCheck exception)
 EVIDENCE: The Changes paragraph drops "stable". Read that way, a prerelease tag with a published Release could be the base, which the Approach, the Design, AC-22 and the row case "`v1.1.0-rc.1` with a published prerelease Release ... (the prerelease is no base)" all rule out. The same paragraph also omits a scope change made since the accepted R-10 baseline: ShellCheck now also lints root `scripts/` and runs the selection test, which is a new exception in the Out of scope line. The standard asks the summary to explain material changes since the last accepted scope.
 PROPOSAL: Write "the latest stable tag with a published Release" in the Changes paragraph, and add one clause saying the package group's ShellCheck now also covers root `scripts/` and runs the selection test.
+
+### R-17
+
+TARGET: bddd922efb3f84352f13a35b468b1c3a1383f254
+
+FINDING: F-01
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("a Markdown-only change runs nothing"; "A dispatch, or a base the selection cannot resolve, runs every check, and so does a tag", line 33); Scope, In scope ("a tag runs every check", line 237); Design, PDS `ci.yml` bullet ("`release.yml` passes no inputs, so a tag runs every check", line 504); Acceptance Criteria, AC-22 ("and no check when they select nothing", "`release.yml` runs every check", lines 712 to 717); Tasks, T38 ("a Markdown-only push runs no check"); `knowledge/tag-driven-pwsh-releases.md:12` ("a release workflow that runs every check") and `:74-75`
+EVIDENCE: The revision applying R-16 F-01 (`git diff 4dfbe06 bddd922`) moved the selection's behaviour test out of the package group's ShellCheck job in `checks.yml` and into the `ci.yml` selection job. The document still uses "check" to mean the `checks.yml` jobs, so it now reads two ways. A Markdown-only push runs one check, the selection test, on every run, while the summary says it "runs nothing" and AC-22 and T38 say it runs no check. A tag no longer runs that test at all, because `release.yml` calls only `checks.yml` (`.github/workflows/release.yml:50` at `michielvha/PDS@de154c4`; `checks.yml` there only lints `tests/detect-changes.test.sh` at `:67`, where `90ebd69` also ran it at `:69`), while the summary, Scope, Design, AC-22 and the knowledge page say a tag runs every check. Nothing breaks: a hand-pushed tag publishes nothing that contains the selection script, and AC-22 and its row require the test step explicitly in the selection job, so an implementer and a reviewer cannot get it wrong. This is wording only.
+PROPOSAL: Say "every `checks.yml` check" (or define "check" once as a `checks.yml` job) in the places listed, and say once that the selection job and its test run on every push and are not part of a tag's run.
+
+FINDING: F-02
+KIND: judgement
+SEVERITY: nit
+WHERE: Design, PDS "Workflow rules" bullet ("The whole GitHub Actions convention ... applies to PDS"); Design, PDS `ci.yml` bullet ("It runs the selection's behaviour test, `tests/detect-changes.test.sh`, before anything else, so a broken selection fails every run"); `knowledge/tag-driven-pwsh-releases.md:74-77` ("This follows the GitHub Actions rule to run only the checks a change needs")
+EVIDENCE: `conventions/github-actions.md:94-105` at X ("Run only the checks a change needs") names "PDS's `scripts/detect-changes.sh`" as the reference and now matches the document's first-match order and rename rule, as the owner decided. It does not say that the selection script must be tested before it selects. R-16 F-01 showed why that matters: a selection script whose only test runs in a job the script itself gates can deselect the check of its own defect, and `main` then tags on a broken selection. This revision fixes that for PDS only. Another repository that follows the convention and copies its wording, rather than reading the PDS workflow, rebuilds the defect. This changes nothing this feature builds or proves; it concerns the shared convention, which is outside `covers`.
+PROPOSAL: Add one clause to the convention's rule, for example "the selection job runs the script's own test before it selects, so a broken selection fails the run", in a separate change to `conventions/github-actions.md`.
 
 ## Sources
 

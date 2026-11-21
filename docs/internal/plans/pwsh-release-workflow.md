@@ -597,9 +597,10 @@ fixed forward with a new version.
   reference to another repository pinned by full SHA with its release as a comment, releases published
   through `gh-release-workflow`, and a Dependency Dashboard from the managed Renovate App that lists every
   tool pin.
-- [ ] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
+- [x] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
   publishes nothing; `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` appear in no workflow except
   `release.yml`, and there only in the Gallery and APT jobs; and no PDS workflow uses `secrets: inherit`.
+  Evidence: the branch push of `michielvha/PDS@092b484` (`feat/pwsh-release-workflow`, which touches `pwsh/module/`) ran `ci.yml` ([run 44850224045](https://github.com/michielvha/PDS/actions/runs/44850224045)): `checks / PowerShell checks` (`pwsh-ci-action` v0.1.1 on Windows) and every other check passed and `version / version` succeeded; afterwards `git ls-remote --tags origin` shows no new tag (highest `v` tag still `v0.1.437`) and the Gallery's latest PDS is still `0.25.0`. At `b6537f8` and later, `git grep -l` for `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` in `.github/workflows` lists only `release.yml`, where they appear only in the `apt` and `gallery` jobs' `env:`/`with:`, and `git grep 'secrets: inherit'` finds nothing.
 - [ ] AC-10: Before the migration merges, `v<latest release tag>` exists on the latest release tag's
   commit. The first PDS merge to `main` carrying a version-bumping commit whose release completes creates
   exactly one tag,

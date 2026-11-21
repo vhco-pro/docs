@@ -62,12 +62,19 @@ PDS's workflows are the reference:
 - [`ci.yml`](https://github.com/michielvha/PDS/blob/main/.github/workflows/ci.yml) runs on every branch
   push. A selection job runs [`scripts/detect-changes.sh`](https://github.com/michielvha/PDS/blob/main/scripts/detect-changes.sh),
   which judges a branch on its whole diff from `main` and `main` on everything since the latest stable
-  tag with a published Release: Markdown selects nothing, PowerShell files and `pwsh/` select
-  `pwsh-ci-action`, `packaging/`, `bash/` and `tests/` select ShellCheck and the package jobs,
-  `scripts/` selects both, and `.github/` selects every check including actionlint. A dispatch, or a base
-  it cannot resolve, runs every check. Then `ci.yml` calls `checks.yml` with that selection and
-  `version-workflow` with `preview-label: ''`, so only `main` is tagged. This follows the GitHub Actions
-  convention's rule to run only the checks a change needs.
+  tag with a published Release, counting both sides of every rename. Each changed file takes the first
+  rule that matches, with directories counted from the repository root:
+  1. Markdown anywhere selects nothing.
+  2. A file under `.github/` selects every check, actionlint included.
+  3. A file under `scripts/` selects ShellCheck, the package jobs and `pwsh-ci-action`.
+  4. A PowerShell file anywhere else, or another file under `pwsh/`, selects `pwsh-ci-action`.
+  5. A file under `packaging/`, `bash/` or `tests/` selects ShellCheck and the package jobs.
+  6. Any other path selects nothing.
+
+  A dispatch, `main` without a released stable tag, or a base it cannot resolve runs every check. Then
+  `ci.yml` calls `checks.yml` with that selection and `version-workflow` with `preview-label: ''`, so
+  only `main` is tagged. This follows the [GitHub Actions](../conventions/github-actions.md) rule to run
+  only the checks a change needs.
 - [`release.yml`](https://github.com/michielvha/PDS/blob/main/.github/workflows/release.yml) runs on
   stable tags (`v[0-9]+.[0-9]+.[0-9]+`) and on dispatch. Its first job refuses anything but an exact
   stable tag on a `main` commit, because a dispatch ignores the tag filter. Then `checks.yml` runs again

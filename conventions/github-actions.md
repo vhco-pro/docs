@@ -101,7 +101,9 @@ versions drift. If they ever run their own runner images, revisit this.
   first rule that matches: documentation such as Markdown anywhere selects nothing, a file under the
   workflow directory selects every group, a file under a shared scripts directory every group that uses
   it, a component's source file anywhere else, by type, selects its group, and a file under a
-  component's directory selects that component. Directories count from the repository root. A dispatch, or a base the script cannot resolve, selects every
+  component's directory selects that component. Directories count from the repository root.
+  The selection job runs the script's own test before it selects, so a broken selection fails the run
+  instead of deselecting the check that would catch it. A dispatch, or a base the script cannot resolve, selects every
   group, and a tag-triggered release runs every check. PDS's `scripts/detect-changes.sh` is the reference.
 - **Check environment policies when a job moves.** A deployment environment can limit which branches
   and tags deploy. When a job moves to another trigger or ref, check the policies of every environment it

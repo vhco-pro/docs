@@ -247,6 +247,13 @@ pass it to PR preview jobs. The App key can mint tokens throughout its
 installation even though each normal job requests a single-repository token.
 Treat that key as an owner-wide credential.
 
+The App's registration credentials, its private key included, are kept where
+the github-app-registration skill stores them: `~/.local/share/github-apps/michielvha-repo-write.json`
+(mode 600) on the owner's workstations. Set a repository's secret from that file
+without printing the key: `jq -r .pem <file> | gh secret set RELEASE_APP_PRIVATE_KEY -R <owner/repo>`.
+An App can hold several private keys, so generating a new one in its settings
+revokes none of the keys repositories already use.
+
 A run that does not tag mints no App token and persists no credentials. A
 published PR preview is requested with the `release:preview` label on a
 same-repository PR, never through a privileged `pull_request` job. Fork PRs

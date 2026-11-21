@@ -16,6 +16,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Design or change an HTTP API | [HTTP API](conventions/http-api.md): API first, status codes for failed writes and timestamps |
 | Write TypeScript | [TypeScript](conventions/typescript.md) |
 | Build, test or review any browser frontend, including plain JavaScript and VitePress | [Frontend testing](conventions/frontend-testing.md): owned fixtures, browser scenarios and responsive visual verification |
+| Design or review colour in an interface | [Colour in interfaces](conventions/interface-colour.md): colour for status and identity, neutral descriptive content, never colour alone |
 | Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |

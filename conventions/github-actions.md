@@ -91,6 +91,14 @@ versions drift. If they ever run their own runner images, revisit this.
   `pipefail`.
 - **Set a timeout.** Every job sets `timeout-minutes` to a few times its normal duration, not the
   360-minute default.
+- **Run only the checks a change needs.** When one workflow checks more than one component, such as a
+  module and a package or code in several languages, a selection job runs a script that outputs one group
+  per component, and each check job gates on its group. On a branch the script judges the whole diff from
+  its merge base with the default branch, so a later push never hides an earlier change. On the default
+  branch it judges everything since the latest stable release tag, so a tag follows passing checks for
+  its whole range. A change to the workflows selects every group, a change to a shared script every group
+  that uses it, and documentation none. A dispatch, or a base the script cannot resolve, selects every
+  group, and a tag-triggered release runs every check. PDS's `scripts/detect-changes.sh` is the reference.
 - **Check environment policies when a job moves.** A deployment environment can limit which branches
   and tags deploy. When a job moves to another trigger or ref, check the policies of every environment it
   uses and change them in the same plan.

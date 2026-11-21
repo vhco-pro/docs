@@ -1,9 +1,9 @@
 ---
 status: in-progress
-status_description: "Claimed 2026-11-20; implementing task by task on feat/pwsh-release-workflow in each repository."
+status_description: "Implementing the accepted 2026-11-21 revision on feat/pwsh-release-workflow; the PDS migration is merging, with the release waiting on the App key."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
-goal: "A PowerShell repository checks every push with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
+goal: "A PowerShell repository checks every push that changes PowerShell code with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
 covers:
   - knowledge/shared-delivery.md
   - knowledge/tag-driven-pwsh-releases.md
@@ -25,8 +25,12 @@ the CI, version and tag-triggered release shape that the Go repositories already
 pushed a junk prerelease tag and reached the publish step, skipped only because an earlier step failed.
 PDS runs no PowerShell lint or tests, and three workflows compute its version independently.
 
-**Approach.** A new `pwsh-ci-action` checks formatting, lint, module loading and Pester tests on every
-branch push. A new `setup-pwsh-action` installs the one pinned PowerShell all PowerShell actions use. Both
+**Approach.** A new `pwsh-ci-action` checks formatting, lint, module loading and Pester tests. Each
+push runs the checks its changes need, judged over the whole branch since it left `main`, and on `main`
+over everything since the latest stable tag that has a published Release: a PowerShell change runs the
+PowerShell checks, a packaging, Bash or package-test change runs ShellCheck and the package tests, a
+script change runs both, a workflow change runs both plus actionlint, and a Markdown-only change runs
+nothing; both sides of a rename count. A dispatch, or a base the selection cannot resolve, runs every check, and so does a tag. A new `setup-pwsh-action` installs the one pinned PowerShell all PowerShell actions use. Both
 start in the `vhco-pro` organization, where the owner wants new shared components. `version-workflow`
 tags `main` after the checks pass. Only an exact stable `v` tag on a `main` commit publishes, through its
 push or a dispatch on that tag. The release deploys the APT repository, rebuilt from every Release, and
@@ -52,17 +56,31 @@ uses `secrets: inherit`. PDS and the five action repositories this feature touch
 Actions convention, checked by AC-21. The managed Renovate App must reach the new `vhco-pro` repositories, where no
 Renovate configuration exists yet.
 
-**Migration and rollback.** PDS first pins both current actions by SHA, so their release-only versions
+**Migration and rollback.** The SHA pin of both current actions stayed on the feature branch while the
+release-only versions shipped, so PDS `main` still calls `publish-pwsh-module-action@main`, now v3; module
+publishing from `main` is paused until the migration merges, as the owner decided on 2026-11-21. The plan
+was that PDS first pins both current actions by SHA, so their release-only versions
 cannot break it. Tags gain the `v` prefix from a baseline tag on the latest release tag. Until the new
 path pushes its first `v` tag, rolling back means reverting the whole migration change; the `v` baseline
 tag stays. From that push on, a problem is fixed forward with a new version.
 
-**Proof.** Planned, not yet run: action behaviour tests over fixtures, a full PDS tag release and a rerun
-of it, and a real run on a disposable Windows 11 VM for every function whose code changes beyond
-whitespace, byte-order marks and identifier casing, except those that need a domain, a remote server, a
-cloud account or a cluster, or never terminate, which keep to mocked tests. Observed
-so far: the analyzer and formatter baselines below, and a real-VM run that found the `Enable-SshServer`
-firewall defect a stubbed test had passed.
+**Changes since the 2026-11-20 acceptance.** At the owner's request on 2026-11-21, branch and `main`
+pushes select their checks as Approach describes instead of running all of them. The owner decided the
+same day that a base the selection cannot resolve runs every check; that Markdown triggers no check,
+accepting that a broken documentation path the package reads, such as `readme.md`
+(`packaging/nfpm.yaml:92`), fails in a tag's `release.yml`, and in each later tag's until a `fix:` restores it; that `main` is judged from the latest
+stable tag with a published Release, so the groups that commits after a failed tag select are checked again; and that PDS module
+publishing from `main` is paused until the migration merges. The selection runs its own test before it
+selects, and the package group's ShellCheck also lints the new root `scripts/`. The Design names Pester 6 at the pinned version and requires the
+tests to run under PowerShell's default error preference. Every criterion tick was reset for
+re-verification; the implemented tasks stay checked.
+
+**Proof.** Observed before this revision: the four actions' behaviour tests over fixtures and their
+releases, the PDS Pester suite and analyzer checks on a Windows 11 VM and on GitHub, and a real run on a
+disposable Windows 11 VM for every function whose code changed beyond whitespace, byte-order marks and
+identifier casing, except those that need a domain, a remote server, a cloud account or a cluster, or never
+terminate, which keep to mocked tests. Planned: pushes that show the change selection, a full PDS tag
+release and its reruns.
 
 ### A pull request runs the release
 
@@ -93,7 +111,8 @@ $ gh run list -R michielvha/PDS --workflow publish-pwsh-module.yaml --limit 6
 Each PR failure ends with `Cannot convert value "<version>-PullRequest<n>.<m>" to type "System.Version"`
 ([run 44117944699](https://github.com/michielvha/PDS/actions/runs/44117944699)) and leaves that tag
 behind. None of the 20 such tags had a GitHub Release; with the owner's approval they were deleted on
-2026-11-17 after their commit SHAs were recorded, and the one PR 54 added was deleted the same day.
+2026-11-17 after their commit SHAs were recorded, and the one PR 54 added was deleted the same day. PR 56
+added another, `0.25.0-PullRequest56.2` on `aea6173`, on 2026-11-18; T31 deletes it.
 
 `package-pwsh-script-action@v1` behaves the same for the `.exe` build: PDS calls it on `pull_request`
 (`package-ps1-script.yaml:18`, `:32`) and it tags through `gitversion-tag-action@v5`
@@ -110,9 +129,10 @@ that touches both paths makes two writers race for one tag, which
 [delivery](../../../conventions/delivery.md#git-and-versioning) forbids: one component decides the
 version and one path publishes.
 
-The two paths have drifted apart. The latest tag is `0.24.1` (`git describe --tags origin/main`, commit
+The two paths have drifted apart. The latest tag was `0.24.1` when this was measured (`git describe --tags origin/main`, commit
 `0770894`), published to the Gallery by the module action, while the latest GitHub Release is `0.23.0`
-(`gh release list -R michielvha/PDS`). PDS tags without the `v` prefix (`PDS/gitversion.yml:5`) under a
+(`gh release list -R michielvha/PDS`). By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`
+(`git ls-remote --tags origin`), and `0.25.1` was the latest with a Release (`gh release list -R michielvha/PDS`). PDS tags without the `v` prefix (`PDS/gitversion.yml:5`) under a
 repository-specific GitVersion file, and eleven old `v0.1.4xx` tags exist beside the current line.
 
 The release notes come from `.github/templates/release-notes.md`, the same text for every release apart
@@ -214,6 +234,7 @@ In scope:
   tests, `AGENTS.md`, Apache-2.0 licence and exact releases through `gh-release-workflow`.
 - PDS on branch CI, `version-workflow` and one tag-triggered release that publishes all three of its
   artifacts from one exact `v` tag. PDS releases stable versions from `main` only.
+- Branch and `main` pushes run only the checks their changes need; a tag runs every check.
 - PDS made to pass the new checks: a committed settings file, every baseline finding resolved as the
   Design says, and a Pester test for every public function.
 - PDS's APT deploy rebuilt from every GitHub Release's `.deb` on each run, replacing the stale cache.
@@ -234,8 +255,10 @@ Out of scope:
 - Prerelease tags. The publish action refuses them;
   [michielvha/publish-pwsh-module-action#7](https://github.com/michielvha/publish-pwsh-module-action/issues/7)
   tracks adding support with its ordering and collision rules.
-- Changing what the package build, ShellCheck and install tests check. They move into a shared checks
-  workflow with a placeholder version; the APT deploy itself changes as the Design says.
+- Changing what the package build, ShellCheck and install tests check, apart from ShellCheck also
+  linting the new root `scripts/*.sh` and `tests/detect-changes.test.sh`. They move into a shared
+  checks workflow with a placeholder version and run when a push's changes need them; the APT deploy
+  itself changes as the Design says.
 - Windows PowerShell 5.1 checks. The checks run on PowerShell 7 first; a 5.1 pass is a later input of
   `pwsh-ci-action`, tracked by [vhco-pro/docs#51](https://github.com/vhco-pro/docs/issues/51).
 - Deleting the existing `v1`/`v2` alias tags on the two actions. Releases stop adding aliases; the old
@@ -266,8 +289,8 @@ actions do. `knowledge/tag-driven-pwsh-releases.md` and the release contract in
 
 ```mermaid
 flowchart TD
-    Push["Push to any branch"] --> CI["ci.yml: checks.yml, then version-workflow"]
-    CI --> Pass{"All checks pass?"}
+    Push["Push to any branch"] --> CI["ci.yml: select checks, run them, then version-workflow"]
+    CI --> Pass{"Selected checks pass?"}
     Pass -->|No| Stop["No version, no tag"]
     Pass -->|Yes| Gate{"main, with a new version?"}
     Gate -->|No| Calc["GitVersion calculates only"]
@@ -284,7 +307,10 @@ flowchart TD
 <summary>Legend</summary>
 
 - **ci.yml** runs on branch pushes, as the Go callers do: a `pull_request` run has the merge ref, so
-  GitVersion would compute a `PullRequest` version. A PR shows the push checks on its head commit.
+  GitVersion would compute a `PullRequest` version. A PR shows the push checks on its head commit. The
+  selection covers the whole branch diff from `main`, so the head's run always includes every check the
+  PR's changes need, and on `main` it covers everything since the latest stable tag with a published
+  Release, so a tag follows only passing checks for its whole release range.
 - **New version**: a merge whose commits do not bump (`docs`, `style`, `test`, `ci`) computes an existing
   version, and the tag action skips it.
 - **release.yml** runs the same `checks.yml` as `ci.yml` on the exact tag before publishing, so a tag
@@ -333,8 +359,10 @@ Blocking checks, in order:
    `$ErrorActionPreference = 'Stop'` before `Import-Module`, so a non-terminating load error such as
    the PDS loader's fails the check. Measured with PDS's loader and a broken function file:
    `Import-Module -ErrorAction Stop`, or a script block that sets the preference, still exits 0. A `.psd1` also goes through `Test-ModuleManifest`.
-4. **Test.** `Invoke-Pester` 5 with a configuration object, failing on any failed test, and failing
-   when it discovers no tests unless `allow-no-tests` is `true`.
+4. **Test.** `Invoke-Pester` 6, at the version `modules.pins` pins (6.2.0, the latest stable release on
+   2026-11-21), with a configuration object, failing on any failed test, and failing when it discovers no
+   tests unless `allow-no-tests` is `true`. The tests run under PowerShell's default error preference, as
+   under a plain `Invoke-Pester`, so a test that checks a written error passes in CI too.
 
 PowerShell itself comes from `setup-pwsh-action`, as `go-ci-action` gets Go from `actions/setup-go`.
 PSScriptAnalyzer and Pester install at exact versions from `nupkg` files whose
@@ -431,7 +459,11 @@ PDS keeps its packaging and test steps and changes who decides the version and w
 
 **Rollout order.** First, PDS pins `publish-pwsh-module-action` to `753afb5` and
 `package-pwsh-script-action` to the commit of `v1`, each by full SHA, in a change of its own. Only then
-does either action's release-only change merge to its `main`. Until the first post-baseline `v` tag is
+does either action's release-only change merge to its `main`. In practice the pin (T1) stayed on the
+feature branch and both actions released first: PDS `main` still calls `publish-pwsh-module-action@main`
+(`publish-pwsh-module.yaml:27`), whose v3 takes other inputs, so a `main` push under `pwsh/module/`
+before the migration merges publishes no module. The owner decided on 2026-11-21 to pause module
+publishing from `main` until then; `package-pwsh-script-action@v1` is unaffected because the alias stays. Until the first post-baseline `v` tag is
 pushed, rollback is reverting the whole migration change: workflows, `gitversion.yml`, the
 release-notes template and the loader together. The `v` baseline tag stays; GitVersion reads both
 prefixes. From that push on, a revert is not a rollback path: the APT or Gallery job may already have
@@ -444,10 +476,32 @@ fixed forward with a new version.
   `module-manifest: pwsh/module/PDS.psm1` and `tests: pwsh/tests`. It takes a `version` input, default
   `0.0.0`, builds the `.deb` at that version, installs and tests that file, and uploads it as a workflow
   artifact. It has no GitVersion job, so only `version-workflow` computes a version, and it receives no
-  secrets in either caller.
-- **`ci.yml`** on `push` to any branch calls `checks.yml` with the default version, then
-  `version-workflow` with `preview-label: ''` and only the App's variable and key, so only `main` is
-  tagged.
+  secrets in either caller. Three string inputs, each `'true'` by default and `'true'` or `'false'` when
+  given, select its jobs: `package` gates ShellCheck, the package build and the install tests,
+  `powershell` gates `pwsh-ci-action`, and `workflows` gates actionlint. The package group's ShellCheck
+  job also lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`, which this feature adds.
+- **`ci.yml`** on `push` to any branch first runs a selection job that checks out full history and may
+  read the repository's Releases. It runs the selection's behaviour test, `tests/detect-changes.test.sh`,
+  before anything else, so a broken selection fails every run, including the one that would deselect its
+  own checks; then it runs `scripts/detect-changes.sh`. On a branch other than `main` it compares the
+  pushed commit with its merge base with `main`, so every push of a branch, its first and after a force
+  push included, is judged on the whole branch diff. On `main` it compares with the commit of the latest
+  stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release, so the
+  groups that the commits after a tag whose release failed select are checked again; with no such tag it
+  selects every group. The changed files include both sides of every rename (`git diff --no-renames
+  --name-only`), so moving a file out of a group still selects it. Directories count from the repository
+  root. Each file takes the first rule that matches: Markdown (`*.md`) anywhere is documentation and selects nothing; a file under `.github/`
+  selects workflows (actionlint) and both other groups; a file under `scripts/` selects PowerShell and
+  package; a PowerShell file (`*.ps1`, `*.psm1`, `*.psd1`) anywhere else, or any other file under
+  `pwsh/`, selects PowerShell; a file under `packaging/`, `bash/` or `tests/` selects package; and any
+  other path selects nothing. The owner pushes documentation-only changes
+  with `[skip ci]` and wants them to trigger no checks, accepting that a broken documentation path the
+  package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`. A
+  `workflow_dispatch`, and any comparison base it cannot resolve, select every group. It then calls
+  `checks.yml` with the default version and the three groups as inputs, and then `version-workflow` with
+  `preview-label: ''` and only the App's variable and key, so only `main` is tagged. Jobs `checks.yml`
+  skips do not block `version-workflow` (run 44878020475 skipped four of the five and its version job ran;
+  T38 observes a run that skips all of them). `release.yml` passes no inputs, so a tag runs every check.
 - **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
   `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
 - **Workflow rules.** The whole [GitHub Actions convention](../../../conventions/github-actions.md), added
@@ -491,7 +545,7 @@ fixed forward with a new version.
   publishing step is safe to repeat: the APT job uses a published Release's own `.deb` once one exists,
   the Gallery job skips a published version, and `gh-release-action` leaves a Release with the same file
   names unchanged. After 30 days, a dispatch on the tag rebuilds the files; when the tag has no Release
-  yet, the APT repository then serves the rebuilt `.deb` for that version. Three cases need a person:
+  yet, the APT repository then serves the rebuilt `.deb` for that version. Four cases need a person:
   - A cancelled Release job can leave a hidden draft, which is not public; delete it and rerun.
   - A defect in the tag's own `release.yml`, `checks.yml` or action pins is fixed on `main` with a
     version-bumping commit such as `fix:`, since a `ci:` commit computes no new version, and released as
@@ -501,13 +555,17 @@ fixed forward with a new version.
     before it appear in no Release's notes.
   - A stable Release created after a higher one, such as a recovered older tag, becomes GitHub's latest;
     set it back with `gh release edit v<higher> --latest`.
+  - A broken Markdown file the package reads (`readme.md`, `bash/debian/readme.md`,
+    `bash/common/readme.md`; `packaging/nfpm.yaml:81`, `:86`, `:92`) selects no check, so every tag after
+    it fails at the package build until a version-bumping commit such as `fix:` restores the file. This
+    follows from the owner's decision that Markdown triggers no check.
 - **Release notes.** `gh-release-action` renders them with its bundled git-cliff configuration, from the
   commits since the previous stable `v` tag; normally the first notes start at the `v` baseline.
   `.github/templates/release-notes.md` and the step that filled it are removed; install instructions stay
   in the README and on the APT repository's Pages index. The Gallery's release notes are a link to the
   GitHub Release.
 - **Version.** Tags gain the `v` prefix. Before the migration merges, the commit of the latest release
-  tag (`0.24.1` today) gets the same version with `v`, as
+  tag (`0.25.1` on 2026-11-21; taken just before the merge, since the old workflows still tag) gets the same version with `v`, as
   [delivery](../../../conventions/delivery.md#git-and-versioning) describes, and `PDS/gitversion.yml`
   is dropped for the action's bundled configuration. GitVersion on the migration branch must then
   compute a version above that baseline. Artifact versions stay unprefixed (`pds_0.25.0_all.deb`,
@@ -567,33 +625,43 @@ fixed forward with a new version.
 
 ## Acceptance Criteria
 
-- [ ] AC-01: `vhco-pro/pwsh-ci-action` exists, public, Apache-2.0, with a released exact `v` tag
+- [x] AC-01: `vhco-pro/pwsh-ci-action` exists, public, Apache-2.0, with a released exact `v` tag
   published through `gh-release-workflow`, and every `uses:` reference to another repository's action or
   workflow pinned by full SHA with its release as a comment.
-- [ ] AC-02: Run against its fixtures, the action passes the clean module and the Information-only fixture
+  Evidence: `gh api repos/vhco-pro/pwsh-ci-action/license` gives Apache-2.0 (Copyright 2026 VH & Co BV); the repository is public; `v0.1.1` is a published, non-draft Release made by `gh-release-workflow` (release run [44833400296](https://github.com/vhco-pro/pwsh-ci-action/actions/runs/44833400296) at `0d93cdc`). Every external `uses:` in its workflows and `action.yml` at `main` carries a 40-character SHA and a `# v` release comment; the only other references are the actionlint image, pinned by version and `sha256` digest.
+- [x] AC-02: Run against its fixtures, the action passes the clean module and the Information-only fixture
   and fails each failing fixture (formatting diff, settings with no formatting rule, missing settings,
   analyzer warning, a loader that reports a broken file with `Write-Error`, failing test, no tests) with
-  a message naming the failed check, and changes no file.
-- [ ] AC-03: `pwsh ./ci.ps1` run directly on a fixture gives the same verdict as the composite on that
+  a message naming the failed check, and changes no file. A fixture whose test checks a function's
+  written error passes, also when the action runs from a GitHub `pwsh` step, and `modules.pins` pins a
+  Pester 6 release.
+  Evidence: Release run 44833400296 at `0d93cdc` (`v0.1.1`): `test / fixtures` passed on ubuntu-latest and windows-latest (`tests/test-fixtures.ps1`: every case gives its expected exit code and named check and changes no file, the written-error case included) and `test / compare` passed for all 13 cases, including `test-checks-written-error` through the composite action in a GitHub `pwsh` step and `write-error-loader`. `modules.pins` pins `Pester 6.2.0`.
+- [x] AC-03: `pwsh ./ci.ps1` run directly on a fixture gives the same verdict as the composite on that
   fixture.
-- [ ] AC-04: The action refuses to import PSScriptAnalyzer or Pester when the downloaded package's
+  Evidence: The 13 `test / compare` jobs of run 44833400296 each run the composite and then `ci.ps1` on the same fixture through `tests/compare-verdicts.ps1`, which fails when the two verdicts differ; all passed.
+- [x] AC-04: The action refuses to import PSScriptAnalyzer or Pester when the downloaded package's
   SHA-256 differs from the pinned value.
-- [ ] AC-05: `publish-pwsh-module-action` `v3.0.0` and `package-pwsh-script-action` `v2.0.0` are released
+  Evidence: `tests/test-fixtures.ps1`'s wrong-checksum case pins a zeroed SHA-256 and expects `checksum mismatch` with no module extracted; it passed in both `test / fixtures` jobs of run 44833400296.
+- [x] AC-05: `publish-pwsh-module-action` `v3.0.0` and `package-pwsh-script-action` `v2.0.0` are released
   with those exact tags, take the version from a `tag` input, and contain no checkout, GitVersion or
   `git tag` step.
-- [ ] AC-06: Given `v0.25.0`, the publish action writes `ModuleVersion = '0.25.0'`; given a prerelease
+  Evidence: `publish-pwsh-module-action` `v3.0.0` and `package-pwsh-script-action` `v2.0.0` are published, non-draft Releases (release runs [44819660497](https://github.com/michielvha/publish-pwsh-module-action/actions/runs/44819660497) and [44819671061](https://github.com/michielvha/package-pwsh-script-action/actions/runs/44819671061)). At those tags `action.yml` and `action.yaml` each declare a `tag` input and contain no `actions/checkout`, GitVersion or `git tag`; both call `vhco-pro/setup-pwsh-action@a90bb07 # v0.1.0` by full SHA.
+- [x] AC-06: Given `v0.25.0`, the publish action writes `ModuleVersion = '0.25.0'`; given a prerelease
   tag, a tag without `v` or a version that is not three-part SemVer, it fails before writing a manifest.
-- [ ] AC-07: Publishing a version that already exists on the Gallery ends as already published, and the
+  Evidence: `tests/ReleaseTag.Tests.ps1` in `publish-pwsh-module-action` (run by its `checks` job in release run 44819660497): `v0.25.0` gives `0.25.0`, and a prerelease tag, a tag without `v`, two- and four-part versions, build metadata and an empty tag are refused naming the tag; `tests/Publish.Tests.ps1` shows a prerelease tag fails before a manifest is written. The real release used it: `v0.26.1` published module `0.26.1` to the Gallery.
+- [x] AC-07: Publishing a version that already exists on the Gallery ends as already published, and the
   run succeeds without publishing again.
+  Evidence: the dispatch on `v0.26.1` ([run 44919136490](https://github.com/michielvha/PDS/actions/runs/44919136490)) ran the Gallery job against the published 0.26.1: "PDS 0.26.1 is already published in PSGallery; nothing to publish.", the job succeeded, and the Gallery still lists 0.26.0 and 0.26.1 once each.
 - [ ] AC-08: Both existing actions, `pwsh-ci-action` and `setup-pwsh-action` have `AGENTS.md`, an Apache-2.0 `LICENSE`, a README listing
   inputs, outputs and an example pinned by SHA, Renovate with `helpers:pinGitHubActionDigests` and a
   custom manager matching every tool pin, a `test.yml` that runs the action on itself, every `uses:`
   reference to another repository pinned by full SHA with its release as a comment, releases published
   through `gh-release-workflow`, and a Dependency Dashboard from the managed Renovate App that lists every
   tool pin.
-- [ ] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
+- [x] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
   publishes nothing; `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` appear in no workflow except
   `release.yml`, and there only in the Gallery and APT jobs; and no PDS workflow uses `secrets: inherit`.
+  Evidence: PowerShell-only push on a branch from PDS `main` (`test/selection-powershell`, [run 44918648744](https://github.com/michielvha/PDS/actions/runs/44918648744)): `checks / PowerShell checks` (`pwsh-ci-action` v0.1.1) ran and passed, `version / version` succeeded, and `git ls-remote --tags origin` gained no tag and the Gallery no version (only the tags and versions of the `main` releases exist). At PDS `main` `00669f4`, `git grep -l` for `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` in `.github/workflows` lists only `release.yml`, where the GPG secrets sit in the `apt` job's `env:` and `API_KEY` in the `gallery` job; `git grep 'secrets: inherit'` finds nothing.
 - [ ] AC-10: Before the migration merges, `v<latest release tag>` exists on the latest release tag's
   commit. The first PDS merge to `main` carrying a version-bumping commit whose release completes creates
   exactly one tag,
@@ -601,54 +669,78 @@ fixed forward with a new version.
   `.deb` and `.exe` to one public GitHub Release whose notes git-cliff rendered from the commits since the
   previous stable `v` tag, and deploys an APT repository whose index lists the version of every GitHub Release that has
   a `.deb` asset.
-- [ ] AC-11: A PDS PR carrying the `release:preview` label creates no tag and publishes nothing; only a
+  Residual: not met as written. The `v0.25.1` baseline existed before the merge, and the first merge created `v0.26.0` and, after the fix-forward, `v0.26.1`: two tags, not one. `v0.26.1`'s release published every artifact and an APT index matching the Releases, but its notes start at the abandoned `v0.26.0`, so the migration's commits appear in no Release's notes, the consequence the Recovery bullet names for an abandoned tag.
+- [x] AC-11: A PDS PR carrying the `release:preview` label creates no tag and publishes nothing; only a
   push to `main` tags PDS.
-- [ ] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
+  Evidence: T32: a push to PR #65 labelled `release:preview` ran CI 44930881920 with a successful version job and created no tag; Releases, APT index and Gallery unchanged.
+- [x] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
   `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only
   `PSAvoidUsingWriteHost`, with its reason; `Invoke-ScriptAnalyzer` under it returns no unsuppressed
   record of any severity; every in-source suppression carries a non-empty `Justification`; every file
   under `pwsh/module/Public/` exports a command named after the file; and every public function has a
   test file in `pwsh/tests/` with at least one passing test that invokes it,
   including `Enable-SshServer` with and without a key.
+  Evidence: PDS `main` CI runs `pwsh-ci-action` v0.1.1 green on every PowerShell change (for example [run 44932953352](https://github.com/michielvha/PDS/actions/runs/44932953352) for PR #66). `PSScriptAnalyzerSettings.psd1` configures the `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only `PSAvoidUsingWriteHost` with its reason in a comment. On the Windows 11 VM at `94a04f7` (after [PDS #66](https://github.com/michielvha/PDS/pull/66) named the last positional arguments), `Invoke-ScriptAnalyzer` over `pwsh/module` under the settings returns 0 records of any severity (`PSUseCorrectCasing` excluded as the action does, the formatter covering casing) and `-SuppressedOnly` returns 0, so no suppression exists. Importing the module lists 78 functions, one per file under `Public/` and named after it, plus the 12 aliases. `pwsh/tests/` has a file per public function (a script maps all 78), each invoking its function, and the suite gives 379 tests, 368 passed, 0 failed, 11 skipped (non-elevated branches); `Enable-SshServer.Tests.ps1` covers a run without a key and runs with keys.
 - [ ] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action`, `setup-pwsh-action`, the two
   release-only actions and the `files` input of `gh-release-action`, and
   states that every repository publishing artifacts from a tag follows the CI, version and tag-triggered
   release shape while actions and reusable workflows release through `gh-release-workflow`, and
   `knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow and links the PDS workflows as
   the reference consumer.
-- [ ] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
+- [x] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
+  Evidence: Each of the twelve renamed functions' test files ends with `It 'still runs under its old name'`, which asserts `Get-Command <old> -Module PDS` is an alias resolving to the new name and runs it with the installs mocked; all pass on `main` (CI and the VM suite). `Get-RDSActiveSessionReport.Tests.ps1` reaches it through `Get-RDSActiveSessions`, while `Get-RDSActiveSession.Tests.ps1` tests the unchanged singular function with its own `-QuickMode` parameter.
 - [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
   `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
   of packages and versions in the APT index, and the Gallery versions.
-- [ ] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
+  Residual: not met yet. For `v0.26.1` the whole-run rerun succeeded and nothing published changed in any rerun, but per-job APT reruns failed at `deploy-pages` (fixed in PDS #64, provable only by a later release's rerun) and the dispatch's deploy lost a race with its own artifact.
+- [x] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
   Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
   records each run and its result.
-- [ ] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
+  Evidence: `scripts/vm-set.ps1 -Base 747168e` at the merge commit `c968cce` prints 43 VM-set and 11 mocked-only functions, the same lists as the table in [PDS #60](https://github.com/michielvha/PDS/pull/60); each mocked-only entry cites its `file:line` (an AD or RDS module import, `Get-ADUser`, `Get-RDUserSession`, `Invoke-Command -ComputerName`, `Connect-AzAccount`, `az aks list`, the Azure DevOps URL, or a `while ($true)` loop). Every VM-set function completed without error on the Windows 11 VM: 41 in the first round, the seven fixed in `d2170e9` on a clean rollback, and `Remove-WindowsBloat` again at `94a04f7` after its last change; the PR body and [its comment](https://github.com/michielvha/PDS/pull/60) record each run.
+- [x] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
   preinstalled `pwsh` differs.
-- [ ] AC-18: Pushing a prerelease tag such as `v0.0.1-test.1` starts no release run; a `release.yml`
+  Evidence: `vhco-pro/setup-pwsh-action` is public, Apache-2.0 and released as `v0.1.0` (release run [44814660240](https://github.com/vhco-pro/setup-pwsh-action/actions/runs/44814660240), every behaviour and action job green on ubuntu, ubuntu-arm, macOS and Windows). `tests/test-install.sh` asserts a wrong checksum fails, writes no `GITHUB_PATH` and names the checksum. In that run the runners' preinstalled `pwsh` is 7.6.10 and later `pwsh` steps run the pinned 7.7.0. `pwsh-ci-action`, `publish-pwsh-module-action` and `package-pwsh-script-action` call it by full SHA, and each `test.yml` runs `Assert-PinnedPwsh` against the pin `version=7.7.0` (green in their release runs).
+- [x] AC-18: Pushing a prerelease tag such as `v0.0.1-test.1` starts no release run; a `release.yml`
   dispatch on that tag, on an exact tag outside `main` or from a branch fails at the first job; none of
   them publishes anything.
-- [ ] AC-19: `release.yml` runs the same `checks.yml` as `ci.yml`, no publishing job starts before it
+  Evidence: T32: `v0.0.1-test.1` started no release run; dispatches on it, on `v0.0.1` outside `main` and from a branch each failed at the first job; the throwaway tags are deleted and the published state is unchanged.
+- [x] AC-19: `release.yml` runs the same `checks.yml` as `ci.yml`, no publishing job starts before it
   passes, and the `.deb` on the Release is the file `checks.yml` built and tested at the tag version.
-- [ ] AC-20: `vhco-pro/gh-release-action` `v0.2.0` is released. With `files` it creates the public Release
+  Evidence: `ci.yml` and `release.yml` at PDS `00669f4` both call `./.github/workflows/checks.yml`; in `release.yml` the `apt`, `gallery` and `release` jobs need `checks`. In `v0.26.1`'s run the `.deb` from the tag's `checks.yml` artifact and the Release asset share SHA-256 `2f02044008296db2714dc4494f1653ec1f6bc548b12f4f1d1e33e8ddf37dc98c`.
+- [x] AC-20: `vhco-pro/gh-release-action` `v0.2.0` is released. With `files` it creates the public Release
   with those files when none is published, leaves no Release behind when an upload fails, leaves a
   published Release holding exactly those names unchanged, and fails on any other set without replacing
   a file. A missing path fails naming the path. With `files` empty it behaves as `v0.1.1` does.
-- [ ] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
+  Evidence: `vhco-pro/gh-release-action` `v0.2.0` is a published Release (release run [44814016667](https://github.com/vhco-pro/gh-release-action/actions/runs/44814016667) at `7d87a95`). Its behaviour tests against the mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the call log a single `gh release create <tag> <files...>` without `--draft` and no `gh release upload`. PDS used it for `v0.26.1`, whose Release carries both files.
+- [x] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
   `actionlint` passes in each repository's checks, ignoring nothing but the `queue` key in
   `release.yml`; every workflow sets `permissions: {}` at the top,
   `timeout-minutes` on every job that runs steps and `defaults.run.shell`; no `run:` block in a workflow
   or an action metadata file (`action.yml` or `action.yaml`) contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
   `persist-credentials: false` except in a job that pushes.
+  Evidence: At the `main` of PDS (`00669f4`) and the five action repositories (`pwsh-ci-action` `0d93cdc`, `setup-pwsh-action` `25e59e4`, `publish-pwsh-module-action` `0daf679`, `package-pwsh-script-action` `3504263`, `gh-release-action` `7d87a95`): the pinned actionlint image exits 0 in each, and PDS's `.github/actionlint.yaml` ignores only the `queue` message for `release.yml`. A YAML check of every workflow finds `permissions: {}` at the top, `defaults.run.shell`, `timeout-minutes` on every job with steps, no `${{` in any `run:` block of a workflow or action metadata file, no `$GITHUB_ENV` write, and `persist-credentials: false` on every checkout except `gh-release-action`'s release job, which pushes its tag.
+- [x] AC-22: A PDS push runs only the checks its changes need, judged on a branch over the diff from its
+  merge base with `main` and on `main` over the diff from the latest stable tag with a published Release,
+  with both sides of every rename counted and directories counted from the repository root. Each changed
+  file takes the first matching rule: Markdown
+  anywhere selects nothing; a file under `.github/` selects every check; a file under `scripts/` selects
+  every check but actionlint; a PowerShell file anywhere else, or another file under `pwsh/`, selects
+  `pwsh-ci-action`; a file under `packaging/`, `bash/` or `tests/` selects ShellCheck and the package
+  jobs; and any other path selects nothing. A push runs the union of its files' selections, and no
+  check when they select nothing. A branch's later push still runs the checks for every group the whole
+  branch changed, and a dispatch, `main` without a released stable tag, or an unresolvable base runs
+  every check. The selection job runs the selection's test before selecting, and the package group's
+  ShellCheck job lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`. `release.yml` runs
+  every check.
 
 ## Test Plan
 
 | Criterion | Proof |
 | --- | --- |
 | AC-01 | `gh repo view` and `gh release view` on the new repository; every `uses:` line not starting with `./` carries a 40-character SHA and a release comment |
-| AC-02 | `test.yml` on GitHub and the behaviour tests, including the `Write-Error` loader fixture: for each failing fixture the exit code is non-zero and the output names the failed check; the clean and Information-only fixtures exit zero; `git status --porcelain` on the fixture is empty after every run |
+| AC-02 | `test.yml` on GitHub and the behaviour tests, including the `Write-Error` loader fixture and the written-error test fixture through both the direct run and the composite action; read `modules.pins` for a Pester 6.x pin: for each failing fixture the exit code is non-zero and the output names the failed check; the clean and Information-only fixtures exit zero; `git status --porcelain` on the fixture is empty after every run |
 | AC-03 | `test.yml` runs the composite and then `ci.ps1` on each fixture and fails when the two exit codes differ |
 | AC-04 | A behaviour test that pins a wrong checksum and expects a failure before import |
 | AC-05 | `gh release view v3.0.0` and `gh release view v2.0.0`; read each action's metadata file (`action.yml` or `action.yaml`) at the released SHA; their tests call them with a `tag` input |
@@ -668,46 +760,91 @@ fixed forward with a new version.
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
 | AC-21 | `actionlint` results in each repository's checks at the merge commit, and `.github/actionlint.yaml` ignores only the unknown `queue` key for `release.yml`; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
+| AC-22 | Before the merge: `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's three outputs (package/PowerShell/workflows): `pwsh/` code only false/true/false, `pwsh/docs` Markdown only false/false/false, a PowerShell file outside `pwsh/` such as `darwin/x.ps1` false/true/false, `scripts/vm-set.ps1` true/true/false, `pwsh/scripts/main.ps1` false/true/false, a `.ps1` under `.github/` true/true/true, a Markdown file under `.github/` false/false/false, `bash/common/x.sh` moved to `darwin/x.sh` true/false/false, `PSScriptAnalyzerSettings.psd1` false/true/false, `packaging/`, `bash/` or `tests/` only true/false/false, `docs/` and `readme.md` false/false/false, `.github/` true/true/true, `scripts/` true/true/false, a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false, a force push that drops the branch's `bash/` change false/true/false, `main` after a released stable tag with only `pwsh/` changed since false/true/false, `main` with released `v1.0.0`, then a `bash/` change, a stable `v1.1.0` with no Release and a `pwsh/` change true/true/false (judged from `v1.0.0`), `main` with released `v1.0.0`, then a `bash/` change, `v1.1.0-rc.1` with a published prerelease Release and a `pwsh/` change true/true/false (the prerelease is no base), `main` with no released stable tag true/true/true, no `main` ref true/true/true, and a dispatch true/true/true; read each `checks.yml` job's gate, its own `if:` or a `needs:` chain to a gated job (actionlint on `workflows`; ShellCheck and the package build on `package`, install through `needs: [package]`; `pwsh-ci-action` on `powershell`), and the three `'true'` defaults; read the selection job for a run of `tests/detect-changes.test.sh` before `scripts/detect-changes.sh`, and the package group's ShellCheck job for the lint of root `scripts/*.sh` and `tests/detect-changes.test.sh`; read `release.yml` for a `checks.yml` call without those inputs. After the merge (T38): on two throwaway branches cut from `main`, one per push, push a PowerShell-only change on one and a documentation-only change on the other and read each run's job list, including that the documentation-only run's version job succeeds |
 
 ## Tasks
 
 Paths are `<repository>:<path>`. Creating a repository, an owner step, a tag push and a merge each wait
 for the owner's go when they come up.
 
-- [ ] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
-- [ ] T2 `vhco-pro/setup-pwsh-action:tests/` - behaviour tests for a wrong checksum failing before `PATH` changes and for `pwsh` reporting the pinned version; they fail because the action does not exist (AC-17)
-- [ ] T3 `vhco-pro/setup-pwsh-action:action.yml` `vhco-pro/setup-pwsh-action:scripts/` `vhco-pro/setup-pwsh-action:pins` - download, checksum, `PATH` and the `version` output; T2 passes (AC-17)
-- [ ] T4 `vhco-pro/setup-pwsh-action:.github/` `vhco-pro/setup-pwsh-action:AGENTS.md` `vhco-pro/setup-pwsh-action:README.md` `vhco-pro/setup-pwsh-action:LICENSE` `vhco-pro/setup-pwsh-action:renovate.json5` - `test.yml`, `release.yml` through `gh-release-workflow`, actionlint, Renovate custom manager and checksum note; actionlint passes and `v0.1.0` is released (AC-08, AC-17, AC-21)
-- [ ] T5 `vhco-pro/pwsh-ci-action:tests/` - fixtures (clean, Information-only, formatting diff, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) and a wrong-checksum case; the tests fail because `ci.ps1` does not exist (AC-02, AC-04)
-- [ ] T6 `vhco-pro/pwsh-ci-action:ci.ps1` `vhco-pro/pwsh-ci-action:action.yml` `vhco-pro/pwsh-ci-action:pins` - the four checks, pinned module installs and the `setup-pwsh-action` call; T5 passes (AC-02, AC-04)
-- [ ] T7 `vhco-pro/pwsh-ci-action:.github/` `vhco-pro/pwsh-ci-action:AGENTS.md` `vhco-pro/pwsh-ci-action:README.md` `vhco-pro/pwsh-ci-action:LICENSE` `vhco-pro/pwsh-ci-action:renovate.json5` - `test.yml` comparing the composite with `ci.ps1` per fixture, `release.yml`, actionlint and Renovate; `test.yml` passes and `v0.1.0` is released (AC-01, AC-03, AC-08, AC-21)
-- [ ] T8 `vhco-pro/gh-release-action:tests/` - `files` cases (create, same set, different set, missing path, empty default) and the call-log assertion; the new cases fail (AC-20)
-- [ ] T9 `vhco-pro/gh-release-action:action.yml` `vhco-pro/gh-release-action:scripts/publish-release.sh` - the `files` input; T8 passes (AC-20)
-- [ ] T10 `vhco-pro/gh-release-action:.github/workflows/` - timeouts, default shell, actionlint and `DRY_RUN` as a step output; actionlint passes and `v0.2.0` is released (AC-20, AC-21)
-- [ ] T11 `michielvha/publish-pwsh-module-action:refs/tags/v2.0.0` - exact baseline tag on `78d4a6f` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
-- [ ] T12 `michielvha/publish-pwsh-module-action:tests/` - tag-to-version unit tests and a local folder repository end-to-end case; they fail against the current action (AC-06, AC-07)
-- [ ] T13 `michielvha/publish-pwsh-module-action:action.yml` `michielvha/publish-pwsh-module-action:scripts/` - release-only v3 on `setup-pwsh-action` and PSResourceGet, a breaking commit; T12 passes (AC-05, AC-06, AC-07, AC-17)
-- [ ] T14 `michielvha/publish-pwsh-module-action:.github/` `michielvha/publish-pwsh-module-action:AGENTS.md` `michielvha/publish-pwsh-module-action:readme.md` `michielvha/publish-pwsh-module-action:LICENSE` `michielvha/publish-pwsh-module-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v3.0.0` is released (AC-05, AC-08, AC-21)
-- [ ] T15 `michielvha/package-pwsh-script-action:refs/tags/v1.0.0` - exact baseline tag on `70c9121` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
-- [ ] T16 `michielvha/package-pwsh-script-action:tests/` - a Windows test building `<name>-<version>.exe` from a `tag` input and a wrong PS2EXE checksum case; they fail against the current action (AC-05)
-- [ ] T17 `michielvha/package-pwsh-script-action:action.yaml` `michielvha/package-pwsh-script-action:scripts/` - release-only v2 on `setup-pwsh-action`, a breaking commit; T16 passes (AC-05, AC-17)
-- [ ] T18 `michielvha/package-pwsh-script-action:.github/` `michielvha/package-pwsh-script-action:AGENTS.md` `michielvha/package-pwsh-script-action:readme.md` `michielvha/package-pwsh-script-action:LICENSE` `michielvha/package-pwsh-script-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v2.0.0` is released (AC-05, AC-08, AC-21)
+  Evidence: Pre-merge: T35 (27 script cases, the selection job running the test first, each `checks.yml` gate and its `'true'` default, `release.yml` passing none). Post-merge: T38 on two branches from `main`: a PowerShell-only push ran only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push ran no check while its version job succeeded (after [PDS #64](https://github.com/michielvha/PDS/pull/64)).
+- [x] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
+  Evidence: `grep -n -E '@(main|v1)\r?$'` over the two workflows, `michielvha/PDS@4e6f8d7` (branch `feat/pwsh-release-workflow`), found both references before the change (exit 0) and nothing after (exit 1); `actionlint` 1.7.12 on both files exits 0; CRLF endings kept; not pushed.
+- [x] T2 `vhco-pro/setup-pwsh-action:tests/` - behaviour tests for a wrong checksum failing before `PATH` changes and for `pwsh` reporting the pinned version; they fail because the action does not exist (AC-17)
+  Evidence: `bash tests/test-install.sh`, `vhco-pro/setup-pwsh-action@9f92d47`, both cases fail because `scripts/install.sh` does not exist (exit 1, "No such file or directory"); runs on Linux x64 only here.
+- [x] T3 `vhco-pro/setup-pwsh-action:action.yml` `vhco-pro/setup-pwsh-action:scripts/` `vhco-pro/setup-pwsh-action:pins` - download, checksum, `PATH` and the `version` output; T2 passes (AC-17)
+  Evidence: `bash tests/test-install.sh`, `vhco-pro/setup-pwsh-action@cb228c3`, both cases pass on Linux x64 (wrong checksum exits non-zero naming the checksum with `GITHUB_PATH` empty; the pinned install reports 7.7.0 and writes `version=7.7.0`); ShellCheck stable over both scripts exits 0; macOS and Windows paths are untested until `test.yml` runs on GitHub (T4).
+- [x] T4 `vhco-pro/setup-pwsh-action:.github/` `vhco-pro/setup-pwsh-action:AGENTS.md` `vhco-pro/setup-pwsh-action:README.md` `vhco-pro/setup-pwsh-action:LICENSE` `vhco-pro/setup-pwsh-action:renovate.json5` - `test.yml`, `release.yml` through `gh-release-workflow`, actionlint, Renovate custom manager and checksum note; actionlint passes and `v0.1.0` is released (AC-08, AC-17, AC-21)
+  Evidence: PR vhco-pro/setup-pwsh-action#1 checks at `546ea41`, all pass: lint (actionlint 1.7.12, ShellCheck 0.11.0), behaviour tests on Linux and macOS, and the action on Linux x64 and arm64, macOS and Windows, where each runner's preinstalled pwsh 7.6.10 was replaced and `pwsh` steps reported 7.6.10 -> 7.7.0 from the tool cache; merged as `a90bb07`, release run 44790686977 succeeded and published `v0.1.0`. The first Windows run failed (Git Bash `sha256sum` escapes backslash paths), fixed in `546ea41` by hashing from standard input. Renovate config not validated until T19.
+- [x] T5 `vhco-pro/pwsh-ci-action:tests/` - fixtures (clean, Information-only, formatting diff, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) and a wrong-checksum case; the tests fail because `ci.ps1` does not exist (AC-02, AC-04)
+  Evidence: `pwsh -File tests/test-fixtures.ps1` in `mcr.microsoft.com/dotnet/sdk:9.0` (pwsh 7.5), `vhco-pro/pwsh-ci-action@bff0562`, all ten fixture cases fail with exit 64 because `ci.ps1` does not exist, and the wrong-checksum case stops because `modules.pins` does not exist yet.
+- [x] T6 `vhco-pro/pwsh-ci-action:ci.ps1` `vhco-pro/pwsh-ci-action:action.yml` `vhco-pro/pwsh-ci-action:pins` - the four checks, pinned module installs and the `setup-pwsh-action` call; T5 passes (AC-02, AC-04)
+  Evidence: `pwsh -File tests/test-fixtures.ps1` in `mcr.microsoft.com/dotnet/sdk:9.0` (pwsh 7.5.13), `vhco-pro/pwsh-ci-action@c4287e8`, all 12 cases pass: clean and Information-only pass (the latter with 1 information finding), each failing fixture fails naming its check, no file changes, and a wrong module checksum is refused before extraction. A wrong-casing case was added after PSScriptAnalyzer's UseCorrectCasing threw intermittently under `Invoke-ScriptAnalyzer` with Pester loaded (PowerShell/PSScriptAnalyzer#1708; 2 of 6 self-checks failed); analyze now leaves casing to the format check, and 10 of 10 self-checks pass. The composite `action.yml` path is first exercised by `test.yml` in T7. Local runs set `DOTNET_SYSTEM_NET_DISABLEIPV6=1` because this host's IPv6 does not route.
+- [x] T7 `vhco-pro/pwsh-ci-action:.github/` `vhco-pro/pwsh-ci-action:AGENTS.md` `vhco-pro/pwsh-ci-action:README.md` `vhco-pro/pwsh-ci-action:LICENSE` `vhco-pro/pwsh-ci-action:renovate.json5` - `test.yml` comparing the composite with `ci.ps1` per fixture, `release.yml`, actionlint and Renovate; `test.yml` passes and `v0.1.0` is released (AC-01, AC-03, AC-08, AC-21)
+  Evidence: PR vhco-pro/pwsh-ci-action#1 checks at its final head, 20 of 20 pass: lint, `test-fixtures.ps1` on Linux and Windows (13 cases), the self-check on Linux and Windows, and the composite and `ci.ps1` agreeing on every fixture case; merged as `7b21017`, release run 44791496127 succeeded and published `v0.1.0`. CI exposed two defects, both fixed with tests: a non-zero `$LASTEXITCODE` left by an expected child failure failed `pwsh` steps (`2c837a2`), and `Invoke-Formatter` throwing on mixed line endings crashed `ci.ps1` (a `mixed-line-endings` case now covers it).
+  Note: on 2026-11-20 the owner directed using the latest tool versions; Pester 6.2.0 replaces the Design's "Pester 5" (`pwsh-ci-action` passes every case on it), and that Design wording needs a spec revision before completion.
+- [x] T8 `vhco-pro/gh-release-action:tests/` - `files` cases (create, same set, different set, missing path, empty default) and the call-log assertion; the new cases fail (AC-20)
+  Evidence: `bash tests/test-release.sh`, `vhco-pro/gh-release-action@048e862`, exits 1 at the first publish case because `publish-release.sh` still looks the release up with `--jq .html_url` and has no `files` support; the notes cases before it still pass.
+- [x] T9 `vhco-pro/gh-release-action:action.yml` `vhco-pro/gh-release-action:scripts/publish-release.sh` - the `files` input; T8 passes (AC-20)
+  Evidence: `bash tests/test-release.sh`, `vhco-pro/gh-release-action@6a77589`, exits 0 with every case passing: create with files makes exactly one `gh release create v3.0.0 <deb> <exe>` call with no `--draft` and no `gh release upload`, the same set is left unchanged, a different set fails naming both sets, a missing path fails naming it, and the existing notes, prerelease and lookup-failure cases still pass; ShellCheck 0.11.0 exits 0.
+- [x] T10 `vhco-pro/gh-release-action:.github/workflows/` - timeouts, default shell, actionlint and `DRY_RUN` as a step output; actionlint passes and `v0.2.0` is released (AC-20, AC-21)
+  Evidence: PR vhco-pro/gh-release-action#4, all checks pass (the release script tests including the new `files` cases, actionlint 1.7.12 and ShellCheck 0.11.0 from pinned images); the dry run computed 0.2.0; merged as `7d87a95` and release run 44814016667 published `v0.2.0`.
+- [x] T11 `michielvha/publish-pwsh-module-action:refs/tags/v2.0.0` - exact baseline tag on `78d4a6f` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
+  Evidence: `git ls-tree -r --name-only 78d4a6f` lists no `.github/workflows/` file, so the tag starts no run; annotated tag `v2.0.0` pushed on `78d4a6f`, shown by `git ls-remote --tags`; PR #8's dry run then computed 3.0.0 where it had computed 1.0.0 before the tag.
+- [x] T12 `michielvha/publish-pwsh-module-action:tests/` - tag-to-version unit tests and a local folder repository end-to-end case; they fail against the current action (AC-06, AC-07)
+  Evidence: `Invoke-Pester -Path ./tests` (Pester 6.2.0, pwsh 7.5.13), `michielvha/publish-pwsh-module-action@deb6b48`, 0 passed and 10 failed because `scripts/ReleaseTag.ps1` and `scripts/publish.ps1` do not exist yet.
+- [x] T13 `michielvha/publish-pwsh-module-action:action.yml` `michielvha/publish-pwsh-module-action:scripts/` - release-only v3 on `setup-pwsh-action` and PSResourceGet, a breaking commit; T12 passes (AC-05, AC-06, AC-07, AC-17)
+  Evidence: `Invoke-Pester -Path ./tests` (Pester 6.2.0, pwsh 7.5.13), `michielvha/publish-pwsh-module-action@f4312ae`, 10 passed and 0 failed: `v0.25.0` gives `0.25.0`, six other tag forms are refused naming the tag, the fixture module publishes to a local folder repository with the expected manifest fields, a second publish reports already published and adds no package, and a prerelease tag fails before a manifest is written. The action itself runs on GitHub first in T14.
+- [x] T14 `michielvha/publish-pwsh-module-action:.github/` `michielvha/publish-pwsh-module-action:AGENTS.md` `michielvha/publish-pwsh-module-action:readme.md` `michielvha/publish-pwsh-module-action:LICENSE` `michielvha/publish-pwsh-module-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v3.0.0` is released (AC-05, AC-08, AC-21)
+  Evidence: PR michielvha/publish-pwsh-module-action#8, all checks pass: lint, `vhco-pro/pwsh-ci-action` v0.1.0 on the repository (10 Pester tests), and the end-to-end job, where the action published Example 0.0.1 to a local folder repository, the second run reported "already published; nothing to publish", and the repository held the version once; merged as `1bf4e8d`, release run 44814472905 published `v3.0.0`. The licence names VH & Co BV.
+- [x] T15 `michielvha/package-pwsh-script-action:refs/tags/v1.0.0` - exact baseline tag on `70c9121` after checking it has no tag-triggered workflow; `git ls-remote --tags` shows it (AC-05)
+  Evidence: `git ls-tree -r --name-only 70c9121` lists no `.github/workflows/` file, so the tag starts no run; annotated tag `v1.0.0` pushed on `70c9121`, shown by `git ls-remote --tags`.
+- [x] T16 `michielvha/package-pwsh-script-action:tests/` - a Windows test building `<name>-<version>.exe` from a `tag` input and a wrong PS2EXE checksum case; they fail against the current action (AC-05)
+  Evidence: `Invoke-Pester -Path .\tests` on the w11-sandbox VM (Windows 11, portable pwsh 7.7.0, Pester 6.2.0), `michielvha/package-pwsh-script-action@d5f3fa9`, 0 passed, 10 failed and 1 skipped (the non-Windows case) because `scripts/build.ps1` and `scripts/ReleaseTag.ps1` do not exist yet.
+- [x] T17 `michielvha/package-pwsh-script-action:action.yaml` `michielvha/package-pwsh-script-action:scripts/` - release-only v2 on `setup-pwsh-action`, a breaking commit; T16 passes (AC-05, AC-17)
+  Evidence: `Invoke-Pester -Path .\tests`, `michielvha/package-pwsh-script-action@26bb96d`: on the w11-sandbox VM (Windows 11, pwsh 7.7.0, Pester 6.2.0) 10 passed, 0 failed, 1 skipped (non-Windows case): `Hello-1.2.3.exe` is built from `v1.2.3`, runs and prints the fixture text, its path is written as `file=`, a zeroed PS2EXE checksum is refused before extraction, and a prerelease tag is refused; on Linux (pwsh 7.5.13) 9 passed, 2 skipped, with the non-Windows case failing as required. The first VM run hung because the built executable read the SSH session's open standard input; the test now pipes nothing into it.
+- [x] T18 `michielvha/package-pwsh-script-action:.github/` `michielvha/package-pwsh-script-action:AGENTS.md` `michielvha/package-pwsh-script-action:readme.md` `michielvha/package-pwsh-script-action:LICENSE` `michielvha/package-pwsh-script-action:renovate.json5` - hygiene and the release workflow; actionlint passes and `v2.0.0` is released (AC-05, AC-08, AC-21)
+  Evidence: PR michielvha/package-pwsh-script-action#10, all checks pass: lint, `vhco-pro/pwsh-ci-action` v0.1.0 on Linux and Windows (the build tests ran on Windows), and the end-to-end job, where the action built `Hello-0.0.1.exe` on `windows-latest` and it printed the fixture text; the dry run computed 2.0.0 after the `v1.0.0` baseline; merged as `a2bc1a4`, release run 44818584078 published `v2.0.0`. The licence names VH & Co BV.
 - [ ] T19 `vhco-pro/setup-pwsh-action:Dependency Dashboard` `vhco-pro/pwsh-ci-action:Dependency Dashboard` - owner grants the Renovate App access; each Dependency Dashboard lists every tool pin (AC-08)
-- [ ] T20 `michielvha/PDS:PSScriptAnalyzerSettings.psd1` `michielvha/PDS:pwsh/module/PDS.psm1` `michielvha/PDS:pwsh/module/Public/` `michielvha/PDS:pwsh/templates/` - settings file, the two file renames, the template move and the loader skipping `*.Tests.ps1`; `Get-Command -Module PDS` lists a command per file under `Public/` (AC-12)
-- [ ] T21 `michielvha/PDS:pwsh/tests/` - a Pester file per public function with system calls mocked, and old-alias tests; the alias tests fail until the renames land (AC-12, AC-14)
-- [ ] T22 `michielvha/PDS:pwsh/` - formatter, trailing whitespace and byte-order mark fixes; `Invoke-Formatter` under the settings changes no file (AC-12)
-- [ ] T23 `michielvha/PDS:pwsh/module/Public/` - `SupportsShouldProcess` and `$PSCmdlet.ShouldProcess` in the state-changing functions; their `ShouldProcess` findings are gone and T21 still passes (AC-12)
-- [ ] T24 `michielvha/PDS:pwsh/module/Public/` - the remaining analyzer fixes and the renames with aliases, including `Get-RDSActiveSessionReport`; `Invoke-ScriptAnalyzer` under the settings returns no record and T21 passes (AC-12, AC-14)
-- [ ] T25 `michielvha/PDS:scripts/vm-set.ps1` - prints the VM set and the mocked-only list with `file:line` reasons; every VM-set function completes on the Windows VM and the PR records each run (AC-16)
-- [ ] T26 `michielvha/PDS:.github/workflows/checks.yml` `michielvha/PDS:.github/actionlint.yaml` - reusable checks with a `version` input, no GitVersion job and no secrets; actionlint passes with only the `queue` ignore (AC-19, AC-21)
-- [ ] T27 `michielvha/PDS:.github/workflows/ci.yml` - branch-push CI calling `checks.yml` then `version-workflow` with `preview-label: ''`; a branch push runs `pwsh-ci-action` and creates no tag (AC-09, AC-11)
-- [ ] T28 `michielvha/PDS:.github/workflows/release.yml` `michielvha/PDS:scripts/build-apt-repo.sh` - stable-tag trigger, dispatch, the guard, queued concurrency, the APT, Gallery and Release jobs with their permissions and secrets in `env:`; actionlint passes (AC-15, AC-18, AC-19, AC-21)
-- [ ] T29 `michielvha/PDS:gitversion.yml` `michielvha/PDS:.github/templates/release-notes.md` `michielvha/PDS:.github/workflows/` `michielvha/PDS:AGENTS.md` `michielvha/PDS:pwsh/readme.md` `michielvha/PDS:changelog.md` - remove the custom GitVersion file, the template and the three old workflows, and update the docs; the AC-09 and AC-21 greps pass (AC-09, AC-21)
-- [ ] T30 `michielvha/PDS:settings` - owner adds `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and a `v*.*.*` tag policy on `github-pages`; `gh variable list`, `gh secret list` and the environment's policies show them (AC-10)
-- [ ] T31 `michielvha/PDS:refs/tags/v0.24.1` - the `v` baseline on the latest release tag's commit before the migration merges; GitVersion on the migration branch computes a version above it (AC-10)
-- [ ] T32 `michielvha/PDS:refs/tags` - throwaway-tag and labelled-PR checks; a prerelease tag starts no run, the three dispatches fail at the first job, a labelled PR tags nothing, then the throwaway tags are deleted (AC-11, AC-18)
-- [ ] T33 `michielvha/PDS:releases` - after the merge, the first bumping release and its reruns; one tag, one public Release with notes, `.deb` and `.exe`, the Gallery version, an APT index matching the Releases, and reruns changing nothing (AC-10, AC-15, AC-19)
-- [ ] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
+- [x] T20 `michielvha/PDS:PSScriptAnalyzerSettings.psd1` `michielvha/PDS:pwsh/module/PDS.psm1` `michielvha/PDS:pwsh/module/Public/` `michielvha/PDS:pwsh/templates/` - settings file, the two file renames, the template move and the loader skipping `*.Tests.ps1`; `Get-Command -Module PDS` lists a command per file under `Public/` (AC-12)
+  Evidence: an export check (import `PDS.psm1`, compare `Get-Command -Module PDS` with the files under `Public/`) in `mcr.microsoft.com/dotnet/sdk:9.0`, `michielvha/PDS@60fc368`: before the change 79 files and 76 commands, missing `template.ps1`, `Remove-StaleComputer.ps1` and `Install-KubeCLI.ps1` (exit 1); after it 78 files and 78 commands (exit 0). The settings file excludes only `PSAvoidUsingWriteHost`, with its reason, and has no `IncludeRules`; the `Install-KubeCLI` docs pages now name `Install-AzureKubeCLI`.
+- [x] T21 `michielvha/PDS:pwsh/tests/` - a Pester file per public function with system calls mocked, and old-alias tests; the alias tests fail until the renames land (AC-12, AC-14)
+  Evidence: `michielvha/PDS@1a21412`: 78 test files in `pwsh/tests/`, one per public function file (a script maps every file under `Public/`, renamed ones by their new name, to a test file: 78 and 78, none missing). On the Windows 11 VM (pwsh 7.7.0, Pester 6.2.0, PSScriptAnalyzer 1.25.0), one session over all files: `Invoke-Formatter` changes none and `Invoke-ScriptAnalyzer` under the root settings reports 0 errors or warnings; `Invoke-Pester` gives 312 tests, 248 passed, 53 failed, 11 skipped. All 53 failures are in the twelve renamed functions' files, failing because the new name does not exist yet; each group's tests passed against a throwaway VM copy with the renames and aliases applied, except `Get-DisabledADUser`, which also needs its broken `Select-Object` fixed (T24). The 11 skips are non-elevated branches; the VM session is elevated. Running the suite through `pwsh-ci-action`'s `ci.ps1` exposed four more failures: `ci.ps1` ran Pester under its own `$ErrorActionPreference = 'Stop'`, turning checked `Write-Error` calls into throws. Fixed in [vhco-pro/pwsh-ci-action#4](https://github.com/vhco-pro/pwsh-ci-action/pull/4) (`2067ed8`, a new fixture case seen failing then passing); with that `ci.ps1` the PDS suite gives the same 53 expected failures.
+- [x] T22 `michielvha/PDS:pwsh/` - formatter, trailing whitespace and byte-order mark fixes; `Invoke-Formatter` under the settings changes no file (AC-12)
+  Evidence: `michielvha/PDS@bb71a35`, 75 PowerShell files: `Invoke-Formatter` with the root settings and trailing whitespace stripped, line endings and encoding kept; the seven files with non-ASCII text (the Starship symbol `❯`, menu emojis, arrows and check marks, all data) gain a UTF-8 BOM, the rule's fix. On the Windows 11 VM over the committed tree: `Invoke-Formatter` changes none of the 161 `.ps1`/`.psm1`/`.psd1` files, `Invoke-ScriptAnalyzer` reports 0 `PSAvoidTrailingWhitespace` and 0 `PSUseBOMForUnicodeEncodedFile` findings, and `Invoke-Pester` still gives 312 tests, 248 passed, 53 failed (the expected rename failures), 11 skipped. `git diff -w` shows only brace placement and casing.
+- [x] T23 `michielvha/PDS:pwsh/module/Public/` - `SupportsShouldProcess` and `$PSCmdlet.ShouldProcess` in the state-changing functions; their `ShouldProcess` findings are gone and T21 still passes (AC-12)
+  Evidence: `michielvha/PDS@b26290b`: the 43 functions behind the 43 `PSUseShouldProcessForStateChangingFunctions` findings, plus `Remove-StaleADComputer`'s hand-made `-WhatIf` (`PSUseSupportsShouldProcess`), declare `SupportsShouldProcess` and guard each change with `$PSCmdlet.ShouldProcess(<target>, <action>)`; nested helpers (`Set-Log` copies, `Set-SshdConfigOption`, `Update-EnvDebug`, `Set-LogProject`) and the script copies in `full.ps1` and `Update-ModuleDocumentation.ps1` are covered too. Each function's test file gains `It 'changes nothing under -WhatIf'` asserting `Should -Invoke ... -Times 0` on its state-changing commands. On the Windows 11 VM over the committed tree: `Invoke-Formatter` changes none of 161 files; `Invoke-ScriptAnalyzer` (root settings, `PSUseCorrectCasing` excluded as `pwsh-ci-action` does) reports no ShouldProcess finding, 35 source warnings that are all T24's, and none in the tests; `Invoke-Pester` gives 350 tests, 282 passed, 57 failed, 11 skipped, every failure in the twelve rename-pending files.
+- [x] T24 `michielvha/PDS:pwsh/module/Public/` - the remaining analyzer fixes and the renames with aliases, including `Get-RDSActiveSessionReport`; `Invoke-ScriptAnalyzer` under the settings returns no record and T21 passes (AC-12, AC-14)
+  Evidence: `michielvha/PDS@c88d56e`. The twelve renames (`Get-DisabledADUser`, `Update-GitRepository`, `Get-ListeningPort`, `Enable-RDSHost`, `Get-RDSActiveSessionReport`, `Install-ChocoPackage`, `Enable-LongPath`, `Set-NodeExtraCACert`, `Get-LogonActivity`, `Get-LogonEvent`, `Install-ShellCustomization`, `Set-StarshipConfigForEveryUser`) keep the old name through `[Alias()]`; importing the module on the VM lists 78 functions and 12 aliases, each resolving to its new name. `Get-VNetSubnetDetail` (inside `Show-AksInfo`) and `Invoke-TemplateFunction` (template) are renamed without aliases. `Get-RDSActiveSession` keeps its name; its help and generated doc, which named the plural, now name it. The other 21 warnings are fixed in the code with no suppression. Defects the tests exposed are fixed with them: `Get-DisabledADUser`'s `Select-Object` threw on every call, `Get-LogonActivity` and `Get-LogonEvent` used `Get-EventLog` (absent in PowerShell 7) and now use `Get-WinEvent` (both completed a real elevated run on the VM, 1461 and 1096 events), and `Get-WindowsKey` converted a CIM `DateTime`. On the Windows 11 VM over the committed tree: `Invoke-Formatter` changes none of 161 files; `Invoke-ScriptAnalyzer` (root settings, `PSUseCorrectCasing` excluded as `pwsh-ci-action` does) returns 0 Error or Warning records across `pwsh/`, Information only; `Invoke-Pester` gives 358 tests, 347 passed, 0 failed, 11 skipped (non-elevated branches).
+- [x] T25 `michielvha/PDS:scripts/vm-set.ps1` - prints the VM set and the mocked-only list with `file:line` reasons; every VM-set function completes on the Windows VM and the PR records each run (AC-16)
+  Evidence: `michielvha/PDS@2ef7345`: `scripts/vm-set.ps1` compares each public function file with the merge base (`747168e`) token by token through the PowerShell parser, ignoring whitespace, byte-order marks and casing, and prints 43 VM-set functions and 11 mocked-only ones, each mocked-only entry with its reason and `file:line` (for example `Remove-StaleADComputer  needs a domain  pwsh/module/Public/AD/Remove-StaleADComputer.ps1:41`, `Start-ScrollLockToggle  never terminates  ...:47`). On w11-sandbox (Windows 11 build 26300, pwsh 7.7.0, elevated SSH session, after a Proxmox snapshot), every VM-set function ran for real with realistic arguments: 41 completed without error. `Set-AwsCli` (missing profile) and `Remove-WindowsBloat` (per-user service copies) failed, and five completed without doing their job (`Install-Scoop`, `Set-AzCli`, `Set-AutoAdminLogin`, `Set-LF`, `Get-WindowsKey`); all seven were fixed with tests in `d2170e9`. After rolling the VM back to the snapshot, those seven plus `Install-Choco` ran again and all completed without error, each confirmed by its effect (Scoop v0.6.0 installed, the new profile holds `AWS_CA_BUNDLE`, four az extensions listed, the stored auto-logon password matches, converted `.sh` files start with `23 21`, the decoded key's last five characters match `slmgr /dli`, four service templates set to `Start` 4). SSH worked after `Enable-SshServer` and `Remove-WindowsBloat`. The per-function table goes into the PR. Untested: `Remove-WindowsBloat`'s step that stops per-user service copies, because no user was signed in to create them.
+- [x] T26 `michielvha/PDS:.github/workflows/checks.yml` `michielvha/PDS:.github/actionlint.yaml` - reusable checks with a `version` input, no GitVersion job and no secrets; actionlint passes with only the `queue` ignore (AC-19, AC-21)
+  Evidence: `michielvha/PDS@e2fca4c`: `checks.yml` (`workflow_call`, input `version` default `0.0.0`; jobs actionlint, ShellCheck, package build and tests, install tests on Ubuntu 22.04 and 24.04, and `pwsh-ci-action` v0.1.1 on `windows-latest` with `module-manifest: pwsh/module/PDS.psm1` and `tests: pwsh/tests`; no GitVersion job, no secrets) and `.github/actionlint.yaml` ignoring only `unexpected key "queue" for "concurrency" section` in `release.yml`. The pinned actionlint image (1.7.12, with ShellCheck) over the tree at `b6537f8` exits 0; without the config it reports only that `queue` message.
+- [x] T27 `michielvha/PDS:.github/workflows/ci.yml` - branch-push CI calling `checks.yml` then `version-workflow` with `preview-label: ''`; a branch push runs `pwsh-ci-action` and creates no tag (AC-09, AC-11)
+  Evidence: `michielvha/PDS@22b0a88`: `ci.yml` on `push` to every branch calls `checks.yml`, then `vhco-pro/version-workflow` v0.1.2 with `preview-label: ''`, `release-app-client-id: vars.RELEASE_APP_CLIENT_ID` and only `release-app-private-key`. It has no concurrency group, because a group cancelling only branch runs needs a computed expression and `version-workflow` already serializes tagging per ref. Seeing a branch push run `pwsh-ci-action` and create no tag waits for the first push (T32).
+- [x] T28 `michielvha/PDS:.github/workflows/release.yml` `michielvha/PDS:scripts/build-apt-repo.sh` - stable-tag trigger, dispatch, the guard, queued concurrency, the APT, Gallery and Release jobs with their permissions and secrets in `env:`; actionlint passes (AC-15, AC-18, AC-19, AC-21)
+  Evidence: `michielvha/PDS@41a5018`: `release.yml` on `v[0-9]+.[0-9]+.[0-9]+` tags and dispatch, group `release-<repository>` with `cancel-in-progress: false` and `queue: max`; guard, `checks.yml` at the tag version, `.exe`, APT (`contents: read`, `pages: write`, `id-token: write`, environment `github-pages`, the two GPG secrets in `env:`), Gallery (`contents: read`, `API_KEY`) and Release (`contents: write`, `gh-release-action` v0.2.0 with the `.deb` and `.exe`) jobs. `scripts/check-release-ref.sh` against a fresh clone: `refs/tags/v0.25.1` on `747168e` passes with `version=0.25.1`; `v0.25.1-rc.1`, `v01.2.3`, `0.25.1`, `refs/heads/main` and a `v9.9.9` tag on a commit outside main exit 1. `scripts/build-apt-repo.sh` in a disposable `ubuntu:24.04` container with a throwaway passphrase-protected key against the live Releases: for a tag without a Release the `Packages` index lists the 41 non-draft Releases with a `.deb` (the same list `gh api --paginate repos/michielvha/PDS/releases` gives) plus the run's `9.9.9`; for `0.25.1`, which has a Release, the run's `.deb` is left out; `InRelease` verifies with a good signature. A YAML check of every workflow finds `permissions: {}`, `defaults.run.shell: bash`, `timeout-minutes` on each job with steps, per-job permissions, no `${{` in a `run:` block and `persist-credentials: false` on every checkout; actionlint exits 0.
+- [x] T29 `michielvha/PDS:gitversion.yml` `michielvha/PDS:.github/templates/release-notes.md` `michielvha/PDS:.github/workflows/` `michielvha/PDS:AGENTS.md` `michielvha/PDS:pwsh/readme.md` `michielvha/PDS:changelog.md` - remove the custom GitVersion file, the template and the three old workflows, and update the docs; the AC-09 and AC-21 greps pass (AC-09, AC-21)
+  Evidence: `michielvha/PDS@b6537f8`: the three old workflows, `gitversion.yml`, `.github/templates/release-notes.md` and the archived action copies under `.github/actions/archive/` (their metadata files interpolated inputs in `run:`) are removed; `AGENTS.md`, `readme.md`, `pwsh/readme.md`, `pwsh/module/readme.md`, `packaging/README.md` and `changelog.md` describe the checks and the release path. At that commit `git grep -l` for `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` in `.github/workflows` lists only `release.yml`; `git grep 'secrets: inherit'` and `git grep GITHUB_ENV` over `.github` and `scripts` find nothing; actionlint exits 0.
+- [x] T30 `michielvha/PDS:settings` - owner adds `RELEASE_APP_CLIENT_ID`, `RELEASE_APP_PRIVATE_KEY` and a `v*.*.*` tag policy on `github-pages`; `gh variable list`, `gh secret list` and the environment's policies show them (AC-10)
+  Evidence: on 2026-11-21 `RELEASE_APP_CLIENT_ID` = `Iv23litteo9z5pdnXgDL` is a PDS repository variable (`gh variable list`), `RELEASE_APP_PRIVATE_KEY` a secret set from the `michielvha-repo-write` registration file's `pem` field (`gh secret list`; the file is now on fedora-43 as well as the MacBook, `~/.local/share/github-apps/michielvha-repo-write.json`), and `github-pages`'s deployment policies are `branch main` and `tag v*.*.*` (`gh api .../deployment-branch-policies`). Done in session with the owner's go; the tag release's APT job then deployed Pages from `v0.26.1`.
+- [x] T31 `michielvha/PDS:refs/tags` - just before the migration merges, `v<latest release tag>` (`v0.25.1` on 2026-11-21) on that tag's commit and the junk `0.25.0-PullRequest56.2` tag deleted; `git ls-remote --tags` shows both, and GitVersion on the migration branch computes a version above the baseline (AC-10)
+  Evidence: `git ls-remote --tags origin` on PDS on 2026-11-21 before the merge: `v0.25.1` (annotated, `a1e2864`) peels to `747168e`, the commit of `0.25.1`, the latest tag with a Release (`gh release list -R michielvha/PDS`); `0.25.0-PullRequest56.2` (object `4e0fe9e`, on `aea6173`) is deleted and no longer listed. Neither push started a workflow run (`gh run list`), since the tagged commit carries only the old branch-triggered workflows. The version GitVersion computes above the baseline is read from the first `main` run after the merge.
+- [x] T32 `michielvha/PDS:refs/tags` - throwaway-tag and labelled-PR checks; a prerelease tag starts no run, the three dispatches fail at the first job, a labelled PR tags nothing, then the throwaway tags are deleted (AC-11, AC-18)
+  Evidence: on PDS from `main` `00669f4`, then cleaned up (tags, PR [#65](https://github.com/michielvha/PDS/pull/65), branch and label deleted; `git ls-remote --tags` equal to the snapshot before; Releases, APT index and Gallery unchanged). `v0.0.1-test.1` on `main` started no release run. A push to labelled PR #65 (`release:preview`) ran CI [44930881920](https://github.com/michielvha/PDS/actions/runs/44930881920) whose version job succeeded without tagging. `v0.0.1` on a commit outside `main` ([run 44930961297](https://github.com/michielvha/PDS/actions/runs/44930961297)) and dispatches on `v0.0.1-test.1` ([44930993462](https://github.com/michielvha/PDS/actions/runs/44930993462)), on `v0.0.1` ([44931025745](https://github.com/michielvha/PDS/actions/runs/44931025745)) and from the branch ([44931058390](https://github.com/michielvha/PDS/actions/runs/44931058390)) each failed at `Check the tag` with every other job skipped, printing "Refusing to release ...: its commit ... is not on main" or "only an exact stable tag such as refs/tags/v1.2.3 publishes".
+- [x] T33 `michielvha/PDS:releases` - after the merge, the first bumping release and its reruns; one tag, one public Release with notes, `.deb` and `.exe`, the Gallery version, an APT index matching the Releases, and reruns changing nothing (AC-10, AC-15, AC-19)
+  Evidence: after PR #60 merged (`c968cce`), `v0.26.0`'s release ([run 44912011297](https://github.com/michielvha/PDS/actions/runs/44912011297)) published Gallery 0.26.0 and then failed at the APT job (`scripts/build-apt-repo.sh: Permission denied`: committed without its executable bit), so no Release; it was fixed forward in [PDS #63](https://github.com/michielvha/PDS/pull/63) (`fix:`, with a check that every `scripts/*.sh` is executable), and `v0.26.1`'s release ([run 44918148978](https://github.com/michielvha/PDS/actions/runs/44918148978)) passed every job: Release `v0.26.1` public and latest with git-cliff notes, `pds_0.26.1_all.deb` and `PDS-0.26.1.exe`; Gallery 0.26.1; the live APT `Packages` index lists exactly the 42 versions of the non-draft Releases with a `.deb`. Reruns: the whole-run rerun (attempt 5) succeeded and changed nothing; each per-job rerun (attempts 2 to 4) left the state unchanged but failed at `deploy-pages` ("Multiple artifacts named github-pages"), fixed in [PDS #64](https://github.com/michielvha/PDS/pull/64) by naming the artifact per attempt, which only a later release can show; the dispatch ([44919136490](https://github.com/michielvha/PDS/actions/runs/44919136490)) changed nothing, its Gallery job reported "PDS 0.26.1 is already published in PSGallery; nothing to publish", and its deploy lost a race with its own just-uploaded artifact ("No artifacts named github-pages were found").
+  Residual: AC-10 and AC-15 are not met as written; see their notes.
+- [x] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
+  Evidence: `node scripts/check-docs.mjs` on `feat/pwsh-release-workflow`: "Checked 44 Markdown files: local links, metadata, and writing constraints pass." `knowledge/shared-delivery.md` gains rows for `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, the `files` input on the `gh-release-workflow` row, and the release contract's two statements; `knowledge/tag-driven-pwsh-releases.md` states both and links the PDS workflows. AC-13 is ticked once these pages merge.
+- [x] T35 `michielvha/PDS:scripts/detect-changes.sh` `michielvha/PDS:tests/detect-changes.test.sh` `michielvha/PDS:.github/workflows/ci.yml` `michielvha/PDS:.github/workflows/checks.yml` - change selection by first matching rule, counting both sides of a rename, over the merge base with `main`, or on `main` the latest stable tag with a published Release, with three groups; the script's test passes every pre-merge AC-22 case and actionlint passes (AC-22)
+  Evidence: `michielvha/PDS@de154c4`: `bash tests/detect-changes.test.sh` passes all 27 cases, one per AC-22 pre-merge case, and the new cases fail against the defects they target (the previous-tip script failed 16 of the earlier set; copies that ignore the Release list, accept a prerelease base, drop the `scripts/` rule or skip `--no-renames` fail the matching cases); ShellCheck 0.11.0 is clean on `scripts/*.sh` and the test; the pinned actionlint image exits 0. `ci.yml`'s selection job runs the test before `scripts/detect-changes.sh`; `checks.yml` gates actionlint on `workflows`, ShellCheck and the package build on `package` (install through `needs: [package]`) and `pwsh-ci-action` on `powershell`, all three `'true'` by default; `release.yml` passes none. Branch run [44886617080](https://github.com/michielvha/PDS/actions/runs/44886617080) at `de154c4` selected every group (the branch diff from `main` touches `.github/`) and every check passed. The live single-group runs are T38.
+- [x] T36 `vhco-pro/docs:docs/internal/plans/pwsh-release-workflow.md` - re-record AC-01 to AC-06, AC-09 and AC-17, which the 2026-11-21 revision reset, from checks run on the current heads (AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-09, AC-17)
+  Evidence: AC-01 to AC-06, AC-09 and AC-17 re-ticked on 2026-11-21 from the current heads (`pwsh-ci-action` `0d93cdc` v0.1.1, `setup-pwsh-action` v0.1.0, `publish-pwsh-module-action` v3.0.0, `package-pwsh-script-action` v2.0.0, PDS `00669f4`), each with its own evidence line.
+- [x] T37 `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - the flow text and diagram describe the change selection with its first-matching-rule order, the rename rule and a tag running every check, and cite the GitHub Actions convention's rule to run only the checks a change needs, which this branch holds after merging `main`; `node scripts/check-docs.mjs` passes (AC-13)
+  Evidence: `knowledge/tag-driven-pwsh-releases.md` at `bddd922` describes the selection as six first-matching rules with directories from the repository root, the rename rule, the selection's own test running first, every check on a dispatch, an unresolvable base or a tag, and links the GitHub Actions convention's rule, which this branch holds after merging `main` (8dd6bda; convention commits ff88d82, 7075171, 1d3510f and cc6277c on `main`); `node scripts/check-docs.mjs` passes.
+- [x] T38 `michielvha/PDS:refs/heads` - after the merge, on two throwaway branches cut from `main`, one per push: a PowerShell-only push runs only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push runs no check while its version job succeeds; both branches are deleted afterwards (AC-22)
+  Evidence: on two throwaway branches cut from PDS `main`, one per push, then deleted. PowerShell-only (`test/selection-powershell` from `e241522`, [run 44918648744](https://github.com/michielvha/PDS/actions/runs/44918648744)): `package=false powershell=true workflows=false: changes since the merge base with main e241522`; only the selection job, `checks / PowerShell checks` and `version / version` ran, each successfully, and ShellCheck, actionlint and the package jobs were skipped. Markdown-only: the first run ([44918653278](https://github.com/michielvha/PDS/actions/runs/44918653278)) skipped every check as designed but also skipped the version job, because GitHub marks a calling job skipped when every called job is; [PDS #64](https://github.com/michielvha/PDS/pull/64) (`00669f4`) has the version job also need the selection job and run `if: ${{ !failure() && !cancelled() }}`. Rerun from `00669f4` on `test/selection-markdown-2` ([run 44930569124](https://github.com/michielvha/PDS/actions/runs/44930569124)): every check skipped and `version / version` succeeded.
 
 ## Open Questions
 
@@ -728,6 +865,14 @@ None.
 | 2026-11-17 | R-9 | spec | `bea37e5` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
 | 2026-11-17 | R-10 | spec | `36ebfd3` | claude-opus-5-5 | procedural | Clean: 4 nits, no blocking or should-fix findings |
 | 2026-11-20 | R-10 | spec | `36ebfd3` | n/a | n/a | accepted by owner |
+| 2026-11-21 | R-11 | spec | `f089ab9` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 6 should-fix and 5 nits |
+| 2026-11-21 | R-12 | spec | `00f14af` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 5 should-fix and 1 nit |
+| 2026-11-21 | R-13 | spec | `174bfed` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
+| 2026-11-21 | R-14 | spec | `925d2d0` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
+| 2026-11-21 | R-15 | spec | `cd3e373` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 1 nit |
+| 2026-11-21 | R-16 | spec | `9e489a4` | claude-opus-5-5 | procedural | Not clean: 1 should-fix and 2 nits |
+| 2026-11-21 | R-17 | spec | `bddd922` | claude-opus-5-5 | procedural | Clean: 2 nits, no blocking or should-fix findings |
+| 2026-11-21 | R-17 | spec | `bddd922` | n/a | n/a | accepted by owner |
 
 ### R-1
 
@@ -1481,6 +1626,291 @@ WHERE: Design, `pwsh-ci-action` repository layout ("copies `go-ci-action`'s layo
 EVIDENCE: `git -C /home/m/code/go-ci-action show origin/main:.github/workflows/release.yml` passes `dry-run: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry-run) }}` to the `gh-release-workflow` call. That breaks "Let expressions only read values" in `conventions/github-actions.md` at X. It is the same expression the Design removes from `gh-release-action`. The four PowerShell action repositories copy this `release.yml`, and the Design names no such change for them. A reusable-workflow call job has no steps, so the fix there needs an earlier job that outputs the value. The Design already applies the whole convention to these repositories and leaves judgement rules to the implementation review, so a careful implementer reaches the same result.
 PROPOSAL: Add to the layout sentence that the copied `release.yml` gets `dry-run` from an earlier job's script output instead of the computed expression, as `gh-release-action` does.
 
+### R-11
+
+TARGET: f089ab985000cbc81e0c594ae39223dbf067351e
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Design, PDS `ci.yml` bullet ("compares the pushed commit with the branch's previous tip (`github.event.before`)"); Acceptance Criteria, AC-22; Test Plan, row AC-22; Tasks, T35; Context, Owner summary, Approach ("Each branch push runs the checks its changes need" and "`version-workflow` tags `main` after the checks pass"); Design, flowchart ("All checks pass?" -> "No version, no tag"); Design, Legend, `ci.yml` bullet ("A PR shows the push checks on its head commit")
+EVIDENCE: The revision compares every push with the previous tip, on `main` as well as on branches. Two consequences follow. On a branch, push 1 changes `pwsh/` and its PowerShell checks fail. Push 2 changes only `docs/`, so it is compared with push 1 and runs only actionlint, which passes. The PR head commit now shows a green run while the PowerShell code in the PR diff was never checked at that commit. The in-progress PDS test asserts exactly this selection: `tests/detect-changes.test.sh` at `michielvha/PDS@6ac7626`, case 'second push of a branch', expects `package=false powershell=true` for `bash/` then `pwsh/`. On `main` it gets worse. Merge A carries a `feat:` and fails its PowerShell checks, so nothing is tagged. Merge B carries a `fix:` under `bash/`, so it is compared with A, runs only the package checks, passes, and `version-workflow` tags a version that includes A's failing code. `release.yml` then runs every check, fails, and leaves a stable tag with no Release. That is the abandoned-tag case the Recovery bullet handles by hand, and the document defines no path for it. This contradicts the Owner summary and the flowchart, which say a tag follows only passing checks. It also breaks the pinned delivery rule (`conventions/delivery.md` at 1ccf8f3, "Skip CI only for documentation"): whether CI may skip is decided by the commit, the outgoing push range and the PR diff together, and "Any other code, test, workflow or change in the delivery runs normal CI, even when its last commit is documentation-only." The 2026-11-21 revision introduced this (diff f2db9f8..f089ab9).
+PROPOSAL: Compare a branch push with its merge base with `main`, so the head always runs the checks the whole branch diff needs. On `main`, either run every check or compare with the commit of the latest `v` tag, so nothing is tagged until every check its release range needs has passed. Update AC-22, its Test Plan row, the Owner summary, the Legend and the flowchart to match.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-22 ("one changing `.github/` or `scripts/`, a new branch's first push compared with `main`, and a dispatch run every check"); Design, PDS `ci.yml` bullet ("or with its merge base with `main` when there is no previous tip ... and outputs which groups changed"); Test Plan, row AC-22 ("a new branch (zero `before`)"); Context, Owner summary, Approach
+EVIDENCE: Read as written, AC-22 says a new branch's first push runs every check. The Design instead compares that push with the merge base and outputs only the groups that changed, so a new branch that changes only `pwsh/` would run only the PowerShell checks. The implementation follows the Design: `scripts/detect-changes.sh` at `michielvha/PDS@6ac7626` takes the merge-base branch and emits the changed groups, and the 'new branch' test case gets `true true` only because its history changes both `bash/` and `pwsh/`. The Test Plan row names the new-branch case without its expected outputs, so it does not settle the question. An implementation reviewer who reads AC-22 literally marks a correct implementation not met.
+PROPOSAL: Reword AC-22 to say a new branch's first push, and a force push, are compared with the merge base with `main` and run the checks for the groups that changed (or for every check, if that is the intent, with the Design changed to match). Give the Test Plan row the expected outputs for each case.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet; Acceptance Criteria, AC-22; Test Plan, row AC-22
+EVIDENCE: The Design names two bases, the previous tip and the merge base with `main`. It does not say what happens when neither can be resolved, for example after a default shallow checkout (`fetch-depth: 1`) or without `origin/main`. It also does not require a full-history checkout. The implementation picks "every check runs" (`scripts/detect-changes.sh:37` at `michielvha/PDS@6ac7626`, "no previous tip and no merge base with main, so every check runs") and checks out with `fetch-depth: 0` in `ci.yml`. A second careful implementer could print `false`/`false` for an empty or failed diff and skip every check apart from actionlint. The Test Plan row has no case for an unresolvable base.
+PROPOSAL: State that the selection job checks out full history and that any base it cannot resolve selects every check. Add that case to the AC-22 criterion and its script test.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22; Acceptance Criteria, AC-22; Design, PDS `checks.yml` bullet ("Two boolean inputs, both default `true`, select its jobs ... actionlint always runs")
+EVIDENCE: The proof checks the script's outputs over throwaway histories, then observes only two live runs, a PowerShell-only push and a documentation-only push. It never checks how outputs map to jobs, the `if:` on each `checks.yml` job, for a packaging-only, `.github/` or dispatch run. Consider a `pwsh-ci-action` job gated on `package || powershell`. It passes the script test and both observed runs, yet runs the PowerShell checks on a packaging-only push, against AC-22. "Read `release.yml` for a `checks.yml` call without inputs" shows that a tag runs every check only if both inputs default to true, and the row does not read those defaults.
+PROPOSAL: Add to the row: read each `checks.yml` job's condition (actionlint unconditional, ShellCheck, package and install on the package input, `pwsh-ci-action` on the PowerShell input) and both input defaults, or observe a packaging-only push's job list as well.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, `pwsh-ci-action` check 4 (Test: "`Invoke-Pester` 6, at the version `modules.pins` pins" and "The tests run under PowerShell's default error preference"); Acceptance Criteria, AC-02; Test Plan, row AC-02
+EVIDENCE: The revision adds two normative requirements to the Test step, Pester 6 and the default error preference, but no criterion or Test Plan row checks either. AC-02's fixture list (formatting diff, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) has no case where a test checks a written error. Yet `pwsh-ci-action` v0.1.1 (`origin/main` `0d93cdc`; `ci.ps1:198-206` sets `Continue` for the Pester run and restores the caller's preference afterwards) added a fixture for exactly that (pwsh-ci-action#4, `2067ed8`, cited in T21's evidence). If an implementation went back to running Pester under `$ErrorActionPreference = 'Stop'`, every current criterion would still pass, although the PDS suite would fail. The 2026-11-21 revision introduced this text (diff f2db9f8..f089ab9).
+PROPOSAL: Add the written-error fixture to AC-02 and its row. Either add the Pester major to a criterion (for example, read `modules.pins` for Pester 6.x) or say the version is informational.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T34 (checked) and T35; Acceptance Criteria, AC-13 ("`knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow"); frontmatter `covers` and `goal` ("checks every push with a shared PowerShell CI action")
+EVIDENCE: `knowledge/tag-driven-pwsh-releases.md` at X, a covered file and the target of AC-13, still says ":11 every branch push runs the checks, `version-workflow` tags `main` after they pass" and ":60-61 `ci.yml` runs on every branch push and calls `checks.yml`". Its flowchart (`:42`, "All checks pass?") does not match the change selection either. T34 is checked, and T35 touches only PDS files, so no task brings the page up to date with the revised flow. AC-13 can be read as met on its two statements, or as not met because the page describes the old flow. The frontmatter `goal` still says every push is checked with the PowerShell CI action, but a packaging-only push now skips it.
+PROPOSAL: Add a task that updates the page's flow description and diagram to the change selection, with AC-13 among its criteria, and reword the `goal` so it matches the selection.
+
+FINDING: F-07
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet (package group "`packaging/`, `bash/`, `tests/`"); Acceptance Criteria, AC-22 ("one changing only other documentation runs only actionlint")
+EVIDENCE: The `.deb` contains the root readme: `packaging/nfpm.yaml:92` `- src: ../readme.md` (dst `/usr/share/doc/pds/README.md`). The package group leaves it out, and the in-progress test treats it as documentation only ('documentation only' case with `docs/a.md readme.md` expecting `false false`, `tests/detect-changes.test.sh` at `michielvha/PDS@6ac7626`). Renaming or deleting `readme.md` would break the package build, yet branch CI and `main` CI would skip that build, and the break would first show in a tag's `release.yml`, leaving an abandoned tag.
+PROPOSAL: Put `readme.md` in the package group, or define the package group as every path `packaging/nfpm.yaml` and the package tests read, and add that case to the AC-22 script test.
+
+FINDING: F-08
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `checks.yml` bullet ("Two boolean inputs, both default `true`")
+EVIDENCE: Job outputs are strings. The implementation at `michielvha/PDS@6ac7626` declares `package` and `powershell` as `type: string` with `default: 'true'` and gates on `inputs.package == 'true'` (`checks.yml:14-21`, `:47`, `:68`, `:84`), so it already differs from the Design's boolean inputs. The behaviour is the same either way, but the implementation review will find the mismatch.
+PROPOSAL: Either say string inputs `'true'`/`'false'`, or keep booleans and pass `fromJSON(needs.changes.outputs.<group>)` from `ci.yml`.
+
+FINDING: F-09
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary (Approach and Proof)
+EVIDENCE: The standard asks the summary to "Explain material changes since the last accepted scope". The summary works the change selection into Approach but never says what changed since the R-10 acceptance. It does not mention Pester 6 or the error-preference rule at all. It also leaves out that a documentation-only push runs only actionlint, that `tests/` selects the package checks, and how a push is compared (previous tip or merge base), which is the trade-off behind F-01.
+PROPOSAL: Add a sentence naming the 2026-11-21 changes (change selection with its comparison base and its documentation-only case, Pester 6 under the default error preference) and say that every criterion tick was reset.
+
+FINDING: F-10
+KIND: factual
+SEVERITY: nit
+WHERE: Scope, In scope (PDS bullets) and Out of scope ("Changing what the package build, ShellCheck and install tests check")
+EVIDENCE: The revision adds `scripts/detect-changes.sh` and conditional `checks.yml` jobs (Design, PDS `checks.yml` and `ci.yml` bullets; AC-22; T35), but Scope's in-scope list does not mention change selection. The out-of-scope line still says these checks only "move into a shared checks workflow with a placeholder version", although they now also run conditionally on branch pushes.
+PROPOSAL: Add an in-scope bullet for branch-push change selection, with every check on a tag, and qualify the out-of-scope line.
+
+FINDING: F-11
+KIND: factual
+SEVERITY: nit
+WHERE: Design, `pwsh-ci-action` check 4 ("6.2.0, the latest stable release on 2026-11-21"); Sources
+EVIDENCE: Context and Design must cite their claims, but this claim has neither a citation nor a Sources entry. The claim itself is true. I checked: `curl "https://www.powershellgallery.com/api/v2/FindPackagesById()?id='Pester'&$orderby=Published desc"` lists 6.2.0 (IsPrerelease false, published 2026-09-09) as the newest stable version, ahead of 6.2.0-alpha2 and 6.1.0. `modules.pins` at `pwsh-ci-action` `origin/main` (v0.1.1) pins `Pester 6.2.0`. This is a citation slip only.
+PROPOSAL: Add the Gallery's Pester page or feed to Sources with the version and date it shows.
+
+FINDING: F-12
+KIND: factual
+SEVERITY: nit
+WHERE: Tasks, T7 note ("that Design wording needs a spec revision before completion"); Tasks, T35 and T36 layout
+EVIDENCE: This revision makes the T7 note's Pester change, so the note is now out of date. A blank line separates T35 and T36 from the T1 to T34 list, and T36 is followed straight away by `## Open Questions` with no blank line (lines 758 to 761). `vh-adlc lint` passes, so this is formatting only.
+PROPOSAL: Say in the T7 note that the 2026-11-21 revision made the change, remove the blank line before T35, and add one after T36.
+
+### R-12
+
+FINDING: F-01
+KIND: factual
+SEVERITY: blocking
+WHERE: Test Plan, row AC-22 ("on the PDS branch, read the job lists of a PowerShell-only and a documentation-only push"); Tasks, T35 ("PDS branch runs for a PowerShell-only and a documentation-only push show only the selected jobs"); Acceptance Criteria, AC-22; Context, Owner summary, Proof ("Planned: pushes that show the change selection")
+EVIDENCE: The revision applying R-11 F-01 (diff 17872e5..00f14af) judges every branch push on its whole diff from the merge base with `main`. The PDS feature branch's diff from its merge base 747168e touches `.github/` (12 files), `pwsh/` (176), `scripts/` (4), `tests/`, `packaging/` and more (`git diff --name-only 747168e 975907b`), so `.github/` selects every group on every push of that branch. The live runs show it. Run 44878629035 at 827ca45, which implements the merge-base base, ran every job. Run 44878020475 at 975907b, a documentation-only push under the old previous-tip base, ran only actionlint, and the current Design no longer allows that. A branch cut from PDS `main` cannot show the selection before the merge either, because `ci.yml` and `checks.yml` do not exist there (`git ls-tree origin/main .github/workflows/` lists only `build-apt-package.yml`, `package-ps1-script.yaml`, `publish-pwsh-module.yaml` and `validate-docs.temp`). So the live part of the proof cannot be executed where and when the row and T35 put it. T35's commits have to land in the migration PR before the merge, but its done condition can only be observed after the merge.
+PROPOSAL: Move the live observation after the merge: on a branch cut from `main` once the migration has merged, push a PowerShell-only change and a documentation-only change and read each run's job list. Put that in a new post-merge task, or in T35's unchecked text with T35 ordered after the merge. Leave the pre-merge proof as the script test plus reading `checks.yml`.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet (groups by directory; "Any other path, including `readme.md` and `docs/`, is documentation and selects nothing"); Acceptance Criteria, AC-22 ("documentation-only changes, `readme.md` included, run no check"); Test Plan, row AC-22; frontmatter `goal` ("checks every push that changes PowerShell code"); Context, Owner summary, Approach ("a documentation-only change runs nothing"); Scope, In scope ("Branch and `main` pushes run only the checks their changes need")
+EVIDENCE: The Design picks groups by top-level directory, but AC-22 and the owner's 2026-11-21 answer to R-11 F-07 talk about documentation. These two readings disagree in both directions. Most PDS documentation lives inside check groups. `git ls-files '*.md'` at PDS 827ca45 shows 53 Markdown files under `pwsh/` (50 of them in `pwsh/docs`), 3 under `packaging/` and 5 under `bash/`. Under the Design, a change that touches only `pwsh/docs/*.md` is a documentation-only change that still runs `pwsh-ci-action`, and AC-22 read literally says it runs no check. In the other direction, a PowerShell file under `docs/`, `examples/` or `darwin/` counts as documentation and selects nothing. Yet `pwsh-ci-action` runs on `path` `.` (PDS passes no `path`, and the Format and Analyze checks recurse; T22's evidence counts 161 files across the repository), so the tag's `release.yml` checks that file. That contradicts the goal's "every push that changes PowerShell code". Today the only PowerShell files outside `pwsh/` are `PSScriptAnalyzerSettings.psd1` and `scripts/vm-set.ps1`. The Test Plan row tests documentation only with root `docs/` and `readme.md`, so an implementation that classifies by directory and one that classifies `*.md` as documentation both pass it.
+PROPOSAL: Choose one classification and state it the same way everywhere. Either classify by file type (`*.md` anywhere is documentation, and `*.ps1`, `*.psm1` and `*.psd1` anywhere select PowerShell), or keep the directory rule and say in AC-22 and the goal that documentation means paths outside the listed directories. Add a `pwsh/docs` Markdown case and a PowerShell-file-outside-`pwsh/` case to the AC-22 row with their expected outputs.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS "Rollout order" ("First, PDS pins `publish-pwsh-module-action` to `753afb5` ... in a change of its own. Only then does either action's release-only change merge"); Context, Owner summary, Migration and rollback ("PDS first pins both current actions by SHA, so their release-only versions cannot break it"); Tasks, T1
+EVIDENCE: The safeguard did not happen on PDS `main`. `git grep -n 'uses:.*pwsh' origin/main -- .github/workflows` at PDS 747168e still shows `michielvha/publish-pwsh-module-action@main` (`publish-pwsh-module.yaml:27`) and `package-pwsh-script-action@v1` (`package-ps1-script.yaml:32`). T1's evidence says the pin was made on the feature branch and "not pushed". The release-only change has since merged: T14 merged it as `1bf4e8d` and released `v3.0.0`, and `gh api repos/michielvha/publish-pwsh-module-action/commits/main` gives `0daf679` (2026-11-20). Its `action.yml` requires `module-path`, `tag`, `api-key`, `root-module`, `description`, `company-name` and `author`. PDS `main` passes none of these; it passes `psd1Path`, `psm1Path`, `apiKey`, `description`, `rootModule` and `companyName`. So the next PDS `main` push under `pwsh/module/**` runs v3 with no tag and cannot publish the module. `package-pwsh-script-action@v1` is unaffected because the alias stays. The document still describes the pin as a step that comes before the action changes and protects PDS, and it defines no path for module releases from PDS `main` before the migration merges.
+PROPOSAL: Record the actual state in Rollout order and the Owner summary. Add an unchecked task that lands T1's SHA pin on PDS `main` as its own change, with the owner's go, or state that PDS module releases are paused until the migration merges.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T31 (`michielvha/PDS:refs/tags/v0.24.1`); Design, PDS "Version" bullet ("the commit of the latest release tag (`0.24.1` today)"); Acceptance Criteria, AC-10; Context, "Three jobs decide one version" ("The latest tag is `0.24.1`") and "A pull request runs the release" (every `PullRequest` tag deleted); Context, Owner summary, Migration and rollback
+EVIDENCE: `git ls-remote --tags origin` on PDS shows `0.25.0` on `b53c839` and `0.25.1` on `747168e`, both after `0.24.1`. `gh release list -R michielvha/PDS` shows "PDS 0.25.1 Latest" from 2026-11-20, created by the "Build APT Package" run 44750920262 for a storage-only merge. The Gallery feed's newest PDS is 0.25.0. AC-10 requires `v<latest release tag>` on the latest release tag's commit, but T31 names `v0.24.1`. A baseline made by following T31 fails AC-10, and `gh-release-action`'s first notes would start at `v0.24.1`, repeating the 0.25.0 and 0.25.1 commits. The old APT workflow still tags on `main` pushes, so the latest release tag can move again before the migration merges. A new junk tag, `0.25.0-PullRequest56.2` on `aea6173`, came from PR 56's run on 2026-11-18, while the Context says every such tag was deleted.
+PROPOSAL: Make T31 create `v<latest release tag>` taken just before the merge (0.25.1 today) and update the "today" value in the Version bullet. Record the new `PullRequest` tag and whether it is deleted.
+
+FINDING: F-05
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet ("On `main` it compares with the commit of the latest stable `vX.Y.Z` tag the pushed commit contains"); Design, Legend, `ci.yml` bullet ("so a tag follows only passing checks for its whole release range"); Design, PDS "Recovery" bullet; Acceptance Criteria, AC-22
+EVIDENCE: The base on `main` treats any stable tag as checked, including a tag pushed by hand (the Legend expects these) and an abandoned tag whose `release.yml` failed in `checks.yml`. Here is the sequence. Tag A is pushed by hand on a commit whose PowerShell checks failed on `main`. Its `release.yml` fails, so A gets no Release. Merge B then changes only `bash/` and is compared with A. It runs only the package checks, passes, and `version-workflow` tags it. Its `release.yml` fails on the same PowerShell defect. Every later merge that does not touch `pwsh/` repeats this. The same thing happens after the documentation case the owner accepted: a broken `readme.md` fails the package build in a tag's `release.yml`, and every later tag fails the same way until someone fixes it. The owner accepted that it "first fails in a tag's `release.yml`", but not that every later tag fails too. Recovery lists only a defect in `release.yml`, `checks.yml` or the action pins. It says an abandoned tag drops its commits from every Release's notes, but not that several abandoned tags can pile up while the defect waits for a fix.
+PROPOSAL: Either compare `main` with the latest stable tag that has a published GitHub Release (and run every check when none exists), so commits after a failed tag are checked again, or keep the stable-tag base and add this case to Recovery as an accepted consequence. Either way, state the choice for the owner.
+
+FINDING: F-06
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22 ("read each `checks.yml` job's `if:` (... ShellCheck, package and install on `package` ...)", "a force-pushed branch judged on its new diff from `main`", "`main` judged from its latest stable tag (a prerelease tag ignored)"); Design, PDS `checks.yml` bullet ("`package` gates ShellCheck, the package build and the install tests")
+EVIDENCE: In both PDS implementations, the install job has no `if:`. It is gated only by `needs: [package]` (`checks.yml` at 975907b and at 827ca45, `install:` at line 136), and run 44878020475 shows "Test installation skipped" when the package input was `'false'`. A reviewer who reads the row literally finds no `if:` on the install job and cannot confirm the gating, even though the implementation is correct. A second implementer might add a redundant `if:` just to satisfy the row. The row also gives no expected outputs for the force-push case or the `main` case, which R-11 F-02 asked for.
+PROPOSAL: Say that a job is gated by its own `if:` or by a `needs:` chain to a gated job. Give expected outputs for the force-push case (for example, a force push that drops a `bash/` change gives false/true/false) and for the `main` case.
+
+FINDING: F-07
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("a workflow or script change runs both plus actionlint"; "on `main` over everything since the latest release tag"); Context, Owner summary, Changes since the 2026-11-20 acceptance ("any change the selection cannot judge runs every check")
+EVIDENCE: The Design and AC-22 say `scripts/` selects PowerShell and package but not actionlint ("one under `scripts/` every check but actionlint"). The summary says a script change also runs actionlint. Under the Design, only a dispatch or a base that cannot be resolved runs every check (the owner's answer to R-11 F-03), and any unlisted path counts as documentation and runs nothing (the answer to R-11 F-07). "Any change the selection cannot judge" can be read as unlisted paths, which is the opposite. "Latest release tag" is not the Design's "latest stable `vX.Y.Z` tag", which includes a tag that has no Release. The summary also leaves out the trade-off the owner accepted: a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`.
+PROPOSAL: Say a script change runs the PowerShell and package checks, that a dispatch or an unresolvable base runs every check, and that `main` is compared with the latest stable tag. Add the accepted `readme.md` trade-off as an owner decision of 2026-11-21.
+
+### R-13
+
+TARGET: 174bfedcd23a0da279da3ebdf328f82a80fef677
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-22 ("changes only to PowerShell files or other files under `pwsh/` run `pwsh-ci-action` and skip ShellCheck, the package build, the install tests and actionlint", "Markdown-only changes ... run no check", "a change under `.github/` runs every check, and one under `scripts/` every check but actionlint"); Design, PDS `ci.yml` bullet ("It classifies each changed file by type first ... Every other file is classified by directory"); Test Plan, row AC-22 (cases "a PowerShell file outside `pwsh/` false/true/false", "`.github/` true/true/true", "`scripts/` true/true/false"); Context, Owner summary, Approach ("a script change runs both, a workflow change runs both plus actionlint, and a Markdown-only change runs nothing"); Tasks, T35 ("change selection by file type and directory")
+EVIDENCE: The Design applies file type before directory, so `scripts/vm-set.ps1` (an existing PDS file, `ls scripts` in the PDS worktree) selects PowerShell only (false/true/false), a `.ps1` under `.github/` selects PowerShell only, and a `.md` under `.github/` or `bash/` selects nothing. AC-22 states its clauses with no precedence: a change only to `scripts/vm-set.ps1` is both "only PowerShell files" (skip ShellCheck and the package build) and "under `scripts/`" (every check but actionlint), and a change only to a Markdown file under `.github/` is both "Markdown-only" (no check) and "under `.github/`" (every check). Two careful implementers already differ: the reworked PDS script (`scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`) matches `*.md`, then `.github/*`, then `scripts/*`, then `*.ps1 | *.psm1 | *.psd1 | pwsh/*`, so `scripts/vm-set.ps1` gives true/true/false, which follows AC-22's directory clause and contradicts the Design's type-first rule. The Test Plan row does not say which file the `scripts/` case or the PowerShell-outside-`pwsh/` case uses, so a script test passes under either order. This traces to the revision applying R-12 F-02 (`git diff d13c582 174bfed`).
+PROPOSAL: State one precedence everywhere (for example Markdown first, then `.github/` and `scripts/` by directory, then PowerShell by type, then the other directories), write AC-22's clauses so they cannot overlap, and give the row expected outputs for `scripts/vm-set.ps1`, a `.ps1` under `.github/` and a `.md` under `.github/`.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet ("It classifies each changed file"); Acceptance Criteria, AC-22; Test Plan, row AC-22; Tasks, T35
+EVIDENCE: The Design does not say whether the source path of a rename counts as a changed file, and Git's default hides it. In a scratch repository (git 2.56.0), `git mv bash/common/foo.sh darwin/foo.sh` then `git diff --name-only HEAD~1 HEAD` prints only `darwin/foo.sh`; `git diff --no-renames --name-only` prints both paths. The reworked PDS script classifies `git diff --name-only "$base" "$head"` (`scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`), so moving a file out of `bash/` (packaged whole by `packaging/nfpm.yaml:45`, `src: ../bash/common`, and named file by file in `packaging/Makefile` `lint-image-provisioning`) into `darwin/` or `docs/` selects nothing on the branch and on `main`. The break first shows in a tag's `release.yml`, and because `main` is judged from the latest released tag, every later diff again lists only the new path, so every later tag fails the same way. That is the repeated abandoned tag the owner's released-tag decision was meant to stop, here for a non-documentation change the owner did not accept. The row has no rename case, so the script test passes on this implementation.
+PROPOSAL: State that both sides of a rename count (for example `git diff --no-renames --name-only`), and add a rename case to the AC-22 row, such as `bash/common/x.sh` moved to `darwin/x.sh` giving true/false/false.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("so commits after a failed tag are checked again"); Design, PDS `ci.yml` bullet ("so the commits after a tag whose release failed are checked again"); Design, PDS "Recovery" bullet ("Three cases need a person")
+EVIDENCE: This does not reopen the owner's decisions; it concerns how their combined consequence is stated. Markdown never selects a group, and the package reads `readme.md`, `bash/debian/readme.md` and `bash/common/readme.md` (`packaging/nfpm.yaml:81`, `:86`, `:92`). If one of them is broken, the tag's `release.yml` fails at the package build. Each later `main` push is judged from the last released tag and so includes the broken file, but as Markdown it still selects no package check, and every later tag fails the same way until a version-bumping commit restores the file. "Checked again" reads as if the released-tag base prevents repeat failures, which holds for code but not for this accepted case. Recovery's person-cases name only a defect in `release.yml`, `checks.yml` or the action pins.
+PROPOSAL: Say in Recovery that a broken Markdown path the package reads fails every later tag until a version-bumping commit such as `fix:` restores it, and qualify "checked again" as covering the groups their files select.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("Jobs `checks.yml` skips do not block `version-workflow`"); Tasks, T38; Test Plan, row AC-22 (After the merge)
+EVIDENCE: The claim has no citation, and no proof observes the case where every `checks.yml` job is skipped, which is exactly what a Markdown-only push now produces. `gh run view 44878020475 -R michielvha/PDS` shows only a partial skip (Lint workflows success, the other four checks skipped, `version / version` success). `gh run list -R michielvha/PDS --workflow ci.yml --limit 10` shows no run with every checks job skipped. T38 checks that a Markdown-only push "runs no check" but not that its version job runs. The consequence is small, because a Markdown-only push rarely carries a bumping commit.
+PROPOSAL: Have T38 and the row's post-merge step also read the version job's result on the Markdown-only push, or cite where GitHub documents the caller job's result when every called job is skipped.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: nit
+WHERE: Context, "Three jobs decide one version" ("By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`, the latest with a Release (`git ls-remote --tags origin`)")
+EVIDENCE: `git ls-remote --tags origin` lists tags but not Releases. The claim itself holds: `gh release list -R michielvha/PDS` shows `0.25.1` as Latest and no Release for `0.25.0`. This is a citation slip only.
+PROPOSAL: Cite `gh release list -R michielvha/PDS` for "the latest with a Release", and keep `git ls-remote --tags origin` for the two tags.
+
+### R-14
+
+TARGET: 925d2d049cfb4d4fcb6ac2e98e340dc287481172
+
+FINDING: F-01
+KIND: judgement
+SEVERITY: should-fix
+WHERE: Tasks, T37 ("the flow text and diagram describe the change selection and a tag running every check"); Acceptance Criteria, AC-13 ("`knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow"); Test Plan, row AC-13; Design, PDS "Workflow rules" bullet ("The whole GitHub Actions convention ... applies to PDS")
+EVIDENCE: The dispatch says the covered page is still as R-13 saw it at X, but that is not so. `git merge-base --is-ancestor 8086967 925d2d0` exits 0, and `git log --oneline 925d2d0 -- knowledge/tag-driven-pwsh-releases.md` lists 8086967. So at X the page already holds the T37 text, and it already meets T37's literal done condition. Three problems remain. First, `knowledge/tag-driven-pwsh-releases.md:69-70` at X says "This follows the GitHub Actions convention's rule to run only the checks a change needs", but `conventions/github-actions.md` at X has no such rule; its Execution section ends with timeouts and environment policies. Second, the rule exists only on `origin/main` (ff88d82, 7075171), which are not ancestors of X (`git merge-base --is-ancestor 7075171 925d2d0` exits 1). There, `conventions/github-actions.md:94-102` says "classify by file type first, so Markdown inside a component's directory is documentation and a component's source file outside it still selects its group", has no rename rule, and names "PDS's `scripts/detect-changes.sh` is the reference". The revision applying R-13 F-01 and F-02 (`git diff 3384178 925d2d0`) moved `.github/` and `scripts/` ahead of the PowerShell type rule and counted both sides of a rename. Once the branch merges `main`, the convention it declares applicable will describe a different order from the document and its reference script. Third, the page (`:62-68`) lists the groups with no order and no rename rule. Nothing in T37, AC-13 or the AC-13 row requires the page or the convention to match the Design, so T37 can be ticked as it stands.
+PROPOSAL: Make T37 require that the page state the Design's first-match order and the rename rule, and that it cite the convention only at a revision that holds the rule. Raise as an Open Question, or add as a task, bringing `conventions/github-actions.md`'s "Run only the checks a change needs" in line with the first-match order and rename handling, because the convention names the PDS script as its reference.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Test Plan, row AC-22 (cases "`main` whose newer stable tag has no Release judged from the older released tag" and "a prerelease tag ignored"); Acceptance Criteria, AC-22 ("on `main` over the diff from the latest stable tag with a published Release"); Design, PDS `ci.yml` bullet ("compares with the commit of the latest stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release")
+EVIDENCE: The row says the test "asserts the script's three outputs", and every other case gives expected outputs. These two cases give none. A test can build a history in which the older released tag and the newer unreleased one, or the prerelease tag, select the same groups. Such a test passes on a script that takes the newest stable tag whatever its Release state, or that treats a prerelease as a base. That is the defect the owner's released-tag decision of 2026-11-21 exists to prevent. R-12 F-06 asked for expected outputs on the `main` cases, and only the "only `pwsh/` changed since" case received them. Both cases predate this revision (they are in the 174bfed row) and have no expected outputs at X.
+PROPOSAL: Give each case a history whose outputs tell the bases apart, with expected outputs. For example: released `v1.0.0`, a `bash/` change, stable `v1.1.0` with no Release, then a `pwsh/` change gives true/true/false. A `bash/` change, `v1.1.0-rc.1` with a published prerelease Release, then a `pwsh/` change also gives true/true/false.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS "Recovery" bullet ("Three cases need a person:")
+EVIDENCE: Four bullets follow that line at X: the cancelled Release job's draft, a defect in the tag's own workflow, a stable Release created after a higher one, and the broken Markdown file the package reads (lines 544-556). The revision applying R-13 F-03 (`git diff 3384178 925d2d0`) added the fourth bullet and left the count unchanged.
+PROPOSAL: Change "Three cases need a person" to "Four cases need a person", or drop the count.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("The changed files are both sides of every rename and copy (`git diff --no-renames --name-only`)"); Acceptance Criteria, AC-22 ("with both sides of every rename counted")
+EVIDENCE: The cited command never prints the source of a copy. In a scratch repository (git 2.56.0), I copied `bash/common/x.sh` to `darwin/x.sh` and committed. `git diff --no-renames --name-only HEAD~1 HEAD` printed only `darwin/x.sh`, and so did the same command under `-c diff.renames=copies`. Only `git diff -C --find-copies-harder --name-status` showed `C100 bash/common/x.sh darwin/x.sh`. The prose and the command disagree for copies, and AC-22 names renames only. The source of a copy is unchanged, so selection is unaffected either way. This traces to the revision applying R-13 F-02.
+PROPOSAL: Say "both sides of every rename" to match AC-22 and the command, or say that a copy counts only its new path.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("a file under `.github/`", "a file under `scripts/`", "any other file under `pwsh/`", "a file under `packaging/`, `bash/` or `tests/`"); Acceptance Criteria, AC-22 (same clauses); Test Plan, row AC-22
+EVIDENCE: The rules never say that the directories are counted from the repository root. Nested directories with the same names exist: `git ls-files` in the PDS worktree lists 6 files under `pwsh/scripts/`, 3 under `packaging/scripts/` and 78 under `pwsh/tests/`. Read from the root, `pwsh/scripts/main.ps1` gives false/true/false and `packaging/scripts/postinstall.sh` gives true/false/false. Read as any path segment, the `scripts/` rule matches first and gives true/true/false for both. The implementation anchors at the root (`case` pattern `scripts/*`, `scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`, line 65). No row case uses a nested path. Every other path in the document is written from the root, so this is a wording gap.
+PROPOSAL: Say that the directories are top-level paths from the repository root, and add `pwsh/scripts/main.ps1` false/true/false to the AC-22 row.
+
+### R-15
+
+TARGET: cd3e373985a6ca63d82e82fd06c82ae747d4d6d4
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Tasks, T38 ("on a throwaway branch cut from `main`, a PowerShell-only push runs only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push runs no check while its version job succeeds"); Test Plan, row AC-22 (After the merge: "on a branch cut from `main`, push a PowerShell-only change and a documentation-only change and read each run's job list"); Acceptance Criteria, AC-22 ("A branch's later push still runs the checks for every group the whole branch changed"); Design, PDS `ci.yml` bullet ("every push of a branch ... is judged on the whole branch diff")
+EVIDENCE: The post-merge proof puts both pushes on one branch and lists the PowerShell-only push first. Under the Design and AC-22, every push of a branch is compared with its merge base with `main`, so a Markdown-only push made after the PowerShell-only push on the same branch still has the `pwsh/` change in its diff and selects `pwsh-ci-action`. The AC-22 row's own script case says so: "a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false". The reference script does the same: `scripts/detect-changes.sh:55` at `michielvha/PDS@90ebd69` takes `git merge-base "$main_ref" "$head"` for every branch push, and `:70` diffs from it. Run in the order T38 gives, a correct implementation runs the PowerShell checks on the Markdown-only push, and T38's done condition ("runs no check") is not met. The proof passes only if the executor pushes the Markdown-only change first or uses two branches, and neither T38 nor the row says so.
+PROPOSAL: Make T38 and the AC-22 row cut two throwaway branches from `main`, one per push, or push the Markdown-only change first and the PowerShell-only change second, and say which.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `checks.yml` bullet ("a reusable workflow holding every PDS check: ShellCheck, the package build and its tests, the install tests ... and `pwsh-ci-action`"; "`package` gates ShellCheck, the package build and the install tests"); Design, PDS `ci.yml` bullet ("a file under `scripts/` selects PowerShell and package"); Scope, Out of scope ("Changing what the package build, ShellCheck and install tests check"); Acceptance Criteria, AC-22 ("a file under `scripts/` selects every check but actionlint"); Test Plan, row AC-22 (cases "`scripts/vm-set.ps1` true/true/false" and "`scripts/` true/true/false"); Tasks, T35; Context, Owner summary, Approach ("a script change runs both"); `knowledge/tag-driven-pwsh-releases.md:69` ("A file under `scripts/` selects ShellCheck, the package jobs and `pwsh-ci-action`")
+EVIDENCE: Root `scripts/` is new in this feature. `git ls-tree --name-only origin/main scripts/` in PDS prints nothing, and at `michielvha/PDS@90ebd69` it holds `build-apt-repo.sh`, `check-release-ref.sh`, `detect-changes.sh` and `vm-set.ps1`. The ShellCheck the Out of scope line keeps unchanged is `cd packaging; make lint; make lint-image-provisioning` (`build-apt-package.yml:58-62` on PDS `main`). There, `scripts/*.sh` resolves to `packaging/scripts/` (`packaging/Makefile:77`, `:87`), so no package-group check reads root `scripts/`. The Design gives no check that covers the three new Bash scripts or runs the selection script's own test (`tests/detect-changes.test.sh`) in CI. The rule that `scripts/` selects the package group therefore assumes a check the document never specifies. The implementation adds it: `checks.yml:67-69` at `90ebd69` runs `shellcheck scripts/*.sh tests/detect-changes.test.sh` and `bash tests/detect-changes.test.sh` in the package-gated `shell` job. That changes what ShellCheck checks, which Scope puts out of scope. An implementer who follows the document strictly builds a package group that ignores root `scripts/`. Then `detect-changes.sh`, which decides which checks run, gets no ShellCheck and no behaviour test in CI, and selecting the package group for `scripts/` buys nothing. `conventions/coding.md:15-21` at the pin moves workflow logic into scripts precisely so they "can be linted with `shellcheck`".
+PROPOSAL: In the `checks.yml` bullet, state that the package group's ShellCheck also covers root `scripts/*.sh` and `tests/detect-changes.test.sh` and that the package group runs the selection script's test. Qualify the Out of scope line to match, and have AC-22's row read that gate.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("accepting that a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`"); Context, Owner summary, Approach (no rename rule); Design, PDS "Recovery" bullet (fourth case: "every tag after it fails at the package build until a version-bumping commit such as `fix:` restores the file"); Design, PDS `ci.yml` bullet ("The changed files include both sides of every rename")
+EVIDENCE: The summary says a broken packaged Markdown file "first fails" in a tag's `release.yml`. The Recovery bullet says every later tag fails the same way until a version-bumping commit restores the file. Both follow from the owner's decision, but the summary leaves out the repeated failure. The summary also never mentions that both sides of a rename count, a selection rule the Design, AC-22, the knowledge page (`knowledge/tag-driven-pwsh-releases.md:65`) and the shared convention (`conventions/github-actions.md:99-100` at X) all state. Neither omission contradicts the normative sections.
+PROPOSAL: In the summary, say that each later tag also fails until a `fix:` restores the file, and add the rename rule to Approach or to the changes since acceptance.
+
+### R-16
+
+TARGET: 9e489a471174f770c489f491354f16ebe0ebb1d4
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `checks.yml` bullet ("runs the selection script's behaviour test, so the script that decides which checks run is checked whenever `scripts/` changes"); Design, PDS `ci.yml` bullet (the selection job runs `scripts/detect-changes.sh`); Scope, Out of scope ("apart from ShellCheck also linting the new root `scripts/` and running the selection script's test"); Test Plan, row AC-22 ("read the `shell` job for the ShellCheck of root `scripts/*.sh` and `tests/detect-changes.test.sh` and the run of that test"); Design, PDS "Recovery" bullet ("Four cases need a person"); Tasks, T35
+EVIDENCE: The selection script decides on its own change. `ci.yml:45` at `michielvha/PDS@90ebd69` runs the pushed commit's `scripts/detect-changes.sh`. The only CI run of its test is in the `shell` job, which is gated on the package group (`checks.yml:52`, `:68-69`). I copied the script and test at 90ebd69 into a scratch repository, deleted the `scripts/*)` case line on a branch and committed only that change. The edited script printed `package=false powershell=false workflows=false: changes since the merge base with main`, so the `shell` job would be skipped and the run would pass with no check at all. Running the test against the edited script gives "FAIL: script change (got false false false, expected true true false)" and "2 case(s) failed". The same thing happens on `main` after the merge, because `main` runs the same broken script. Every later tag's `release.yml`, which runs every check, then fails on the test. That is a repeated abandoned tag, and Recovery covers repeated abandoned tags only for a packaged Markdown file and for a defect in the tag's own workflow. So the claim "checked whenever `scripts/` changes" is false for exactly the change it is meant to catch. This traces to the revision applying R-15 F-02 (`git diff 602f5a4 9e489a4`), which added the sentence. The unmodified test passes at 90ebd69 (26 cases, `bash tests/detect-changes.test.sh` run from a scratch TMPDIR), and so does CI run 44885634387.
+PROPOSAL: Run `tests/detect-changes.test.sh` in the selection job before the script selects, so a broken selection fails the run whatever it would select, and have the AC-22 row read that step. Otherwise drop the "checked whenever" claim and add a self-hiding selection defect to Recovery.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: nit
+WHERE: Acceptance Criteria, AC-22; Test Plan, row AC-22 ("read the `shell` job for the ShellCheck of root `scripts/*.sh` and `tests/detect-changes.test.sh` and the run of that test"); Design, PDS `checks.yml` bullet ("The package group's ShellCheck job also lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`"); Scope, Out of scope ("ShellCheck also linting the new root `scripts/` and running the selection script's test")
+EVIDENCE: The AC-22 text says nothing about linting root `scripts/` or running the selection test in CI, so only the Test Plan row checks that Design requirement, and a reviewer judging the criterion text alone can mark AC-22 met without it. The Design calls the job "the package group's ShellCheck job", but the row calls it "the `shell` job", which is the implementation's job id (`checks.yml:50` at 90ebd69) and is named nowhere in the Design. The Out of scope line names only root `scripts/` and leaves out the lint of `tests/detect-changes.test.sh`. It also counts running the test as part of ShellCheck.
+PROPOSAL: Add a clause to AC-22 (or to AC-19) saying the package group lints root `scripts/*.sh` and the selection test and runs that test, and use one name for the job in the Design and the row. Make the Out of scope line list both lint targets and the test run.
+
+FINDING: F-03
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("that `main` is judged from the latest tag with a published Release"); Context, Owner summary, Approach ("on `main` over everything since the latest stable tag that has a published Release"); Design, PDS `ci.yml` bullet ("the latest stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release"); Acceptance Criteria, AC-22 ("the latest stable tag with a published Release"); Scope, Out of scope (ShellCheck exception)
+EVIDENCE: The Changes paragraph drops "stable". Read that way, a prerelease tag with a published Release could be the base, which the Approach, the Design, AC-22 and the row case "`v1.1.0-rc.1` with a published prerelease Release ... (the prerelease is no base)" all rule out. The same paragraph also omits a scope change made since the accepted R-10 baseline: ShellCheck now also lints root `scripts/` and runs the selection test, which is a new exception in the Out of scope line. The standard asks the summary to explain material changes since the last accepted scope.
+PROPOSAL: Write "the latest stable tag with a published Release" in the Changes paragraph, and add one clause saying the package group's ShellCheck now also covers root `scripts/` and runs the selection test.
+
+### R-17
+
+TARGET: bddd922efb3f84352f13a35b468b1c3a1383f254
+
+FINDING: F-01
+KIND: factual
+SEVERITY: nit
+WHERE: Context, Owner summary, Approach ("a Markdown-only change runs nothing"; "A dispatch, or a base the selection cannot resolve, runs every check, and so does a tag", line 33); Scope, In scope ("a tag runs every check", line 237); Design, PDS `ci.yml` bullet ("`release.yml` passes no inputs, so a tag runs every check", line 504); Acceptance Criteria, AC-22 ("and no check when they select nothing", "`release.yml` runs every check", lines 712 to 717); Tasks, T38 ("a Markdown-only push runs no check"); `knowledge/tag-driven-pwsh-releases.md:12` ("a release workflow that runs every check") and `:74-75`
+EVIDENCE: The revision applying R-16 F-01 (`git diff 4dfbe06 bddd922`) moved the selection's behaviour test out of the package group's ShellCheck job in `checks.yml` and into the `ci.yml` selection job. The document still uses "check" to mean the `checks.yml` jobs, so it now reads two ways. A Markdown-only push runs one check, the selection test, on every run, while the summary says it "runs nothing" and AC-22 and T38 say it runs no check. A tag no longer runs that test at all, because `release.yml` calls only `checks.yml` (`.github/workflows/release.yml:50` at `michielvha/PDS@de154c4`; `checks.yml` there only lints `tests/detect-changes.test.sh` at `:67`, where `90ebd69` also ran it at `:69`), while the summary, Scope, Design, AC-22 and the knowledge page say a tag runs every check. Nothing breaks: a hand-pushed tag publishes nothing that contains the selection script, and AC-22 and its row require the test step explicitly in the selection job, so an implementer and a reviewer cannot get it wrong. This is wording only.
+PROPOSAL: Say "every `checks.yml` check" (or define "check" once as a `checks.yml` job) in the places listed, and say once that the selection job and its test run on every push and are not part of a tag's run.
+
+FINDING: F-02
+KIND: judgement
+SEVERITY: nit
+WHERE: Design, PDS "Workflow rules" bullet ("The whole GitHub Actions convention ... applies to PDS"); Design, PDS `ci.yml` bullet ("It runs the selection's behaviour test, `tests/detect-changes.test.sh`, before anything else, so a broken selection fails every run"); `knowledge/tag-driven-pwsh-releases.md:74-77` ("This follows the GitHub Actions rule to run only the checks a change needs")
+EVIDENCE: `conventions/github-actions.md:94-105` at X ("Run only the checks a change needs") names "PDS's `scripts/detect-changes.sh`" as the reference and now matches the document's first-match order and rename rule, as the owner decided. It does not say that the selection script must be tested before it selects. R-16 F-01 showed why that matters: a selection script whose only test runs in a job the script itself gates can deselect the check of its own defect, and `main` then tags on a broken selection. This revision fixes that for PDS only. Another repository that follows the convention and copies its wording, rather than reading the PDS workflow, rebuilds the defect. This changes nothing this feature builds or proves; it concerns the shared convention, which is outside `covers`.
+PROPOSAL: Add one clause to the convention's rule, for example "the selection job runs the script's own test before it selects, so a broken selection fails the run", in a separate change to `conventions/github-actions.md`.
+
 ## Sources
 
 - [Prerelease module versions](https://learn.microsoft.com/en-us/powershell/gallery/concepts/module-prerelease-support):
@@ -1528,6 +1958,9 @@ PROPOSAL: Add to the layout sentence that the copied `release.yml` gets `dry-run
 - [Write-Host](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-host):
   a wrapper for `Write-Information` since Windows PowerShell 5.0; suppressible with `6>$null` or
   `-InformationAction Ignore`; `$InformationPreference` does not affect it.
+- [Pester on the PowerShell Gallery](https://www.powershellgallery.com/packages/Pester): 6.2.0, published
+  2026-09-09, is the newest stable version on 2026-11-21 (the Gallery feed lists 6.2.0-alpha2 and 6.1.0
+  below it); `pwsh-ci-action`'s `modules.pins` pins it.
 - [Write-Information](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-information):
   hidden by default because `$InformationPreference` defaults to `SilentlyContinue`; no colour
   parameters.

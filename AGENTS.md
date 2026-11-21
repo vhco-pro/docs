@@ -19,7 +19,8 @@ pointers here, not copies of these instructions.
    Read [GitHub Actions](conventions/github-actions.md) before writing or changing an action or a
    workflow, including specification and review.
    For every browser frontend, including plain JavaScript and VitePress, read the
-   required [frontend testing standard](conventions/frontend-testing.md).
+   required [frontend testing standard](conventions/frontend-testing.md) and the
+   [interface colour guideline](conventions/interface-colour.md).
    For command-line output or terminal interaction, read
    the required [terminal output standard](conventions/terminal-output.md).
 3. For a new Go application, follow the

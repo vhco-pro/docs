@@ -8,8 +8,9 @@ status: active
 # Tag-driven PowerShell releases
 
 PowerShell repositories release the way [Go repositories](tag-driven-go-releases.md) do, in the
-separate-workflows arrangement: every branch push runs the checks, `version-workflow` tags `main` after
-they pass, and the App's tag push starts a release workflow that publishes only that exact tag. The
+separate-workflows arrangement: every branch push runs the checks its changes need, `version-workflow`
+tags `main` after they pass, and the App's tag push starts a release workflow that runs every check and
+publishes only that exact tag. The
 consumer is [michielvha/PDS](https://github.com/michielvha/PDS).
 
 ## One shape for every language
@@ -38,8 +39,8 @@ module repository appears.
 
 ```mermaid
 flowchart TD
-    Push["Push to any branch"] --> CI["ci.yml: checks.yml, then version-workflow"]
-    CI --> Pass{"All checks pass?"}
+    Push["Push to any branch"] --> CI["ci.yml: select checks, run them, then version-workflow"]
+    CI --> Pass{"Selected checks pass?"}
     Pass -->|No| Stop["No version, no tag"]
     Pass -->|Yes| Gate{"main, with a new version?"}
     Gate -->|No| Calc["GitVersion calculates only"]
@@ -56,9 +57,17 @@ PDS's workflows are the reference:
 
 - [`checks.yml`](https://github.com/michielvha/PDS/blob/main/.github/workflows/checks.yml) holds every
   check once: actionlint, ShellCheck, the package build and install tests, and `pwsh-ci-action` on
-  Windows. It takes a `version` input, receives no secrets and computes no version.
+  Windows. It takes a `version` input and three group inputs (`package`, `powershell`, `workflows`, each
+  `'true'` by default), receives no secrets and computes no version.
 - [`ci.yml`](https://github.com/michielvha/PDS/blob/main/.github/workflows/ci.yml) runs on every branch
-  push and calls `checks.yml`, then `version-workflow` with `preview-label: ''`, so only `main` is tagged.
+  push. A selection job runs [`scripts/detect-changes.sh`](https://github.com/michielvha/PDS/blob/main/scripts/detect-changes.sh),
+  which judges a branch on its whole diff from `main` and `main` on everything since the latest stable
+  tag with a published Release: Markdown selects nothing, PowerShell files and `pwsh/` select
+  `pwsh-ci-action`, `packaging/`, `bash/` and `tests/` select ShellCheck and the package jobs,
+  `scripts/` selects both, and `.github/` selects every check including actionlint. A dispatch, or a base
+  it cannot resolve, runs every check. Then `ci.yml` calls `checks.yml` with that selection and
+  `version-workflow` with `preview-label: ''`, so only `main` is tagged. This follows the GitHub Actions
+  convention's rule to run only the checks a change needs.
 - [`release.yml`](https://github.com/michielvha/PDS/blob/main/.github/workflows/release.yml) runs on
   stable tags (`v[0-9]+.[0-9]+.[0-9]+`) and on dispatch. Its first job refuses anything but an exact
   stable tag on a `main` commit, because a dispatch ignores the tag filter. Then `checks.yml` runs again

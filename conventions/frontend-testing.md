@@ -200,7 +200,8 @@ why. A change with no visible effect says so instead.
 Link images at fixed commits so the record survives later changes:
 
 - A capture the repository already commits, such as a guide screenshot, is
-  linked at the base and head commit SHAs.
+  linked at the base and head commit SHAs, or copied for each side onto the
+  pull request's ref below.
 - Any other capture is committed to a ref outside `refs/heads`, one per pull
   request and named by its number (`refs/pr-visuals/<number>`), and linked at
   that ref's commit. A branch name can be reused after a merge; a PR number

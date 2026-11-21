@@ -673,27 +673,30 @@ fixed forward with a new version.
 - [x] AC-11: A PDS PR carrying the `release:preview` label creates no tag and publishes nothing; only a
   push to `main` tags PDS.
   Evidence: T32: a push to PR #65 labelled `release:preview` ran CI 44930881920 with a successful version job and created no tag; Releases, APT index and Gallery unchanged.
-- [ ] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
+- [x] AC-12: PDS passes `pwsh-ci-action` with a committed settings file that configures the
   `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only
   `PSAvoidUsingWriteHost`, with its reason; `Invoke-ScriptAnalyzer` under it returns no unsuppressed
   record of any severity; every in-source suppression carries a non-empty `Justification`; every file
   under `pwsh/module/Public/` exports a command named after the file; and every public function has a
   test file in `pwsh/tests/` with at least one passing test that invokes it,
   including `Enable-SshServer` with and without a key.
+  Evidence: PDS `main` CI runs `pwsh-ci-action` v0.1.1 green on every PowerShell change (for example [run 44932953352](https://github.com/michielvha/PDS/actions/runs/44932953352) for PR #66). `PSScriptAnalyzerSettings.psd1` configures the `CodeFormatting` rules and `PSAvoidTrailingWhitespace`, has no `IncludeRules` and excludes only `PSAvoidUsingWriteHost` with its reason in a comment. On the Windows 11 VM at `94a04f7` (after [PDS #66](https://github.com/michielvha/PDS/pull/66) named the last positional arguments), `Invoke-ScriptAnalyzer` over `pwsh/module` under the settings returns 0 records of any severity (`PSUseCorrectCasing` excluded as the action does, the formatter covering casing) and `-SuppressedOnly` returns 0, so no suppression exists. Importing the module lists 78 functions, one per file under `Public/` and named after it, plus the 12 aliases. `pwsh/tests/` has a file per public function (a script maps all 78), each invoking its function, and the suite gives 379 tests, 368 passed, 0 failed, 11 skipped (non-elevated branches); `Enable-SshServer.Tests.ps1` covers a run without a key and runs with keys.
 - [ ] AC-13: `knowledge/shared-delivery.md` lists `pwsh-ci-action`, `setup-pwsh-action`, the two
   release-only actions and the `files` input of `gh-release-action`, and
   states that every repository publishing artifacts from a tag follows the CI, version and tag-triggered
   release shape while actions and reusable workflows release through `gh-release-workflow`, and
   `knowledge/tag-driven-pwsh-releases.md` describes the PowerShell flow and links the PDS workflows as
   the reference consumer.
-- [ ] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
+- [x] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
+  Evidence: Each of the twelve renamed functions' test files ends with `It 'still runs under its old name'`, which asserts `Get-Command <old> -Module PDS` is an alias resolving to the new name and runs it with the installs mocked; all pass on `main` (CI and the VM suite). `Get-RDSActiveSessionReport.Tests.ps1` reaches it through `Get-RDSActiveSessions`, while `Get-RDSActiveSession.Tests.ps1` tests the unchanged singular function with its own `-QuickMode` parameter.
 - [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
   `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
   of packages and versions in the APT index, and the Gallery versions.
   Residual: not met yet. For `v0.26.1` the whole-run rerun succeeded and nothing published changed in any rerun, but per-job APT reruns failed at `deploy-pages` (fixed in PDS #64, provable only by a later release's rerun) and the dispatch's deploy lost a race with its own artifact.
-- [ ] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
+- [x] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
   Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
   records each run and its result.
+  Evidence: `scripts/vm-set.ps1 -Base 747168e` at the merge commit `c968cce` prints 43 VM-set and 11 mocked-only functions, the same lists as the table in [PDS #60](https://github.com/michielvha/PDS/pull/60); each mocked-only entry cites its `file:line` (an AD or RDS module import, `Get-ADUser`, `Get-RDUserSession`, `Invoke-Command -ComputerName`, `Connect-AzAccount`, `az aks list`, the Azure DevOps URL, or a `while ($true)` loop). Every VM-set function completed without error on the Windows 11 VM: 41 in the first round, the seven fixed in `d2170e9` on a clean rollback, and `Remove-WindowsBloat` again at `94a04f7` after its last change; the PR body and [its comment](https://github.com/michielvha/PDS/pull/60) record each run.
 - [x] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
@@ -706,17 +709,19 @@ fixed forward with a new version.
 - [x] AC-19: `release.yml` runs the same `checks.yml` as `ci.yml`, no publishing job starts before it
   passes, and the `.deb` on the Release is the file `checks.yml` built and tested at the tag version.
   Evidence: `ci.yml` and `release.yml` at PDS `00669f4` both call `./.github/workflows/checks.yml`; in `release.yml` the `apt`, `gallery` and `release` jobs need `checks`. In `v0.26.1`'s run the `.deb` from the tag's `checks.yml` artifact and the Release asset share SHA-256 `2f02044008296db2714dc4494f1653ec1f6bc548b12f4f1d1e33e8ddf37dc98c`.
-- [ ] AC-20: `vhco-pro/gh-release-action` `v0.2.0` is released. With `files` it creates the public Release
+- [x] AC-20: `vhco-pro/gh-release-action` `v0.2.0` is released. With `files` it creates the public Release
   with those files when none is published, leaves no Release behind when an upload fails, leaves a
   published Release holding exactly those names unchanged, and fails on any other set without replacing
   a file. A missing path fails naming the path. With `files` empty it behaves as `v0.1.1` does.
-- [ ] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
+  Evidence: `vhco-pro/gh-release-action` `v0.2.0` is a published Release (release run [44814016667](https://github.com/vhco-pro/gh-release-action/actions/runs/44814016667) at `7d87a95`). Its behaviour tests against the mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the call log a single `gh release create <tag> <files...>` without `--draft` and no `gh release upload`. PDS used it for `v0.26.1`, whose Release carries both files.
+- [x] AC-21: PDS and the five action repositories follow the GitHub Actions convention's checkable rules:
   `actionlint` passes in each repository's checks, ignoring nothing but the `queue` key in
   `release.yml`; every workflow sets `permissions: {}` at the top,
   `timeout-minutes` on every job that runs steps and `defaults.run.shell`; no `run:` block in a workflow
   or an action metadata file (`action.yml` or `action.yaml`) contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
   `persist-credentials: false` except in a job that pushes.
-- [ ] AC-22: A PDS push runs only the checks its changes need, judged on a branch over the diff from its
+  Evidence: At the `main` of PDS (`00669f4`) and the five action repositories (`pwsh-ci-action` `0d93cdc`, `setup-pwsh-action` `25e59e4`, `publish-pwsh-module-action` `0daf679`, `package-pwsh-script-action` `3504263`, `gh-release-action` `7d87a95`): the pinned actionlint image exits 0 in each, and PDS's `.github/actionlint.yaml` ignores only the `queue` message for `release.yml`. A YAML check of every workflow finds `permissions: {}` at the top, `defaults.run.shell`, `timeout-minutes` on every job with steps, no `${{` in any `run:` block of a workflow or action metadata file, no `$GITHUB_ENV` write, and `persist-credentials: false` on every checkout except `gh-release-action`'s release job, which pushes its tag.
+- [x] AC-22: A PDS push runs only the checks its changes need, judged on a branch over the diff from its
   merge base with `main` and on `main` over the diff from the latest stable tag with a published Release,
   with both sides of every rename counted and directories counted from the repository root. Each changed
   file takes the first matching rule: Markdown
@@ -762,6 +767,7 @@ fixed forward with a new version.
 Paths are `<repository>:<path>`. Creating a repository, an owner step, a tag push and a merge each wait
 for the owner's go when they come up.
 
+  Evidence: Pre-merge: T35 (27 script cases, the selection job running the test first, each `checks.yml` gate and its `'true'` default, `release.yml` passing none). Post-merge: T38 on two branches from `main`: a PowerShell-only push ran only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push ran no check while its version job succeeded (after [PDS #64](https://github.com/michielvha/PDS/pull/64)).
 - [x] T1 `michielvha/PDS:.github/workflows/publish-pwsh-module.yaml` `michielvha/PDS:.github/workflows/package-ps1-script.yaml` - both actions pinned by full SHA (`753afb5`, the commit of package's `v1`); `grep -E '@(main|v1)$'` over `.github/workflows/` finds nothing (Design, rollout order)
   Evidence: `grep -n -E '@(main|v1)\r?$'` over the two workflows, `michielvha/PDS@4e6f8d7` (branch `feat/pwsh-release-workflow`), found both references before the change (exit 0) and nothing after (exit 1); `actionlint` 1.7.12 on both files exits 0; CRLF endings kept; not pushed.
 - [x] T2 `vhco-pro/setup-pwsh-action:tests/` - behaviour tests for a wrong checksum failing before `PATH` changes and for `pwsh` reporting the pinned version; they fail because the action does not exist (AC-17)

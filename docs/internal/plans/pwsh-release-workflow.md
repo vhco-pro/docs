@@ -69,8 +69,9 @@ pushes select their checks as Approach describes instead of running all of them.
 same day that a base the selection cannot resolve runs every check; that Markdown triggers no check,
 accepting that a broken documentation path the package reads, such as `readme.md`
 (`packaging/nfpm.yaml:92`), fails in a tag's `release.yml`, and in each later tag's until a `fix:` restores it; that `main` is judged from the latest
-tag with a published Release, so the groups that commits after a failed tag select are checked again; and that PDS module
-publishing from `main` is paused until the migration merges. The Design names Pester 6 at the pinned version and requires the
+stable tag with a published Release, so the groups that commits after a failed tag select are checked again; and that PDS module
+publishing from `main` is paused until the migration merges. The selection runs its own test before it
+selects, and the package group's ShellCheck also lints the new root `scripts/`. The Design names Pester 6 at the pinned version and requires the
 tests to run under PowerShell's default error preference. Every criterion tick was reset for
 re-verification; the implemented tasks stay checked.
 
@@ -255,7 +256,7 @@ Out of scope:
   [michielvha/publish-pwsh-module-action#7](https://github.com/michielvha/publish-pwsh-module-action/issues/7)
   tracks adding support with its ordering and collision rules.
 - Changing what the package build, ShellCheck and install tests check, apart from ShellCheck also
-  linting the new root `scripts/` and running the selection script's test. They move into a shared
+  linting the new root `scripts/*.sh` and `tests/detect-changes.test.sh`. They move into a shared
   checks workflow with a placeholder version and run when a push's changes need them; the APT deploy
   itself changes as the Design says.
 - Windows PowerShell 5.1 checks. The checks run on PowerShell 7 first; a 5.1 pass is a later input of
@@ -478,11 +479,11 @@ fixed forward with a new version.
   secrets in either caller. Three string inputs, each `'true'` by default and `'true'` or `'false'` when
   given, select its jobs: `package` gates ShellCheck, the package build and the install tests,
   `powershell` gates `pwsh-ci-action`, and `workflows` gates actionlint. The package group's ShellCheck
-  job also lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`, which this feature adds, and
-  runs the selection script's behaviour test, so the script that decides which checks run is checked
-  whenever `scripts/` changes.
-- **`ci.yml`** on `push` to any branch first runs `scripts/detect-changes.sh` in a job that checks out
-  full history and may read the repository's Releases. On a branch other than `main` it compares the
+  job also lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`, which this feature adds.
+- **`ci.yml`** on `push` to any branch first runs a selection job that checks out full history and may
+  read the repository's Releases. It runs the selection's behaviour test, `tests/detect-changes.test.sh`,
+  before anything else, so a broken selection fails every run, including the one that would deselect its
+  own checks; then it runs `scripts/detect-changes.sh`. On a branch other than `main` it compares the
   pushed commit with its merge base with `main`, so every push of a branch, its first and after a force
   push included, is judged on the whole branch diff. On `main` it compares with the commit of the latest
   stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release, so the
@@ -711,7 +712,9 @@ fixed forward with a new version.
   jobs; and any other path selects nothing. A push runs the union of its files' selections, and no
   check when they select nothing. A branch's later push still runs the checks for every group the whole
   branch changed, and a dispatch, `main` without a released stable tag, or an unresolvable base runs
-  every check. `release.yml` runs every check.
+  every check. The selection job runs the selection's test before selecting, and the package group's
+  ShellCheck job lints the root `scripts/*.sh` and `tests/detect-changes.test.sh`. `release.yml` runs
+  every check.
 
 ## Test Plan
 
@@ -738,7 +741,7 @@ fixed forward with a new version.
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
 | AC-21 | `actionlint` results in each repository's checks at the merge commit, and `.github/actionlint.yaml` ignores only the unknown `queue` key for `release.yml`; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
-| AC-22 | Before the merge: `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's three outputs (package/PowerShell/workflows): `pwsh/` code only false/true/false, `pwsh/docs` Markdown only false/false/false, a PowerShell file outside `pwsh/` such as `darwin/x.ps1` false/true/false, `scripts/vm-set.ps1` true/true/false, `pwsh/scripts/main.ps1` false/true/false, a `.ps1` under `.github/` true/true/true, a Markdown file under `.github/` false/false/false, `bash/common/x.sh` moved to `darwin/x.sh` true/false/false, `PSScriptAnalyzerSettings.psd1` false/true/false, `packaging/`, `bash/` or `tests/` only true/false/false, `docs/` and `readme.md` false/false/false, `.github/` true/true/true, `scripts/` true/true/false, a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false, a force push that drops the branch's `bash/` change false/true/false, `main` after a released stable tag with only `pwsh/` changed since false/true/false, `main` with released `v1.0.0`, then a `bash/` change, a stable `v1.1.0` with no Release and a `pwsh/` change true/true/false (judged from `v1.0.0`), `main` with released `v1.0.0`, then a `bash/` change, `v1.1.0-rc.1` with a published prerelease Release and a `pwsh/` change true/true/false (the prerelease is no base), `main` with no released stable tag true/true/true, no `main` ref true/true/true, and a dispatch true/true/true; read each `checks.yml` job's gate, its own `if:` or a `needs:` chain to a gated job (actionlint on `workflows`; ShellCheck and the package build on `package`, install through `needs: [package]`; `pwsh-ci-action` on `powershell`), and the three `'true'` defaults; read the `shell` job for the ShellCheck of root `scripts/*.sh` and `tests/detect-changes.test.sh` and the run of that test; read `release.yml` for a `checks.yml` call without those inputs. After the merge (T38): on two throwaway branches cut from `main`, one per push, push a PowerShell-only change on one and a documentation-only change on the other and read each run's job list, including that the documentation-only run's version job succeeds |
+| AC-22 | Before the merge: `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's three outputs (package/PowerShell/workflows): `pwsh/` code only false/true/false, `pwsh/docs` Markdown only false/false/false, a PowerShell file outside `pwsh/` such as `darwin/x.ps1` false/true/false, `scripts/vm-set.ps1` true/true/false, `pwsh/scripts/main.ps1` false/true/false, a `.ps1` under `.github/` true/true/true, a Markdown file under `.github/` false/false/false, `bash/common/x.sh` moved to `darwin/x.sh` true/false/false, `PSScriptAnalyzerSettings.psd1` false/true/false, `packaging/`, `bash/` or `tests/` only true/false/false, `docs/` and `readme.md` false/false/false, `.github/` true/true/true, `scripts/` true/true/false, a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false, a force push that drops the branch's `bash/` change false/true/false, `main` after a released stable tag with only `pwsh/` changed since false/true/false, `main` with released `v1.0.0`, then a `bash/` change, a stable `v1.1.0` with no Release and a `pwsh/` change true/true/false (judged from `v1.0.0`), `main` with released `v1.0.0`, then a `bash/` change, `v1.1.0-rc.1` with a published prerelease Release and a `pwsh/` change true/true/false (the prerelease is no base), `main` with no released stable tag true/true/true, no `main` ref true/true/true, and a dispatch true/true/true; read each `checks.yml` job's gate, its own `if:` or a `needs:` chain to a gated job (actionlint on `workflows`; ShellCheck and the package build on `package`, install through `needs: [package]`; `pwsh-ci-action` on `powershell`), and the three `'true'` defaults; read the selection job for a run of `tests/detect-changes.test.sh` before `scripts/detect-changes.sh`, and the package group's ShellCheck job for the lint of root `scripts/*.sh` and `tests/detect-changes.test.sh`; read `release.yml` for a `checks.yml` call without those inputs. After the merge (T38): on two throwaway branches cut from `main`, one per push, push a PowerShell-only change on one and a documentation-only change on the other and read each run's job list, including that the documentation-only run's version job succeeds |
 
 ## Tasks
 

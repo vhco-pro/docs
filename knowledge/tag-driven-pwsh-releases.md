@@ -71,7 +71,8 @@ PDS's workflows are the reference:
   5. A file under `packaging/`, `bash/` or `tests/` selects ShellCheck and the package jobs.
   6. Any other path selects nothing.
 
-  A dispatch, `main` without a released stable tag, or a base it cannot resolve runs every check. Then
+  The selection job runs the selection's own test first, so a broken selection fails every run. A
+  dispatch, `main` without a released stable tag, or a base it cannot resolve runs every check. Then
   `ci.yml` calls `checks.yml` with that selection and `version-workflow` with `preview-label: ''`, so
   only `main` is tagged. This follows the [GitHub Actions](../conventions/github-actions.md) rule to run
   only the checks a change needs.

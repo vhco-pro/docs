@@ -1,7 +1,7 @@
 ---
 title: "Frontend development fixtures and browser verification"
 type: standard
-description: "Require reproducible state, browser scenarios and responsive visual verification for every browser frontend."
+description: "Require reproducible state, browser scenarios, responsive visual verification and a before and after record in pull requests for every browser frontend."
 status: active
 ---
 
@@ -186,6 +186,29 @@ boundaries. Neither an owner walkthrough nor an agent's code inspection replaces
 the automated suite. A failing visual review leaves the affected UI work open
 even when the browser assertions pass. If a required environment or browser is
 unavailable, report the missing evidence instead of marking it verified.
+
+## Visual record in the pull request
+
+A pull request that changes what a user sees includes images of the change.
+For each affected screen it shows a before and after pair, and an after image of each state the change adds or alters, such as an
+open dialog, a collapsed narrow layout or an error. Capture every theme the
+interface ships. Take both sides with the same fixture data, viewport and
+theme, the before from the base commit and the after from the head, so the
+only difference is the change. Name any changed state left uncaptured and say
+why. A change with no visible effect says so instead.
+
+Link images at fixed commits so the record survives later changes:
+
+- A capture the repository already commits, such as a guide screenshot, is
+  linked at the base and head commit SHAs.
+- Any other capture is committed to a ref outside `refs/heads`, one per pull
+  request (`refs/pr-visuals/<branch>`), and linked at that ref's commit.
+  Ordinary clones do not fetch such refs, and GitHub still serves their files
+  to anyone who can read the repository. Keep the ref after merge: it is the
+  record.
+
+Do not link branch names, which move, or temporary hosts. Captures show fixture
+data only, under the redaction rule above.
 
 ## Source examples
 

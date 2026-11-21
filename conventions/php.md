@@ -148,6 +148,22 @@ The implementation review verifies the selected coding rules, analysis coverage 
 evidence alongside feature criteria. Syntax, formatting and static analysis each cover different defects.
 Report checks that were executed and remaining gaps, including a check that ran against no owned files.
 
+## CI and versioning
+
+Reusable PHP checks belong in a dedicated CI action. Consumers keep their framework symbols, native
+package tests and application integration checks. Follow the component boundaries and existing shared
+versioning/release workflow contracts. The selected action revision and the consumer workflow must
+establish the actual checks. [Shared delivery](../knowledge/shared-delivery.md).
+
+PHP applications, reusable actions and native plugins obtain release versions through the shared
+GitVersion components and their bundled configuration. Keep one version calculation and one release
+owner. For an action whose Git tag is the release, compose checked CI with `gh-release-workflow`.
+For a native OPNsense package/feed, reuse the shared GitVersion output and test its mapping to native
+package versions, prerelease ordering and source identity. Preserve the same version across packages,
+catalogues and release metadata. Configure publication through the appropriate shared components and
+verify the real dry-run and artifact paths before requesting a release.
+[Delivery and versioning](delivery.md#git-and-versioning), [shared component ownership](../knowledge/shared-delivery.md#find-the-implementation).
+
 ## Security checks
 
 PHP projects run dependency auditing, security-focused source analysis and secret scanning alongside

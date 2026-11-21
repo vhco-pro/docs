@@ -25,8 +25,9 @@ the CI, version and tag-triggered release shape that the Go repositories already
 pushed a junk prerelease tag and reached the publish step, skipped only because an earlier step failed.
 PDS runs no PowerShell lint or tests, and three workflows compute its version independently.
 
-**Approach.** A new `pwsh-ci-action` checks formatting, lint, module loading and Pester tests on every
-branch push. A new `setup-pwsh-action` installs the one pinned PowerShell all PowerShell actions use. Both
+**Approach.** A new `pwsh-ci-action` checks formatting, lint, module loading and Pester tests. Each
+branch push runs the checks its changes need: a PowerShell change the PowerShell checks, a packaging or
+Bash change ShellCheck and the package tests, and a workflow or script change both; a tag runs them all. A new `setup-pwsh-action` installs the one pinned PowerShell all PowerShell actions use. Both
 start in the `vhco-pro` organization, where the owner wants new shared components. `version-workflow`
 tags `main` after the checks pass. Only an exact stable `v` tag on a `main` commit publishes, through its
 push or a dispatch on that tag. The release deploys the APT repository, rebuilt from every Release, and
@@ -57,12 +58,12 @@ cannot break it. Tags gain the `v` prefix from a baseline tag on the latest rele
 path pushes its first `v` tag, rolling back means reverting the whole migration change; the `v` baseline
 tag stays. From that push on, a problem is fixed forward with a new version.
 
-**Proof.** Planned, not yet run: action behaviour tests over fixtures, a full PDS tag release and a rerun
-of it, and a real run on a disposable Windows 11 VM for every function whose code changes beyond
-whitespace, byte-order marks and identifier casing, except those that need a domain, a remote server, a
-cloud account or a cluster, or never terminate, which keep to mocked tests. Observed
-so far: the analyzer and formatter baselines below, and a real-VM run that found the `Enable-SshServer`
-firewall defect a stubbed test had passed.
+**Proof.** Observed before this revision: the four actions' behaviour tests over fixtures and their
+releases, the PDS Pester suite and analyzer checks on a Windows 11 VM and on GitHub, and a real run on a
+disposable Windows 11 VM for every function whose code changed beyond whitespace, byte-order marks and
+identifier casing, except those that need a domain, a remote server, a cloud account or a cluster, or never
+terminate, which keep to mocked tests. Planned: pushes that show the change selection, a full PDS tag
+release and its reruns.
 
 ### A pull request runs the release
 
@@ -333,8 +334,10 @@ Blocking checks, in order:
    `$ErrorActionPreference = 'Stop'` before `Import-Module`, so a non-terminating load error such as
    the PDS loader's fails the check. Measured with PDS's loader and a broken function file:
    `Import-Module -ErrorAction Stop`, or a script block that sets the preference, still exits 0. A `.psd1` also goes through `Test-ModuleManifest`.
-4. **Test.** `Invoke-Pester` 5 with a configuration object, failing on any failed test, and failing
-   when it discovers no tests unless `allow-no-tests` is `true`.
+4. **Test.** `Invoke-Pester` 6, at the version `modules.pins` pins (6.2.0, the latest stable release on
+   2026-11-21), with a configuration object, failing on any failed test, and failing when it discovers no
+   tests unless `allow-no-tests` is `true`. The tests run under PowerShell's default error preference, as
+   under a plain `Invoke-Pester`, so a test that checks a written error passes in CI too.
 
 PowerShell itself comes from `setup-pwsh-action`, as `go-ci-action` gets Go from `actions/setup-go`.
 PSScriptAnalyzer and Pester install at exact versions from `nupkg` files whose
@@ -444,10 +447,18 @@ fixed forward with a new version.
   `module-manifest: pwsh/module/PDS.psm1` and `tests: pwsh/tests`. It takes a `version` input, default
   `0.0.0`, builds the `.deb` at that version, installs and tests that file, and uploads it as a workflow
   artifact. It has no GitVersion job, so only `version-workflow` computes a version, and it receives no
-  secrets in either caller.
-- **`ci.yml`** on `push` to any branch calls `checks.yml` with the default version, then
-  `version-workflow` with `preview-label: ''` and only the App's variable and key, so only `main` is
-  tagged.
+  secrets in either caller. Two boolean inputs, both default `true`, select its jobs: `package` gates
+  ShellCheck, the package build and the install tests, and `powershell` gates `pwsh-ci-action`;
+  actionlint always runs.
+- **`ci.yml`** on `push` to any branch first runs `scripts/detect-changes.sh`, which compares the pushed
+  commit with the branch's previous tip (`github.event.before`), or with its merge base with `main` when
+  there is no previous tip on the branch's history (a new branch or a force push), and outputs which
+  groups changed: PowerShell (`pwsh/`, `PSScriptAnalyzerSettings.psd1`) or package (`packaging/`,
+  `bash/`, `tests/`). A change under `.github/` or `scripts/`, and a `workflow_dispatch`, select both. It
+  then calls `checks.yml` with the default version and those two inputs, so a PowerShell-only push skips
+  the package build and a documentation-only push runs only actionlint, and then `version-workflow` with
+  `preview-label: ''` and only the App's variable and key, so only `main` is tagged. Jobs `checks.yml`
+  skips do not block `version-workflow`. `release.yml` passes no inputs, so a tag runs every check.
 - **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
   `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
 - **Workflow rules.** The whole [GitHub Actions convention](../../../conventions/github-actions.md), added
@@ -567,28 +578,22 @@ fixed forward with a new version.
 
 ## Acceptance Criteria
 
-- [x] AC-01: `vhco-pro/pwsh-ci-action` exists, public, Apache-2.0, with a released exact `v` tag
+- [ ] AC-01: `vhco-pro/pwsh-ci-action` exists, public, Apache-2.0, with a released exact `v` tag
   published through `gh-release-workflow`, and every `uses:` reference to another repository's action or
   workflow pinned by full SHA with its release as a comment.
-  Evidence: `gh api repos/vhco-pro/pwsh-ci-action/license` and `gh release view v0.1.0`, `vhco-pro/pwsh-ci-action@7b21017`, public, Apache-2.0, `v0.1.0` published by release run 44791496127 through `gh-release-workflow`; every `uses:` not starting with `./` carries a full SHA with its release comment (`actions/checkout` v7.0.1, `setup-pwsh-action` v0.1.0, `gh-release-workflow` v0.1.1) or an image digest with its tag (actionlint 1.7.12).
-- [x] AC-02: Run against its fixtures, the action passes the clean module and the Information-only fixture
+- [ ] AC-02: Run against its fixtures, the action passes the clean module and the Information-only fixture
   and fails each failing fixture (formatting diff, settings with no formatting rule, missing settings,
   analyzer warning, a loader that reports a broken file with `Write-Error`, failing test, no tests) with
   a message naming the failed check, and changes no file.
-  Evidence: `pwsh -File tests/test-fixtures.ps1`, `vhco-pro/pwsh-ci-action@7b21017`, locally (pwsh 7.5.13) and in `test.yml` on Linux and Windows (pinned pwsh 7.7.0): clean and Information-only pass, every failing fixture (formatting diff, wrong casing, mixed line endings, no formatting rule, missing settings, analyzer warning, `Write-Error` loader, failing test, no tests) fails naming its check, and a tree hash of each copy is unchanged after every run.
-- [x] AC-03: `pwsh ./ci.ps1` run directly on a fixture gives the same verdict as the composite on that
+- [ ] AC-03: `pwsh ./ci.ps1` run directly on a fixture gives the same verdict as the composite on that
   fixture.
-  Evidence: `test.yml` `compare` jobs, `vhco-pro/pwsh-ci-action@7b21017`, PR #1 final run: for each of the 12 fixture cases the composite action and `ci.ps1` on the same fixture gave the same verdict, matching the case's expected exit.
-- [x] AC-04: The action refuses to import PSScriptAnalyzer or Pester when the downloaded package's
+- [ ] AC-04: The action refuses to import PSScriptAnalyzer or Pester when the downloaded package's
   SHA-256 differs from the pinned value.
-  Evidence: `wrong-checksum` case of `tests/test-fixtures.ps1`, `vhco-pro/pwsh-ci-action@7b21017`, locally and in `test.yml`: with zeroed SHA-256 pins `ci.ps1` exits 1 with "checksum mismatch" and the fresh module cache holds no extracted `.psd1`.
-- [x] AC-05: `publish-pwsh-module-action` `v3.0.0` and `package-pwsh-script-action` `v2.0.0` are released
+- [ ] AC-05: `publish-pwsh-module-action` `v3.0.0` and `package-pwsh-script-action` `v2.0.0` are released
   with those exact tags, take the version from a `tag` input, and contain no checkout, GitVersion or
   `git tag` step.
-  Evidence: `gh release view v3.0.0 -R michielvha/publish-pwsh-module-action` and `gh release view v2.0.0 -R michielvha/package-pwsh-script-action`, released at `1bf4e8d` and `a2bc1a4`; `action.yml` and `action.yaml` at those commits take `tag` as an input and contain no `actions/checkout`, GitVersion or `git tag` step (their only nested action is `setup-pwsh-action` v0.1.0); both test suites call them with a `tag`.
-- [x] AC-06: Given `v0.25.0`, the publish action writes `ModuleVersion = '0.25.0'`; given a prerelease
+- [ ] AC-06: Given `v0.25.0`, the publish action writes `ModuleVersion = '0.25.0'`; given a prerelease
   tag, a tag without `v` or a version that is not three-part SemVer, it fails before writing a manifest.
-  Evidence: `tests/ReleaseTag.Tests.ps1` in both actions and the publish end-to-end test, `michielvha/publish-pwsh-module-action@1bf4e8d`: `v0.25.0` gives `0.25.0`; a prerelease tag, a tag without `v`, two- and four-part versions, build metadata and an empty tag are refused naming the tag; `publish.ps1` with `v1.3.0-preview.1` exits non-zero and writes no `.psd1`.
 - [ ] AC-07: Publishing a version that already exists on the Gallery ends as already published, and the
   run succeeds without publishing again.
 - [ ] AC-08: Both existing actions, `pwsh-ci-action` and `setup-pwsh-action` have `AGENTS.md`, an Apache-2.0 `LICENSE`, a README listing
@@ -597,10 +602,9 @@ fixed forward with a new version.
   reference to another repository pinned by full SHA with its release as a comment, releases published
   through `gh-release-workflow`, and a Dependency Dashboard from the managed Renovate App that lists every
   tool pin.
-- [x] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
+- [ ] AC-09: A PDS branch push that touches `pwsh/module/` runs `pwsh-ci-action`, creates no tag and
   publishes nothing; `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` appear in no workflow except
   `release.yml`, and there only in the Gallery and APT jobs; and no PDS workflow uses `secrets: inherit`.
-  Evidence: the branch push of `michielvha/PDS@092b484` (`feat/pwsh-release-workflow`, which touches `pwsh/module/`) ran `ci.yml` ([run 44850224045](https://github.com/michielvha/PDS/actions/runs/44850224045)): `checks / PowerShell checks` (`pwsh-ci-action` v0.1.1 on Windows) and every other check passed and `version / version` succeeded; afterwards `git ls-remote --tags origin` shows no new tag (highest `v` tag still `v0.1.437`) and the Gallery's latest PDS is still `0.25.0`. At `b6537f8` and later, `git grep -l` for `API_KEY`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` in `.github/workflows` lists only `release.yml`, where they appear only in the `apt` and `gallery` jobs' `env:`/`with:`, and `git grep 'secrets: inherit'` finds nothing.
 - [ ] AC-10: Before the migration merges, `v<latest release tag>` exists on the latest release tag's
   commit. The first PDS merge to `main` carrying a version-bumping commit whose release completes creates
   exactly one tag,
@@ -630,11 +634,10 @@ fixed forward with a new version.
 - [ ] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
   Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
   records each run and its result.
-- [x] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
+- [ ] AC-17: `vhco-pro/setup-pwsh-action` exists, public, Apache-2.0 and released, and refuses an archive
   whose SHA-256 differs from its pin. Each of the three actions calls it by full SHA, and their
   `shell: pwsh` steps report its pinned version in `$PSVersionTable.PSVersion` on a runner whose
   preinstalled `pwsh` differs.
-  Evidence: `gh release view v0.1.0 -R vhco-pro/setup-pwsh-action` (public, Apache-2.0, `a90bb07`); its behaviour test with zeroed checksums fails naming the checksum with `GITHUB_PATH` unwritten (`tests/test-install.sh`, Linux and macOS in CI). `pwsh-ci-action`, `publish-pwsh-module-action` and `package-pwsh-script-action` call it at `a90bb07` (v0.1.0) in their action metadata. `tests/Assert-PinnedPwsh.ps1` in each, run after the action in `test.yml` (vhco-pro/pwsh-ci-action#3, michielvha/publish-pwsh-module-action#10, michielvha/package-pwsh-script-action#12, merged as `478c546`, `0daf679`, `3504263`), reported "pwsh steps run the pinned PowerShell 7.7.0" from the tool cache on Windows and Linux runners whose preinstalled pwsh is 7.6.10.
 - [ ] AC-18: Pushing a prerelease tag such as `v0.0.1-test.1` starts no release run; a `release.yml`
   dispatch on that tag, on an exact tag outside `main` or from a branch fails at the first job; none of
   them publishes anything.
@@ -650,6 +653,11 @@ fixed forward with a new version.
   `timeout-minutes` on every job that runs steps and `defaults.run.shell`; no `run:` block in a workflow
   or an action metadata file (`action.yml` or `action.yaml`) contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
   `persist-credentials: false` except in a job that pushes.
+- [ ] AC-22: A PDS branch push runs only the checks its changes need: a push changing only files under
+  `pwsh/` runs `pwsh-ci-action` and skips ShellCheck, the package build and the install tests; one
+  changing only `packaging/`, `bash/` or `tests/` skips `pwsh-ci-action`; one changing only other
+  documentation runs only actionlint; and one changing `.github/` or `scripts/`, a new branch's first push
+  compared with `main`, and a dispatch run every check. `release.yml` runs every check.
 
 ## Test Plan
 
@@ -676,6 +684,7 @@ fixed forward with a new version.
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
 | AC-21 | `actionlint` results in each repository's checks at the merge commit, and `.github/actionlint.yaml` ignores only the unknown `queue` key for `release.yml`; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
+| AC-22 | `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's outputs for each group, a documentation-only change, a `.github/` change, a new branch (zero `before`), a force push (`before` not an ancestor) and a dispatch; on the PDS branch, push a PowerShell-only commit and a documentation-only commit and read each run's job list; read `release.yml` for a `checks.yml` call without inputs |
 
 ## Tasks
 
@@ -747,6 +756,8 @@ for the owner's go when they come up.
 - [x] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
   Evidence: `node scripts/check-docs.mjs` on `feat/pwsh-release-workflow`: "Checked 44 Markdown files: local links, metadata, and writing constraints pass." `knowledge/shared-delivery.md` gains rows for `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, the `files` input on the `gh-release-workflow` row, and the release contract's two statements; `knowledge/tag-driven-pwsh-releases.md` states both and links the PDS workflows. AC-13 is ticked once these pages merge.
 
+- [ ] T35 `michielvha/PDS:scripts/detect-changes.sh` `michielvha/PDS:tests/detect-changes.test.sh` `michielvha/PDS:.github/workflows/ci.yml` `michielvha/PDS:.github/workflows/checks.yml` - change selection; the script's test passes, and PDS branch runs for a PowerShell-only and a documentation-only push show only the selected jobs (AC-22)
+- [ ] T36 `vhco-pro/docs:docs/internal/plans/pwsh-release-workflow.md` - re-record AC-01 to AC-06, AC-09 and AC-17, which the 2026-11-21 revision reset, from checks run on the current heads (AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-09, AC-17)
 ## Open Questions
 
 None.

@@ -822,6 +822,7 @@ None.
 | 2026-11-20 | R-10 | spec | `36ebfd3` | n/a | n/a | accepted by owner |
 | 2026-11-21 | R-11 | spec | `f089ab9` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 6 should-fix and 5 nits |
 | 2026-11-21 | R-12 | spec | `00f14af` | claude-opus-5-5 | procedural | Blocking: 1 blocking, 5 should-fix and 1 nit |
+| 2026-11-21 | R-13 | spec | `174bfed` | claude-opus-5-5 | procedural | Not clean: 2 should-fix and 3 nits |
 
 ### R-1
 
@@ -1713,6 +1714,45 @@ SEVERITY: nit
 WHERE: Context, Owner summary, Approach ("a workflow or script change runs both plus actionlint"; "on `main` over everything since the latest release tag"); Context, Owner summary, Changes since the 2026-11-20 acceptance ("any change the selection cannot judge runs every check")
 EVIDENCE: The Design and AC-22 say `scripts/` selects PowerShell and package but not actionlint ("one under `scripts/` every check but actionlint"). The summary says a script change also runs actionlint. Under the Design, only a dispatch or a base that cannot be resolved runs every check (the owner's answer to R-11 F-03), and any unlisted path counts as documentation and runs nothing (the answer to R-11 F-07). "Any change the selection cannot judge" can be read as unlisted paths, which is the opposite. "Latest release tag" is not the Design's "latest stable `vX.Y.Z` tag", which includes a tag that has no Release. The summary also leaves out the trade-off the owner accepted: a broken documentation path the package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`.
 PROPOSAL: Say a script change runs the PowerShell and package checks, that a dispatch or an unresolvable base runs every check, and that `main` is compared with the latest stable tag. Add the accepted `readme.md` trade-off as an owner decision of 2026-11-21.
+
+### R-13
+
+TARGET: 174bfedcd23a0da279da3ebdf328f82a80fef677
+
+FINDING: F-01
+KIND: factual
+SEVERITY: should-fix
+WHERE: Acceptance Criteria, AC-22 ("changes only to PowerShell files or other files under `pwsh/` run `pwsh-ci-action` and skip ShellCheck, the package build, the install tests and actionlint", "Markdown-only changes ... run no check", "a change under `.github/` runs every check, and one under `scripts/` every check but actionlint"); Design, PDS `ci.yml` bullet ("It classifies each changed file by type first ... Every other file is classified by directory"); Test Plan, row AC-22 (cases "a PowerShell file outside `pwsh/` false/true/false", "`.github/` true/true/true", "`scripts/` true/true/false"); Context, Owner summary, Approach ("a script change runs both, a workflow change runs both plus actionlint, and a Markdown-only change runs nothing"); Tasks, T35 ("change selection by file type and directory")
+EVIDENCE: The Design applies file type before directory, so `scripts/vm-set.ps1` (an existing PDS file, `ls scripts` in the PDS worktree) selects PowerShell only (false/true/false), a `.ps1` under `.github/` selects PowerShell only, and a `.md` under `.github/` or `bash/` selects nothing. AC-22 states its clauses with no precedence: a change only to `scripts/vm-set.ps1` is both "only PowerShell files" (skip ShellCheck and the package build) and "under `scripts/`" (every check but actionlint), and a change only to a Markdown file under `.github/` is both "Markdown-only" (no check) and "under `.github/`" (every check). Two careful implementers already differ: the reworked PDS script (`scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`) matches `*.md`, then `.github/*`, then `scripts/*`, then `*.ps1 | *.psm1 | *.psd1 | pwsh/*`, so `scripts/vm-set.ps1` gives true/true/false, which follows AC-22's directory clause and contradicts the Design's type-first rule. The Test Plan row does not say which file the `scripts/` case or the PowerShell-outside-`pwsh/` case uses, so a script test passes under either order. This traces to the revision applying R-12 F-02 (`git diff d13c582 174bfed`).
+PROPOSAL: State one precedence everywhere (for example Markdown first, then `.github/` and `scripts/` by directory, then PowerShell by type, then the other directories), write AC-22's clauses so they cannot overlap, and give the row expected outputs for `scripts/vm-set.ps1`, a `.ps1` under `.github/` and a `.md` under `.github/`.
+
+FINDING: F-02
+KIND: factual
+SEVERITY: should-fix
+WHERE: Design, PDS `ci.yml` bullet ("It classifies each changed file"); Acceptance Criteria, AC-22; Test Plan, row AC-22; Tasks, T35
+EVIDENCE: The Design does not say whether the source path of a rename counts as a changed file, and Git's default hides it. In a scratch repository (git 2.56.0), `git mv bash/common/foo.sh darwin/foo.sh` then `git diff --name-only HEAD~1 HEAD` prints only `darwin/foo.sh`; `git diff --no-renames --name-only` prints both paths. The reworked PDS script classifies `git diff --name-only "$base" "$head"` (`scripts/detect-changes.sh` at `michielvha/PDS@6cd8f32`), so moving a file out of `bash/` (packaged whole by `packaging/nfpm.yaml:45`, `src: ../bash/common`, and named file by file in `packaging/Makefile` `lint-image-provisioning`) into `darwin/` or `docs/` selects nothing on the branch and on `main`. The break first shows in a tag's `release.yml`, and because `main` is judged from the latest released tag, every later diff again lists only the new path, so every later tag fails the same way. That is the repeated abandoned tag the owner's released-tag decision was meant to stop, here for a non-documentation change the owner did not accept. The row has no rename case, so the script test passes on this implementation.
+PROPOSAL: State that both sides of a rename count (for example `git diff --no-renames --name-only`), and add a rename case to the AC-22 row, such as `bash/common/x.sh` moved to `darwin/x.sh` giving true/false/false.
+
+FINDING: F-03
+KIND: judgement
+SEVERITY: nit
+WHERE: Context, Owner summary, Changes since the 2026-11-20 acceptance ("so commits after a failed tag are checked again"); Design, PDS `ci.yml` bullet ("so the commits after a tag whose release failed are checked again"); Design, PDS "Recovery" bullet ("Three cases need a person")
+EVIDENCE: This does not reopen the owner's decisions; it concerns how their combined consequence is stated. Markdown never selects a group, and the package reads `readme.md`, `bash/debian/readme.md` and `bash/common/readme.md` (`packaging/nfpm.yaml:81`, `:86`, `:92`). If one of them is broken, the tag's `release.yml` fails at the package build. Each later `main` push is judged from the last released tag and so includes the broken file, but as Markdown it still selects no package check, and every later tag fails the same way until a version-bumping commit restores the file. "Checked again" reads as if the released-tag base prevents repeat failures, which holds for code but not for this accepted case. Recovery's person-cases name only a defect in `release.yml`, `checks.yml` or the action pins.
+PROPOSAL: Say in Recovery that a broken Markdown path the package reads fails every later tag until a version-bumping commit such as `fix:` restores it, and qualify "checked again" as covering the groups their files select.
+
+FINDING: F-04
+KIND: factual
+SEVERITY: nit
+WHERE: Design, PDS `ci.yml` bullet ("Jobs `checks.yml` skips do not block `version-workflow`"); Tasks, T38; Test Plan, row AC-22 (After the merge)
+EVIDENCE: The claim has no citation, and no proof observes the case where every `checks.yml` job is skipped, which is exactly what a Markdown-only push now produces. `gh run view 44878020475 -R michielvha/PDS` shows only a partial skip (Lint workflows success, the other four checks skipped, `version / version` success). `gh run list -R michielvha/PDS --workflow ci.yml --limit 10` shows no run with every checks job skipped. T38 checks that a Markdown-only push "runs no check" but not that its version job runs. The consequence is small, because a Markdown-only push rarely carries a bumping commit.
+PROPOSAL: Have T38 and the row's post-merge step also read the version job's result on the Markdown-only push, or cite where GitHub documents the caller job's result when every called job is skipped.
+
+FINDING: F-05
+KIND: factual
+SEVERITY: nit
+WHERE: Context, "Three jobs decide one version" ("By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`, the latest with a Release (`git ls-remote --tags origin`)")
+EVIDENCE: `git ls-remote --tags origin` lists tags but not Releases. The claim itself holds: `gh release list -R michielvha/PDS` shows `0.25.1` as Latest and no Release for `0.25.0`. This is a citation slip only.
+PROPOSAL: Cite `gh release list -R michielvha/PDS` for "the latest with a Release", and keep `git ls-remote --tags origin` for the two tags.
 
 ## Sources
 

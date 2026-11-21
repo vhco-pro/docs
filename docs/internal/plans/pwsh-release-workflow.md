@@ -1,6 +1,6 @@
 ---
 status: in-progress
-status_description: "PDS releases through the new path (v0.26.1, 2026-11-21) and the docs are merged. Open: AC-08 (Renovate App access, T19), AC-15 (per-job APT rerun, provable on the next release) and AC-10 (abandoned v0.26.0, accepted by the owner)."
+status_description: "PDS releases through the new path (v0.26.1 and v0.26.2) and AC-15 is proven. Open: AC-08 (Renovate App access, T19: renovate-runner#10 awaits the owner's merge) and AC-10 (abandoned v0.26.0, accepted by the owner)."
 issue: https://github.com/vhco-pro/docs/issues/49
 branch: feat/pwsh-release-workflow
 goal: "A PowerShell repository checks every push that changes PowerShell code with a shared PowerShell CI action and publishes a module only from an exact version tag, through the same CI, version and release shape the Go repositories use."
@@ -690,10 +690,10 @@ fixed forward with a new version.
   Evidence: in the merged docs commit `28854c6` ([#55](https://github.com/vhco-pro/docs/pull/55)), `knowledge/shared-delivery.md` lists `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, notes the `files` input on the `gh-release-workflow` row, and states in its release contract (`:59-63`) that every repository publishing artifacts from a tag runs a language CI action, `version-workflow` and a tag-triggered release while actions and reusable workflows release through `gh-release-workflow`; `knowledge/tag-driven-pwsh-releases.md` states both (`:18-22`), describes the PowerShell flow and links the PDS workflows.
 - [x] AC-14: Every public PDS function renamed to satisfy the analyzer still runs under its old name.
   Evidence: Each of the twelve renamed functions' test files ends with `It 'still runs under its old name'`, which asserts `Get-Command <old> -Module PDS` is an alias resolving to the new name and runs it with the installs mocked; all pass on `main` (CI and the VM suite). `Get-RDSActiveSessionReport.Tests.ps1` reaches it through `Get-RDSActiveSessions`, while `Get-RDSActiveSession.Tests.ps1` tests the unchanged singular function with its own `-QuickMode` parameter.
-- [ ] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
+- [x] AC-15: For an already released tag, rerunning any job, rerunning the whole run and dispatching
   `release.yml` on the tag each succeed and leave unchanged the Release and its asset checksums, the set
   of packages and versions in the APT index, and the Gallery versions.
-  Residual: not met yet. For `v0.26.1` the whole-run rerun succeeded and nothing published changed in any rerun, but per-job APT reruns failed at `deploy-pages` (fixed in PDS #64, provable only by a later release's rerun) and the dispatch's deploy lost a race with its own artifact.
+  Evidence: `v0.26.2`, released from [PDS #67](https://github.com/michielvha/PDS/pull/67) (`53debca`, a `fix:` from #62) with the #64 workflow ([run 44937216297](https://github.com/michielvha/PDS/actions/runs/44937216297)): Release with `pds_0.26.2_all.deb` and `PDS-0.26.2.exe`, Gallery 0.26.2, APT index of 43 versions. Rerunning the APT job alone (attempt 2), the Gallery job alone (3), the Release job alone (4) and the whole run (5), and dispatching `release.yml` on `v0.26.2` ([run 44938278341](https://github.com/michielvha/PDS/actions/runs/44938278341)), each succeeded; after every one the Release count, both asset SHA-256 digests and timestamps, the APT index's versions and checksums and the Gallery's 0.26 versions equalled the snapshot taken after the release.
 - [x] AC-16: Every function in the VM set the Design defines has completed without error on the disposable
   Windows 11 VM; every function the rule keeps on mocked tests is listed with its reason; and the PR
   records each run and its result.

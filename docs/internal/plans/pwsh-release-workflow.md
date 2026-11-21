@@ -69,7 +69,7 @@ pushes select their checks as Approach describes instead of running all of them.
 same day that a base the selection cannot resolve runs every check; that Markdown triggers no check,
 accepting that a broken documentation path the package reads, such as `readme.md`
 (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`; that `main` is judged from the latest
-tag with a published Release, so commits after a failed tag are checked again; and that PDS module
+tag with a published Release, so the groups that commits after a failed tag select are checked again; and that PDS module
 publishing from `main` is paused until the migration merges. The Design names Pester 6 at the pinned version and requires the
 tests to run under PowerShell's default error preference. Every criterion tick was reset for
 re-verification; the implemented tasks stay checked.
@@ -130,8 +130,8 @@ version and one path publishes.
 
 The two paths have drifted apart. The latest tag was `0.24.1` when this was measured (`git describe --tags origin/main`, commit
 `0770894`), published to the Gallery by the module action, while the latest GitHub Release is `0.23.0`
-(`gh release list -R michielvha/PDS`). By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`, the
-latest with a Release (`git ls-remote --tags origin`). PDS tags without the `v` prefix (`PDS/gitversion.yml:5`) under a
+(`gh release list -R michielvha/PDS`). By 2026-11-21 the old workflows had added `0.25.0` and `0.25.1`
+(`git ls-remote --tags origin`), and `0.25.1` was the latest with a Release (`gh release list -R michielvha/PDS`). PDS tags without the `v` prefix (`PDS/gitversion.yml:5`) under a
 repository-specific GitVersion file, and eleven old `v0.1.4xx` tags exist beside the current line.
 
 The release notes come from `.github/templates/release-notes.md`, the same text for every release apart
@@ -482,18 +482,21 @@ fixed forward with a new version.
   pushed commit with its merge base with `main`, so every push of a branch, its first and after a force
   push included, is judged on the whole branch diff. On `main` it compares with the commit of the latest
   stable `vX.Y.Z` tag that the pushed commit contains and that has a published GitHub Release, so the
-  commits after a tag whose release failed are checked again; with no such tag it selects every group.
-  It classifies each changed file by type first: Markdown (`*.md`) anywhere is documentation and selects
-  nothing, and a PowerShell file (`*.ps1`, `*.psm1`, `*.psd1`) anywhere selects PowerShell. Every other
-  file is classified by directory: `.github/` selects workflows (actionlint) and both other groups,
-  `scripts/` selects PowerShell and package, `pwsh/` selects PowerShell, and `packaging/`, `bash/` and
-  `tests/` select package; any other path selects nothing. The owner pushes documentation-only changes
+  groups that the commits after a tag whose release failed select are checked again; with no such tag it
+  selects every group. The changed files are both sides of every rename and copy (`git diff --no-renames
+  --name-only`), so moving a file out of a group still selects it. Each file takes the first rule that
+  matches: Markdown (`*.md`) anywhere is documentation and selects nothing; a file under `.github/`
+  selects workflows (actionlint) and both other groups; a file under `scripts/` selects PowerShell and
+  package; a PowerShell file (`*.ps1`, `*.psm1`, `*.psd1`) anywhere else, or any other file under
+  `pwsh/`, selects PowerShell; a file under `packaging/`, `bash/` or `tests/` selects package; and any
+  other path selects nothing. The owner pushes documentation-only changes
   with `[skip ci]` and wants them to trigger no checks, accepting that a broken documentation path the
   package reads, such as `readme.md` (`packaging/nfpm.yaml:92`), first fails in a tag's `release.yml`. A
   `workflow_dispatch`, and any comparison base it cannot resolve, select every group. It then calls
   `checks.yml` with the default version and the three groups as inputs, and then `version-workflow` with
   `preview-label: ''` and only the App's variable and key, so only `main` is tagged. Jobs `checks.yml`
-  skips do not block `version-workflow`. `release.yml` passes no inputs, so a tag runs every check.
+  skips do not block `version-workflow` (run 44878020475 skipped four of the five and its version job ran;
+  T38 observes a run that skips all of them). `release.yml` passes no inputs, so a tag runs every check.
 - **Secrets.** No PDS workflow uses `secrets: inherit`. Only the APT job receives `GPG_PRIVATE_KEY` and
   `GPG_PASSPHRASE`, and only the Gallery job receives `API_KEY`.
 - **Workflow rules.** The whole [GitHub Actions convention](../../../conventions/github-actions.md), added
@@ -547,6 +550,10 @@ fixed forward with a new version.
     before it appear in no Release's notes.
   - A stable Release created after a higher one, such as a recovered older tag, becomes GitHub's latest;
     set it back with `gh release edit v<higher> --latest`.
+  - A broken Markdown file the package reads (`readme.md`, `bash/debian/readme.md`,
+    `bash/common/readme.md`; `packaging/nfpm.yaml:81`, `:86`, `:92`) selects no check, so every tag after
+    it fails at the package build until a version-bumping commit such as `fix:` restores the file. This
+    follows from the owner's decision that Markdown triggers no check.
 - **Release notes.** `gh-release-action` renders them with its bundled git-cliff configuration, from the
   commits since the previous stable `v` tag; normally the first notes start at the `v` baseline.
   `.github/templates/release-notes.md` and the step that filled it are removed; install instructions stay
@@ -691,14 +698,15 @@ fixed forward with a new version.
   or an action metadata file (`action.yml` or `action.yaml`) contains `${{`; nothing writes to `$GITHUB_ENV`; and every checkout sets
   `persist-credentials: false` except in a job that pushes.
 - [ ] AC-22: A PDS push runs only the checks its changes need, judged on a branch over the diff from its
-  merge base with `main` and on `main` over the diff from the latest stable tag with a published Release:
-  Markdown-only changes, under `pwsh/` or `readme.md` included, run no check; changes only to PowerShell
-  files or other files under `pwsh/` run `pwsh-ci-action` and skip ShellCheck, the package build, the
-  install tests and actionlint; changes only under `packaging/`, `bash/` or `tests/` run ShellCheck and the
-  package jobs and skip `pwsh-ci-action` and actionlint; a change under `.github/` runs every check, and
-  one under `scripts/` every check but actionlint; a branch's later push still runs the checks for every
-  group the whole branch changed; and a dispatch, `main` without a released stable tag, or an unresolvable
-  base runs every check. `release.yml` runs every check.
+  merge base with `main` and on `main` over the diff from the latest stable tag with a published Release,
+  with both sides of every rename counted. Each changed file takes the first matching rule: Markdown
+  anywhere selects nothing; a file under `.github/` selects every check; a file under `scripts/` selects
+  every check but actionlint; a PowerShell file anywhere else, or another file under `pwsh/`, selects
+  `pwsh-ci-action`; a file under `packaging/`, `bash/` or `tests/` selects ShellCheck and the package
+  jobs; and any other path selects nothing. A push runs the union of its files' selections, and no
+  check when they select nothing. A branch's later push still runs the checks for every group the whole
+  branch changed, and a dispatch, `main` without a released stable tag, or an unresolvable base runs
+  every check. `release.yml` runs every check.
 
 ## Test Plan
 
@@ -725,7 +733,7 @@ fixed forward with a new version.
 | AC-19 | Read `ci.yml` and `release.yml`: both call `checks.yml`, and every publishing job in `release.yml` needs it; the SHA-256 of the `.deb` artifact from the tag run's `checks.yml` equals the Release asset's |
 | AC-20 | `gh release view v0.2.0`; the action's behaviour tests against its mock `gh` cover creating with files, an existing Release with the same set, one with a different set, a missing path and the empty default, and assert from the mock's call log that a create makes exactly one `gh release create <tag> <files...>` call without `--draft` and no `gh release upload` call, the condition under which gh removes its hidden draft on a failed upload |
 | AC-21 | `actionlint` results in each repository's checks at the merge commit, and `.github/actionlint.yaml` ignores only the unknown `queue` key for `release.yml`; read every workflow for `permissions: {}`, `timeout-minutes` on each job that has `steps:` and `defaults.run.shell`; a search of `run:` blocks in workflows and action metadata files (`action.yml` or `action.yaml`) finds no `${{`; `grep -r GITHUB_ENV` finds no write; every `actions/checkout` sets `persist-credentials: false` unless its job pushes |
-| AC-22 | Before the merge: `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's three outputs (package/PowerShell/workflows): `pwsh/` code only false/true/false, `pwsh/docs` Markdown only false/false/false, a PowerShell file outside `pwsh/` false/true/false, `PSScriptAnalyzerSettings.psd1` false/true/false, `packaging/`, `bash/` or `tests/` only true/false/false, `docs/` and `readme.md` false/false/false, `.github/` true/true/true, `scripts/` true/true/false, a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false, a force push that drops the branch's `bash/` change false/true/false, `main` after a released stable tag with only `pwsh/` changed since false/true/false, `main` whose newer stable tag has no Release judged from the older released tag, a prerelease tag ignored, `main` with no released stable tag true/true/true, no `main` ref true/true/true, and a dispatch true/true/true; read each `checks.yml` job's gate, its own `if:` or a `needs:` chain to a gated job (actionlint on `workflows`; ShellCheck and the package build on `package`, install through `needs: [package]`; `pwsh-ci-action` on `powershell`), and the three `'true'` defaults; read `release.yml` for a `checks.yml` call without those inputs. After the merge (T38): on a branch cut from `main`, push a PowerShell-only change and a documentation-only change and read each run's job list |
+| AC-22 | Before the merge: `tests/detect-changes.test.sh` builds throwaway Git histories and asserts the script's three outputs (package/PowerShell/workflows): `pwsh/` code only false/true/false, `pwsh/docs` Markdown only false/false/false, a PowerShell file outside `pwsh/` such as `darwin/x.ps1` false/true/false, `scripts/vm-set.ps1` true/true/false, a `.ps1` under `.github/` true/true/true, a Markdown file under `.github/` false/false/false, `bash/common/x.sh` moved to `darwin/x.sh` true/false/false, `PSScriptAnalyzerSettings.psd1` false/true/false, `packaging/`, `bash/` or `tests/` only true/false/false, `docs/` and `readme.md` false/false/false, `.github/` true/true/true, `scripts/` true/true/false, a branch whose earlier push changed `bash/` and later push only `pwsh/` true/true/false, a force push that drops the branch's `bash/` change false/true/false, `main` after a released stable tag with only `pwsh/` changed since false/true/false, `main` whose newer stable tag has no Release judged from the older released tag, a prerelease tag ignored, `main` with no released stable tag true/true/true, no `main` ref true/true/true, and a dispatch true/true/true; read each `checks.yml` job's gate, its own `if:` or a `needs:` chain to a gated job (actionlint on `workflows`; ShellCheck and the package build on `package`, install through `needs: [package]`; `pwsh-ci-action` on `powershell`), and the three `'true'` defaults; read `release.yml` for a `checks.yml` call without those inputs. After the merge (T38): on a branch cut from `main`, push a PowerShell-only change and a documentation-only change and read each run's job list, including that the documentation-only run's version job succeeds |
 
 ## Tasks
 
@@ -796,10 +804,10 @@ for the owner's go when they come up.
 - [ ] T33 `michielvha/PDS:releases` - after the merge, the first bumping release and its reruns; one tag, one public Release with notes, `.deb` and `.exe`, the Gallery version, an APT index matching the Releases, and reruns changing nothing (AC-10, AC-15, AC-19)
 - [x] T34 `vhco-pro/docs:knowledge/shared-delivery.md` `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - component rows and the PowerShell flow page with both statements; `node scripts/check-docs.mjs` passes (AC-13)
   Evidence: `node scripts/check-docs.mjs` on `feat/pwsh-release-workflow`: "Checked 44 Markdown files: local links, metadata, and writing constraints pass." `knowledge/shared-delivery.md` gains rows for `setup-pwsh-action`, `pwsh-ci-action` and the two release-only actions, the `files` input on the `gh-release-workflow` row, and the release contract's two statements; `knowledge/tag-driven-pwsh-releases.md` states both and links the PDS workflows. AC-13 is ticked once these pages merge.
-- [ ] T35 `michielvha/PDS:scripts/detect-changes.sh` `michielvha/PDS:tests/detect-changes.test.sh` `michielvha/PDS:.github/workflows/ci.yml` `michielvha/PDS:.github/workflows/checks.yml` - change selection by file type and directory over the merge base with `main`, or on `main` the latest stable tag with a published Release, with three groups; the script's test passes every pre-merge AC-22 case and actionlint passes (AC-22)
+- [ ] T35 `michielvha/PDS:scripts/detect-changes.sh` `michielvha/PDS:tests/detect-changes.test.sh` `michielvha/PDS:.github/workflows/ci.yml` `michielvha/PDS:.github/workflows/checks.yml` - change selection by first matching rule, counting both sides of a rename, over the merge base with `main`, or on `main` the latest stable tag with a published Release, with three groups; the script's test passes every pre-merge AC-22 case and actionlint passes (AC-22)
 - [ ] T36 `vhco-pro/docs:docs/internal/plans/pwsh-release-workflow.md` - re-record AC-01 to AC-06, AC-09 and AC-17, which the 2026-11-21 revision reset, from checks run on the current heads (AC-01, AC-02, AC-03, AC-04, AC-05, AC-06, AC-09, AC-17)
 - [ ] T37 `vhco-pro/docs:knowledge/tag-driven-pwsh-releases.md` - the flow text and diagram describe the change selection and a tag running every check; `node scripts/check-docs.mjs` passes (AC-13)
-- [ ] T38 `michielvha/PDS:refs/heads` - after the merge, on a throwaway branch cut from `main`, a PowerShell-only push runs only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push runs no check; the branch is deleted afterwards (AC-22)
+- [ ] T38 `michielvha/PDS:refs/heads` - after the merge, on a throwaway branch cut from `main`, a PowerShell-only push runs only the selection, `pwsh-ci-action` and the version job, and a Markdown-only push runs no check while its version job succeeds; the branch is deleted afterwards (AC-22)
 
 ## Open Questions
 

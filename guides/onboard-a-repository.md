@@ -133,6 +133,11 @@ Check the dependency graph under Settings, Advanced Security. CodeQL and Scoreca
 are workflow files in a public repository, added in a reviewed change like any other
 workflow. These settings need admin rights.
 
+Include private vulnerability reporting in the vh-adlc security settings
+check. When the repository is eligible and its committed maintenance settings
+authorize apply mode, vh-adlc enables reporting if it is off and reads the
+setting back. Record any repository that could not be verified.
+
 ## Public project presentation
 
 For a public open-source repository, offer the

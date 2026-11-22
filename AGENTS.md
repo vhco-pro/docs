@@ -14,7 +14,9 @@ pointers here, not copies of these instructions.
    changing a test, or claiming that a run proves a change.
    For user-facing interface work in any stack, read and apply the
    [frontend design skill guide](guides/use-frontend-design-skills.md), including its rendered
-   mobile/desktop verification and interface-review procedure.
+   mobile/desktop verification and interface-review procedure. Give new or restyled interfaces
+   the [VH Midnight](guides/vh-midnight.md) style unless the product already has its own
+   identity or the owner asks for another look.
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
    Read [HTTP API](conventions/http-api.md) when designing or changing an HTTP API.

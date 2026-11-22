@@ -15,9 +15,9 @@ and [TypeScript](../conventions/typescript.md) conventions.
 Read the relevant pinned upstream skill before using it. These references make the procedure
 available to any agent host; they do not install a plugin or run its tooling.
 
-For the owner's Postbode-inspired dark style, use [VH Midnight](vh-midnight.md): a deep blue
-gradient, pale text and restrained translucent surfaces. Keep the product's existing light
-palette and adapt its accent colours for contrast.
+New or restyled interfaces use [VH Midnight](vh-midnight.md) by default: a deep blue
+gradient, pale text and restrained translucent surfaces. Keep a product's established identity
+instead, or follow the owner's brief when it asks for another look.
 
 ## Design the interface
 

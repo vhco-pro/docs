@@ -17,6 +17,8 @@ pointers here, not copies of these instructions.
    mobile/desktop verification and interface-review procedure. Give new or restyled interfaces
    the [VH Midnight](guides/vh-midnight.md) style unless the product already has its own
    identity or the owner asks for another look.
+   Before designing or building a browser extension, also read the
+   [browser extension design guide](guides/browser-extension-design.md).
    Read [TypeScript](conventions/typescript.md) for TypeScript and
    [React](conventions/react.md) for React work, including specification and review.
    Read [HTTP API](conventions/http-api.md) when designing or changing an HTTP API.

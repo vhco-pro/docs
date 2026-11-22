@@ -19,6 +19,13 @@ commands that check and change these settings.
 
 Turn on the dependency graph, Dependabot alerts, secret scanning and push protection.
 
+Enable GitHub private vulnerability reporting on active public repositories
+where GitHub offers it at no charge. Verify the setting on each repository.
+Keep the security policy's alternate contact available. Use the organization's
+default issue forms unless the project needs different fields, redaction
+instructions, or support links. A local chooser supplies its own forms and
+`config.yml`.
+
 Run CodeQL code scanning with the reusable CodeQL workflow in
 [`vhco-pro/.github`](https://github.com/vhco-pro/.github) for each supported language in the repository.
 Verify current language support before configuring the workflow. Use an appropriate source-security

@@ -19,6 +19,9 @@ New or restyled interfaces use [VH Midnight](vh-midnight.md) by default: a deep 
 gradient, pale text and restrained translucent surfaces. Keep a product's established identity
 instead, or follow the owner's brief when it asks for another look.
 
+Browser extension work also follows the [browser extension design guide](browser-extension-design.md):
+its platform sources, pinned extension skills and measured popup conventions.
+
 ## Design the interface
 
 Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design/SKILL.md)

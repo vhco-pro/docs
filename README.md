@@ -20,6 +20,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Design or review colour in an interface | [Colour in interfaces](conventions/interface-colour.md): colour for status and identity, neutral descriptive content or coloured icons, never colour alone |
 | Design command-line output or terminal interaction | [Terminal output standard](conventions/terminal-output.md): labelled Unicode status, plain modes and stable machine output |
 | Design, implement or review a user-facing interface in any stack | [Use frontend design skills](guides/use-frontend-design-skills.md) |
+| Design, build or review a browser extension (Chrome MV3, Firefox WebExtension) | [Design browser extensions](guides/browser-extension-design.md): platform sources, pinned skills and measured popup, shortcut and permission conventions |
 | Build or change a React application | [React](conventions/react.md) and [TypeScript](conventions/typescript.md) |
 | Research React behavior or review React performance | [Use upstream React skills](guides/use-react-skills.md) |
 | Build a container | [Containers](conventions/containers.md) and the [shared Docker security profile](knowledge/container-release.md) |

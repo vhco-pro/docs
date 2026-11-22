@@ -38,7 +38,8 @@ as the header. The banner is optional. A project logo or a plain text heading
 can also suit the repository.
 
 Use the shared colour palette with the project's name and relevant artwork so
-each project has its own identity. Show a preview before adopting the banner.
+each project has its own identity. Interfaces use [VH Midnight](../guides/vh-midnight.md)
+instead. Show a preview before adopting the banner.
 Keep tags optional and preserve existing README content when changing the header.
 
 Use `readme-assets-gen` when available and keep its project config with the

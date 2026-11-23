@@ -32,16 +32,20 @@ On macOS the LaunchAgent must run in the GUI domain. The CLI reads its login
 from the Keychain, which a process in the GUI session can reach and an SSH
 session cannot.
 
-PDS provides the service:
-[`Install-ClaudeRemoteControl`](https://github.com/michielvha/PDS/pull/69), with
-`Get-ClaudeRemoteControlStatus` and `Uninstall-ClaudeRemoteControl`. It needs
-PowerShell 7 and runs on macOS and Linux. It starts each session in its own Git
-worktree by default, the mode the owner uses; `-SpawnMode same-dir` starts them
-in the folder itself. It writes the LaunchAgent or unit,
-restarts the bridge within 60 seconds after it exits, checks the traps below and
-prints the steps that are left. Its function help lists the parameters. On
-2026-11-23 the functions were still in review in that pull request, and the
-Linux path had not yet run on a real host.
+Two tools set the service up:
+
+- On a workstation, vh-adlc's
+  [`remote-control.sh`](https://github.com/michielvha/vh-adlc/pull/159), a POSIX
+  shell script with `install`, `status` and `uninstall`. It writes the
+  LaunchAgent or unit, restarts the bridge within 60 seconds after it exits,
+  checks the traps below and prints the steps that are left. Sessions start in
+  their own Git worktree by default, the mode the owner uses; `--spawn same-dir`
+  starts them in the folder itself. Its user guide,
+  `docs/user-guides/remote-control-host.md` in vh-adlc, lists the options. On 2026-11-23 the script was still in review in that pull
+  request, and its Linux path had run only against stubs.
+- On a lab server, the `claude_remote_control` Ansible role in
+  [vhco-pro/lab](https://github.com/vhco-pro/lab), which sets up the
+  `systemd --user` unit with linger. It is separate from the script.
 
 ## Traps
 
@@ -67,8 +71,8 @@ These stopped the first hand-built bridge, in this order:
 ## Steps only the owner takes
 
 Trust and consent are the owner's decisions. An agent must not set
-`hasTrustDialogAccepted` or answer the prompt for them, and the PDS function
-never does. At a terminal on the host, in the working directory, the owner:
+`hasTrustDialogAccepted` or answer the prompt for them, and neither tool
+does. At a terminal on the host, in the working directory, the owner:
 
 1. Runs `claude`, signs in if asked and accepts the workspace trust dialog.
 2. Runs `claude remote-control` once and answers `y`.

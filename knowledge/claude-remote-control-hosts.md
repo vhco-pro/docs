@@ -35,7 +35,9 @@ session cannot.
 PDS provides the service:
 [`Install-ClaudeRemoteControl`](https://github.com/michielvha/PDS/pull/69), with
 `Get-ClaudeRemoteControlStatus` and `Uninstall-ClaudeRemoteControl`. It needs
-PowerShell 7 and runs on macOS and Linux. It writes the LaunchAgent or unit,
+PowerShell 7 and runs on macOS and Linux. It starts each session in its own Git
+worktree by default, the mode the owner uses; `-SpawnMode same-dir` starts them
+in the folder itself. It writes the LaunchAgent or unit,
 restarts the bridge within 60 seconds after it exits, checks the traps below and
 prints the steps that are left. Its function help lists the parameters. On
 2026-11-23 the functions were still in review in that pull request, and the
@@ -57,6 +59,10 @@ These stopped the first hand-built bridge, in this order:
    trusted".
 4. The first `claude remote-control` asks
    "Enable Remote Control? (y/n)" once. A background service cannot answer it.
+5. A terminal `claude remote-control` that still serves the folder, often the
+   one used to answer that prompt, stops the service with "This folder is
+   already served by a terminal `claude remote-control` on this device". Stop
+   the terminal bridge, and the service takes over at its next retry.
 
 ## Steps only the owner takes
 
@@ -65,7 +71,9 @@ Trust and consent are the owner's decisions. An agent must not set
 never does. At a terminal on the host, in the working directory, the owner:
 
 1. Runs `claude`, signs in if asked and accepts the workspace trust dialog.
-2. Runs `claude remote-control` once, answers `y`, then stops it with Ctrl+C.
+2. Runs `claude remote-control` once and answers `y`.
+3. Stops that terminal bridge with Ctrl+C. While it runs, the service cannot
+   serve the folder.
 
 The service retries every minute, so it starts by itself after these steps.
 

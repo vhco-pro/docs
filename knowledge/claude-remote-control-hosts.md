@@ -35,17 +35,17 @@ session cannot.
 Two tools set the service up:
 
 - On a workstation, vh-adlc's
-  [`remote-control.sh`](https://github.com/michielvha/vh-adlc/pull/159), a POSIX
-  shell script with `install`, `status` and `uninstall`. It writes the
+  [`remote-control.sh`](https://github.com/michielvha/vh-adlc/blob/main/plugins/vh-adlc/scripts/host/remote-control.sh),
+  a POSIX shell script with `install`, `status` and `uninstall`. It writes the
   LaunchAgent or unit, restarts the bridge within 60 seconds after it exits,
   checks the traps below and prints the steps that are left. Sessions start in
   their own Git worktree by default, the mode the owner uses; `--spawn same-dir`
-  starts them in the folder itself. Its user guide,
-  `docs/user-guides/remote-control-host.md` in vh-adlc, lists the options. On 2026-11-23 the script was still in review in that pull
-  request, and its Linux path had run only against stubs.
-- On a lab server, the `claude_remote_control` Ansible role in
-  [vhco-pro/lab](https://github.com/vhco-pro/lab), which sets up the
-  `systemd --user` unit with linger. It is separate from the script.
+  starts them in the folder itself. Its
+  [user guide](https://github.com/michielvha/vh-adlc/blob/main/docs/user-guides/remote-control-host.md)
+  lists the options. On 2026-11-23 its Linux path had run only against stubs.
+- On a lab server, the `claude_remote_control` Ansible role in vhco-pro/lab,
+  tracked in [lab issue #16](https://github.com/vhco-pro/lab/issues/16). It sets
+  up the `systemd --user` unit with linger and is separate from the script.
 
 ## Traps
 

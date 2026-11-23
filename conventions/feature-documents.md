@@ -65,7 +65,8 @@ decision that clears it.
 ## Sections
 
 Required, in this order: Context, Scope, Design, Acceptance Criteria, Test Plan, Tasks, Open Questions and
-Review Log. Implementation Phases (before Tasks) and Sources (last) are optional. Delete a section that does
+Review Log. Implementation Phases (before Tasks), Deferred (after Open Questions) and Sources (last) are
+optional. Delete a section that does
 not apply rather than leave it empty, except the required ones, which may say "None.".
 
 Scope, Design, Acceptance Criteria, Test Plan and the `covers` frontmatter form the normative baseline. A
@@ -162,14 +163,40 @@ Only the owner answers them. Write each for a decision in under a minute:
 **Why this is yours:** what makes it a judgement call.
 ```
 
-Every trade-off the document settles is an open question, including one the author would answer the same
-way the owner would. A review finding rated nit is the exception: it follows the nit rule in
+Raise an open question only where the owner could plausibly choose differently. This is the
+plausible-choice rule: a question is raised only where the options differ in something the goal and the
+owner's recorded rules do not decide, such as scope, a public contract, security posture, permissions or
+cost to users. The owner's recorded rules are the product profile plus the instruction files and project
+procedure the operations read before acting. The author records every other choice in Design with a
+one-line reason. Each option offered meets the goal in full: a stopgap, a cheaper-now partial option or a
+lock to one dependency version is not offered. With no recorded rules, every judgement call the goal does
+not decide is an open question. A review finding rated nit is the exception: it follows the nit rule in
 [Review log](#review-log) and is never raised as an open question. A section that weighs options and keeps
-one, such as a simplification check, raises that choice here instead of deciding it. User-facing terms the
-feature introduces or changes appear in a glossary row and are held to it by a criterion.
+one, such as a simplification check, raises that choice here only under the plausible-choice rule.
+User-facing terms the feature introduces or changes appear in a glossary row and are held to it by a
+criterion.
 
 An answered question is folded into the document and removed. "None." means every question has been
 answered, not that none was asked.
+
+## Deferred
+
+The optional `## Deferred` section sits after Open Questions and before Review Log. It is the document's
+deferred list: one line for each item the document defers, with where it came from and its verdict. It is
+outside the normative baseline, so adding or editing an entry never makes a review stale. Each entry reads
+`- D-<nn>: <the item>. From: <source>. Verdict: pending.`, where the source is exactly one of:
+
+- `R-<n> F-<nn>, stated limit` for a stated limit the author adds; the Scope line stays the normative
+  statement;
+- `R-<n> F-<nn>, deferred at acceptance` for a finding the owner defers when accepting;
+- `owner cut on <date>` for an item an owner-directed cut removes;
+- `author cut` for an extra the author removes on its own initiative;
+- `drift re-review R-<n>` for extra work the owner defers in a drift re-review.
+
+IDs are never reused. An entry answers its finding the way a stated limit does: a later pass does not raise
+the entry's substance again, unless it leaves an always-blocking defect, makes a criterion unmeetable or
+leaves the stated problem unsolved; then the finding is blocking against Scope and its `EVIDENCE` quotes
+the entry. Once the feature is merged, a pending entry's verdict may replace `pending`.
 
 ## Review log
 
@@ -200,28 +227,54 @@ EVIDENCE: <file:line, command and output, or quote>
 PROPOSAL: <one or two sentences>
 ```
 
-Rate each finding by what it changes:
+Rate each finding by its consequence. This is severity by consequence: what the finding would do to the
+product the repository describes in the `## Product profile` section of its root `AGENTS.md`, which says
+what the product is, who uses it, its stage, and what is at stake. Without a product profile, rate as for
+production software with users whose data matters.
 
 - blocking: a stated fact is false and that changes what is built, what a proof checks or how the
   binary reads the document; an implementer following the document would build something that does not
-  solve the stated problem; a criterion cannot be met; or a proof fails a correct implementation or
-  cannot be executed.
-- should-fix: two careful implementers would build different things, or a proof could pass on a wrong
-  implementation, except widening a free-text pattern row that has passed review to catch more wrong
-  output, which is a nit (see [Test plan](#test-plan)).
+  solve the stated problem; a criterion cannot be met; a proof fails a correct implementation or cannot
+  be executed; a concrete failure that a user, tenant or operator of the profiled product would plausibly
+  hit, with serious harm; or an always-blocking defect.
+- should-fix: a concrete failure that the profiled product's users would plausibly hit, with limited
+  harm; two careful implementers would build things whose difference a user or operator would notice; or
+  a proof could pass on a wrong implementation, except widening a free-text pattern row that has passed
+  review to catch more wrong output, which is a nit (see [Test plan](#test-plan)).
 - nit: wording, style, redundancy, or a citation slip that changes nothing an implementer builds or a
-  proof checks. Widening a free-text pattern row that has passed review to catch more wrong output is also
-  a nit.
+  proof checks, or an undefined path that nobody using the profiled product would plausibly hit. Widening
+  a free-text pattern row that has passed review to catch more wrong output is also a nit.
 
-A repository may declare review lenses, extra checks its reviews apply, each with its own severity. A
-finding a declared lens raises takes that lens's severity; these definitions rate every other finding.
+An always-blocking defect is blocking on every product, whatever its profile: a security defect lets
+someone read or act beyond their authorization, or exposes a credential or secret; a data-loss defect
+loses or corrupts data a user or tenant owns and cannot regenerate; a tenant-isolation defect lets one
+tenant read or affect another tenant's data, runs or configuration.
+
+A repository may declare review lenses, extra checks its reviews apply, each with its own severity. A finding a declared lens raises takes that lens's severity; these definitions rate every other finding.
+
+An author may answer a finding with a stated limit instead of a new mechanism: a Scope line
+`Not handled: <the case>, <why> (R-<n> F-<nn>).` Adding one changes the baseline and is reviewed like any
+other change. It is the author's call, unless the limit excludes a case the goal, a criterion or a
+behavior Scope promises names; then it is an open question. A later pass does not raise the substance of a
+stated limit again, unless the limit leaves an always-blocking defect, makes a criterion unmeetable or
+leaves the stated problem unsolved; then the finding is blocking and its `EVIDENCE` quotes the limit.
+
+A spec review after the first is a scoped re-review: it covers the document diff since the previous spec
+review and every section that states a rule, ID or term the diff changes, and outside that scope it
+reports only blocking findings. The previous spec review is the latest spec review row whose commit is an
+ancestor of the reviewed commit, acceptance rows aside. The pass is full when there is no previous spec
+review, or when a `covers` path outside the document or a docs pin bridge file changed between the two
+reviewed commits; a bridge file is one a repository pins its conventions revision in, such as
+`AGENTS.md`.
 
 A nit on the normative baseline never causes a revision on its own. When the author applies a pass's
 blocking or should-fix findings to the baseline, the same commit fixes every nit of that pass, in any
 section and of either kind, without raising a judgement nit as an open question. The one exception is a
 free-text widening nit, which stays listed even when the baseline changes for other findings. Every nit
 the author does not apply, from every pass it handled in that invocation, is listed with its ID and one
-line in its report and the owner-facing conversation summary, not in the document. A finding confined to
+line in its report, not in the document. The owner-facing conversation summary may apply owner-list
+triage: it shows only the unapplied nits the owner's recorded rules do not settle, with a count of the
+rest, when the full list follows in a section headed `All unapplied nits` at the end of the same reply. A finding confined to
 sections outside the normative baseline may be applied at any time, because it does not make the review
 stale. A nit left unapplied stays in the document until a later revision touches it or the owner asks for
 one.

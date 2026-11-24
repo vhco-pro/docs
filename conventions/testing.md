@@ -8,7 +8,9 @@ status: active
 # Testing conventions
 
 Apply this page when you diagnose a failure, write or change a test, or decide whether a run proves a
-change. [Coding](coding.md#tests-and-changes) covers what to test and how to iterate on a long suite.
+change. [Test strategy](test-strategy.md) decides which layer proves a behaviour, its time budget, flaky
+tests, removal and selection. [Coding](coding.md#tests-and-changes) covers how to iterate on a long
+suite.
 [Frontend testing](frontend-testing.md) adds the browser rules: seed data, browser scenarios and
 visual checks.
 

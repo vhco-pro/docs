@@ -12,6 +12,8 @@ pointers here, not copies of these instructions.
    loads with the [write for agents guide](guides/write-for-agents.md).
    Read [testing](conventions/testing.md) before diagnosing a failure, writing or
    changing a test, or claiming that a run proves a change.
+   Read [test strategy](conventions/test-strategy.md) before writing, moving, removing or reviewing
+   a test, or when a suite is slow or flaky.
    For user-facing interface work in any stack, read and apply the
    [frontend design skill guide](guides/use-frontend-design-skills.md), including its rendered
    mobile/desktop verification and interface-review procedure. Give new or restyled interfaces

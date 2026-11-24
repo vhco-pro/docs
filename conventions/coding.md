@@ -117,7 +117,8 @@ secrets stay in approved secret stores and never enter code, logs, or documents.
 Test observable behavior and important failure paths. Prefer tests of the actual
 script or action over a second implementation of its logic. Keep CI integration
 checks for contracts that only the runner can prove, such as reusable workflow
-access and action outputs. Do not add tests just to raise a count.
+access and action outputs. Do not add tests just to raise a count; [test strategy](test-strategy.md)
+decides which layer proves a behaviour and when a test earns its place.
 [Testing](testing.md) covers diagnosing a failure, proving a test catches its
 defect, and reading a run's evidence.
 

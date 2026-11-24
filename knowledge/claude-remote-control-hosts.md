@@ -1,7 +1,7 @@
 ---
 title: "Claude Code Remote Control hosts"
 type: architecture
-description: "Keep a machine available as a Claude Code Remote Control environment with a per-user service, and know which steps only the owner can take."
+description: "Keep a machine available as a Claude Code Remote Control environment with a per-user service, let its sessions use the host's browser, and know which steps only the owner can take."
 status: active
 ---
 
@@ -80,6 +80,54 @@ does. At a terminal on the host, in the working directory, the owner:
    serve the folder.
 
 The service retries every minute, so it starts by itself after these steps.
+
+## Browser access
+
+A Remote Control session runs on the host, so it can drive a browser there
+through the [Claude in Chrome](https://code.claude.com/docs/en/chrome)
+extension. It then acts with the owner's sign-ins in that browser, for example
+in a portal that has no API. A cloud session runs in a container and cannot
+reach the host's browser this way.
+
+The Claude Code documentation lists Chrome, Edge and other Chromium browsers
+such as Brave, Arc, Vivaldi and Opera. Firefox-based browsers such as Zen are
+not on that list.
+
+Turn the browser on for every session in the `env` block of the user settings
+file, `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_CFC": "1"
+  }
+}
+```
+
+The "Enabled by default" option in `/chrome` does not reach these sessions. In
+Claude Code 2.1.330 a Remote Control or Cowork session ignores it and logs that
+such a session "connects Chrome at start-up only with --chrome or with
+CLAUDE_CODE_ENABLE_CFC=1". A project settings file cannot set the variable:
+Claude Code ignores it there and shows a warning. With the variable set, every
+session on the host loads the browser tools, which uses more context.
+
+The owner sets up the browser once per host:
+
+1. Installs the extension, version 1.0.36 or later, from the
+   [Chrome Web Store](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn)
+   and signs it in to the same claude.ai account and organization as Claude
+   Code.
+2. Signs in to the sites agents should use, in that browser.
+3. Restarts the browser after the first session that has Chrome on. That
+   session writes the native messaging host file, and the browser reads it only
+   at startup.
+
+A session connects only while the browser is running. Run `/chrome` in a
+session to see the connection status, and choose "Reconnect extension" when the
+connection drops after the browser has been idle.
+
+On 2026-11-24 this setup was taken from the 2.1.330 binary and the Claude Code
+documentation. It had not yet been run end to end.
 
 ## Capacity
 

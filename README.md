@@ -30,7 +30,7 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Run iOS checks or use a private hosted Mac with Codemagic | [Remote macOS development with Codemagic (draft)](conventions/codemagic-remote-macos.md) |
 | Set up Dependabot alerts, secret scanning, CodeQL or Scorecard | [Repository security](conventions/repository-security.md) |
 | Bootstrap a new Go application | [Bootstrap a Go project](guides/bootstrap-go-project.md) |
-| Host a Claude Code Remote Control bridge | [Claude Code Remote Control hosts](knowledge/claude-remote-control-hosts.md) |
+| Host a Claude Code Remote Control bridge, or let its sessions use the host's browser | [Claude Code Remote Control hosts](knowledge/claude-remote-control-hosts.md) |
 | Apply these conventions to an existing repo | [Onboard a repository](guides/onboard-a-repository.md) |
 | Evaluate one chat client for remote coding agents | [Remote coding-agent interfaces](knowledge/remote-coding-agents.md) and the [pilot guide](guides/pilot-remote-coding-agents.md) |
 | Write or reorganize documentation | [Documentation](conventions/documentation.md) and [humanize prose](guides/humanize-prose.md) |

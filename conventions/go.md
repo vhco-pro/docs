@@ -11,8 +11,7 @@ status: active
 
 - `cmd/<name>/main.go` is the entry point and contains wiring, not domain logic.
 - `internal/<package>/` contains implementation that other modules must not import.
-- Keep tests beside the implementation as `*_test.go`; use table-driven cases and
-  `t.Run` where several inputs exercise the same behavior.
+- Keep tests beside the implementation as `*_test.go`.
 - Commit `go.mod` and any generated `go.sum`. Do not invent an empty checksum file.
 - Anchor binary ignores to the repository root: `/<name>`, not `<name>`. The latter
   can accidentally ignore `cmd/<name>/` while library-only builds still pass.
@@ -21,6 +20,14 @@ The Go compiler enforces the `internal/` import boundary. Keep the Go version,
 any `toolchain` directive, local tooling, and CI compatible. Resolve an actual
 supported stable release when bootstrapping; do not copy a stale version from
 this documentation.
+
+## Tests
+
+Use table-driven cases and `t.Run` where several inputs exercise the same behavior. Put a package's
+expensive shared setup, such as migrating a schema or starting a server, in `TestMain` or behind a
+`sync.Once` fixture, so it runs once per package as [test strategy](test-strategy.md#shared-setup-runs-once)
+requires. A test function creates only its own rows or resources. Run evidence with `-count=1`, as
+[testing](testing.md#read-the-evidence) requires.
 
 ## Standard toolchain
 

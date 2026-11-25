@@ -36,6 +36,9 @@ image, an upgrade or a browser journey. State that part in the higher test's nam
   reproduces it, then keep the higher test only if it still proves something the lower one does not.
 - Test a behaviour through the public interface its users call, so a refactor that keeps the
   behaviour leaves the test unchanged.
+- A test asserts the property it claims. A test named for idempotence checks that the second run
+  changed nothing, not only that it returned no error; see
+  [testing](testing.md#prove-the-test-catches-the-defect).
 - A table of edge cases belongs in a small test. A medium or large test covers one representative
   case of each path that needs the real resource.
 
@@ -49,7 +52,8 @@ requires each test to own. For Go, put the shared setup in `TestMain` or a `sync
 
 Schema migrations converge. Running the migration a second time on a migrated database issues no
 schema change. A project with automatic migrations keeps a test that migrates a database, migrates it
-again, and fails if the second run changes anything. A migration that never converges also makes
+again, and fails if the second run changes anything. It asserts on the statements or the schema
+the second run produced; a check for "no error" passes while every run rewrites columns. A migration that never converges also makes
 every test that runs it pay its full cost.
 
 ## Time budgets
@@ -80,8 +84,12 @@ A test that passes and fails on the same code is flaky. Find its cause with
 instead of [readiness](testing.md#wait-on-readiness), concurrency and order dependence on state
 another test left behind.
 
-Most flaky tests are flaky from the day they are written. Run a new medium or large test ten times
-in a row, for Go with `-count=10`, before it merges, and fix it if any run fails.
+Most flaky tests are flaky from the day they are written. Before a new test merges, run it
+repeatedly and fix it if any run fails:
+
+- A new medium test runs ten times in a row, for Go with `-count=10`.
+- A new large test, such as one that needs a cluster or a browser, runs three times, targeted at that
+  test alone, on a kept environment.
 
 Until the cause is fixed, quarantine the test:
 

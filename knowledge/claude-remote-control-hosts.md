@@ -118,16 +118,19 @@ The owner sets up the browser once per host:
    and signs it in to the same claude.ai account and organization as Claude
    Code.
 2. Signs in to the sites agents should use, in that browser.
-3. Restarts the browser after the first session that has Chrome on. That
-   session writes the native messaging host file, and the browser reads it only
-   at startup.
+3. Restarts the browser if `/chrome` reports the extension as not detected.
+   The first session that has Chrome on writes the native messaging host file,
+   and the documentation says the browser reads it only at startup.
 
 A session connects only while the browser is running. Run `/chrome` in a
 session to see the connection status, and choose "Reconnect extension" when the
 connection drops after the browser has been idle.
 
-On 2026-11-24 this setup was taken from the 2.1.330 binary and the Claude Code
-documentation. It had not yet been run end to end.
+On 2026-11-25 a Remote Control session on a macOS host running Claude Code
+2.1.330 had `CLAUDE_CODE_ENABLE_CFC=1` from the user settings. It loaded the
+browser tools, opened a tab in Chrome, read a page and closed the tab. Chrome
+had been running since before the native messaging host file was written and
+was not restarted.
 
 ## Capacity
 

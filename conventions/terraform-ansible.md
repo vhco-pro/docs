@@ -8,8 +8,29 @@ status: draft
 # Terraform, OpenTofu and Ansible conventions
 
 Use this guide with [coding](coding.md), [test strategy](test-strategy.md) and
-[GitHub Actions](github-actions.md). DevRail supplies the starting points for tool selection
-and test coverage. This draft maps them to the tools already used in these repositories.
+[GitHub Actions](github-actions.md).
+
+## Upstream skills
+
+Read the task-specific skill at the linked source revision. Follow this convention for local
+checks and CI. Apply upstream examples only where they match the project's engine, runtime and
+permissions. Reading a reference needs no plugin installation and grants no permission to run
+an apply, access infrastructure or install tools.
+
+| Task | Upstream guidance |
+| --- | --- |
+| Write or review Terraform HCL | HashiCorp's [terraform-style-guide](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-style-guide/SKILL.md). |
+| Write Terraform module tests | HashiCorp's [terraform-test](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-test/SKILL.md). |
+| Change a Terraform Plugin Framework resource | HashiCorp's [provider-resources](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-resources/SKILL.md) and [provider-test-patterns](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-test-patterns/SKILL.md) for implementation and acceptance tests. |
+| Write or improve Ansible playbooks and roles | Ansible Community AI Forge's [write-content](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content/SKILL.md). |
+| Write functional tests for Ansible content | Ansible Community AI Forge's [write-content-tests](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content-tests/SKILL.md) for Molecule scenarios and assertions. |
+
+For OpenTofu, use the [OpenTofu language and CLI documentation](https://opentofu.org/docs/) and
+verify examples borrowed from Terraform against the selected OpenTofu version. The Ansible project
+also documents [DevTools agent skills](https://ansible.github.io/vscode-ansible/ai/skills/) for tasks
+such as building a task and explaining a plugin. Use the catalog to find the skill for the task.
+Check the installed collection's module documentation with `ansible-doc` before relying on example
+parameters or behavior.
 
 ## Terraform and OpenTofu
 
@@ -95,8 +116,6 @@ task runner or toolchain container.
 
 ## Sources
 
-- [DevRail Terraform standards](https://devrail.dev/docs/standards/terraform/) and
-  [DevRail Ansible standards](https://devrail.dev/docs/standards/ansible/).
 - [Terraform validate](https://developer.hashicorp.com/terraform/cli/commands/validate),
   [OpenTofu validate](https://opentofu.org/docs/cli/commands/validate/),
   [Terraform test provider mocks](https://developer.hashicorp.com/terraform/language/tests/mocking)

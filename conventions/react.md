@@ -194,8 +194,8 @@ Adapted from Stackweaver at `12addcbe3a605ca083308a0df1b7647cdfb48600`:
 - [React: unnecessary effects](https://react.dev/learn/you-might-not-need-an-effect): derived state, event handling, and external synchronization.
 - [React: render purity](https://react.dev/reference/rules/components-and-hooks-must-be-pure): side effects belong outside rendering.
 - [React: custom lifecycle hooks](https://react.dev/learn/reusing-logic-with-custom-hooks#avoid-custom-lifecycle-hooks): avoid wrappers that obscure reactive dependencies.
-- [React's research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md): documentation research process, not an application coding standard.
-- [Vercel React skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md): supplementary performance guidance; framework-specific recommendations are not universal React requirements.
+- [React's research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md) <!-- renovate: source-ref=main -->: documentation research process, not an application coding standard.
+- [Vercel React skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md) <!-- renovate: source-ref=main -->: supplementary performance guidance; framework-specific recommendations are not universal React requirements.
 - [React: effect dependencies](https://react.dev/reference/eslint-plugin-react-hooks/lints/exhaustive-deps): complete dependency lists and stale closures.
 - [React Strict Mode](https://react.dev/reference/react/StrictMode): development setup/cleanup checks.
 - [React lazy loading](https://react.dev/reference/react/lazy) and [Suspense](https://react.dev/reference/react/Suspense): deferred component code, cached module results, loading boundaries, and error handling.

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "dependencyDashboard": false,
+  "automerge": false,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update explicitly tracked GitHub source references in shared docs",
+      "managerFilePatterns": [
+        "/^(conventions|guides|knowledge)\\/.*\\.md$/"
+      ],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(?:blob|tree)/(?<currentDigest>[a-f0-9]{40})/[^\\s)]+\\)[ \\t]+<!-- renovate: source-ref=(?<currentValue>[A-Za-z0-9_./-]+) -->"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/{{{depName}}}",
+      "versioningTemplate": "exact",
+      "depTypeTemplate": "docs-source-ref"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDepTypes": [
+        "docs-source-ref"
+      ],
+      "automerge": false,
+      "commitMessageTopic": "{{depName}} documentation source",
+      "minimumReleaseAge": "0 days"
+    }
+  ]
+}

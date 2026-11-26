@@ -24,7 +24,7 @@ its platform sources, pinned extension skills and measured popup conventions.
 
 ## Design the interface
 
-Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design/SKILL.md)
+Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design/SKILL.md) <!-- renovate: source-ref=main -->
 before implementing a new interface or changing a layout. Identify the audience, the task and
 the content readers need first. Inspect the existing interface, its real data, typography and
 interaction patterns. Decide which parts of the existing identity the task preserves.
@@ -43,7 +43,7 @@ or present a serialized object as the finished interface.
 
 ## Critique and adapt
 
-Use [Impeccable](https://github.com/pbakaus/impeccable/blob/7510e233b228864606888d252abacf5e7148bf87/.agents/skills/impeccable/SKILL.md)
+Use [Impeccable](https://github.com/pbakaus/impeccable/blob/7510e233b228864606888d252abacf5e7148bf87/.agents/skills/impeccable/SKILL.md) <!-- renovate: source-ref=main -->
 for an explicit design critique, simplification, typography pass or responsive adaptation.
 Read the relevant playbook and craft guidance at that same commit. Its Read and Operate modes
 fit documentation and application screens; expression on a marketing page does not establish
@@ -57,8 +57,8 @@ project context directly. Distinguish applying inspected guidance from executing
 
 ## Review the result
 
-Use [Vercel's web-design-guidelines review procedure](https://github.com/vercel-labs/agent-skills/blob/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/skills/web-design-guidelines/SKILL.md)
-and the [selected interface rules](https://github.com/vercel-labs/web-interface-guidelines/blob/434b7f91364665f2f733b310ec54809bf8f37937/command.md)
+Use [Vercel's web-design-guidelines review procedure](https://github.com/vercel-labs/agent-skills/blob/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/skills/web-design-guidelines/SKILL.md) <!-- renovate: source-ref=main -->
+and the [selected interface rules](https://github.com/vercel-labs/web-interface-guidelines/blob/434b7f91364665f2f733b310ec54809bf8f37937/command.md) <!-- renovate: source-ref=main -->
 to review the affected UI before handoff. This shared baseline selects the linked rule snapshot
 instead of the skill's floating `main` URL. A full upstream invocation also fetches the live
 rules as that skill requests; record the exact revision used and report material differences

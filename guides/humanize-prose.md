@@ -405,6 +405,9 @@ the skill frontmatter and title are replaced; dash characters are written as cod
 longer overrides the dash rule. Update this page by re-reading the upstream file at a new commit and
 recording that commit here.
 
+Use the [upstream update reference](https://github.com/blader/humanizer/blob/8c307f367c91bd974002f10f2be2965d642c13df/SKILL.md) <!-- renovate: source-ref=main -->
+to review new revisions. Change the provenance when the adaptation changes.
+
 The original is distributed under the MIT License:
 
 ```text

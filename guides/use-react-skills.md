@@ -13,7 +13,7 @@ sources, not copies distributed by this repository.
 
 ## Research React behavior
 
-The [react-expert research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md)
+The [react-expert research skill](https://github.com/reactjs/react.dev/blob/ae5e48074d4f73f1e349eda2a66841f9a959023e/.claude/skills/react-expert/SKILL.md) <!-- renovate: source-ref=main -->
 lives in React's documentation repository. Use it when an API's lifecycle, guarantees, or edge cases are
 uncertain. It is a documentation-research workflow, not a general application coding standard.
 
@@ -29,7 +29,7 @@ Apply the [entry-loading and navigation rules](../conventions/react.md#entry-loa
 when assessing startup, route splitting, or asset delivery. Record both the entry improvement and any
 first-navigation cost before recommending a loading strategy.
 
-The [React performance skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md)
+The [React performance skill](https://github.com/vercel-labs/agent-skills/blob/063bee94c3f4df8453406c830b0a7df0f2860278/skills/react-best-practices/SKILL.md) <!-- renovate: source-ref=main -->
 is maintained by Vercel Engineering. Use its relevant rule files when implementing a performance-sensitive
 path or investigating a measured performance problem. It covers React and Next.js; Next.js server
 components, server actions, and hosting recommendations do not automatically apply to a client-only SPA.

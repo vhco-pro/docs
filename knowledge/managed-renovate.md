@@ -95,9 +95,9 @@ release examples and other snapshots unannotated so their references stay fixed.
 
 In this repo, the custom manager in [renovate.json](../renovate.json) reads these comments in
 `conventions/`, `guides/` and `knowledge/`. The repository and old SHA come from the link.
-The comment selects the Git ref Renovate should follow. The initial set covers the pinned Terraform
-and Ansible skills. For this adoption, Dependabot continues to own npm and GitHub Actions. The
-existing [VHCO runner](https://github.com/vhco-pro/renovate-runner) can handle the public source
+The comment selects the Git ref Renovate should follow. Track maintained skill, rules, template and
+other source references when a new revision should reach review. Dependabot owns npm and GitHub
+Actions. The existing [VHCO runner](https://github.com/vhco-pro/renovate-runner) handles public source
 links once this configuration is on the default branch, the App can access the repository and
 the repository is in the runner's target list.
 
@@ -108,6 +108,14 @@ commands or dependencies before merging. A move or rewrite may need a hand edit.
 use pull requests with automerge disabled. Updating a link does not install or run its content.
 [Renovate Git refs](https://docs.renovatebot.com/modules/datasource/git-refs/) and
 [regex manager](https://docs.renovatebot.com/modules/manager/regex/).
+
+For a copied or adapted file, keep its provenance at the exact commit used for those bytes.
+Use a separate annotated update reference to get a review PR for new upstream revisions. Read
+the upstream diff, refresh the local copy or adaptation if approved, retain its license and run
+the owning repository's checks. Update the provenance only when the copied content changes.
+For a dependency managed as a Git submodule, use the
+[native submodule manager](https://docs.renovatebot.com/modules/manager/git-submodules/)
+in the repository that owns it.
 
 ## Freeze before upgrade
 

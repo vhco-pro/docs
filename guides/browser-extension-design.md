@@ -77,7 +77,7 @@ does not conflict with the platform sources above and the exceptions listed here
 
 ### Chrome extension APIs: Google's `chrome-extensions`
 
-[`chrome-extensions` at `9e70fa4`](https://github.com/GoogleChrome/modern-web-guidance/blob/9e70fa4c808b52364eb85c645e261523231176f6/skills/chrome-extensions/SKILL.md)
+[`chrome-extensions`](https://github.com/GoogleChrome/modern-web-guidance/blob/9e70fa4c808b52364eb85c645e261523231176f6/skills/chrome-extensions/SKILL.md) <!-- renovate: source-ref=main -->
 in `GoogleChrome/modern-web-guidance`, Apache-2.0. The `GoogleChrome` organization also hosts
 `chrome-extensions-samples` and Lighthouse, whose homepages are on developer.chrome.com, and its
 public members include Chrome developer relations staff. GitHub does not show it as a verified
@@ -102,7 +102,7 @@ Firefox. Do not follow these parts:
 
 ### Extension UI review: `chrome-extension-ui`
 
-[`chrome-extension-ui` at `e896b4a`](https://github.com/pproenca/dot-skills/blob/e896b4a746433a88ade6cc0f21d0fcc6c73dfa94/skills/.experimental/chrome-extension-ui/SKILL.md)
+[`chrome-extension-ui`](https://github.com/pproenca/dot-skills/blob/e896b4a746433a88ade6cc0f21d0fcc6c73dfa94/skills/.experimental/chrome-extension-ui/SKILL.md) <!-- renovate: source-ref=master -->
 in `pproenca/dot-skills`, MIT. Listing sites name it `chrome-extensions-ux-ui-best-practices`;
 the source lives under `.experimental/`. It is a personal collection: its `metadata.json` says
 "Chrome Extensions Community", which is not an organization behind it.

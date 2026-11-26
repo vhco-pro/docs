@@ -2,7 +2,7 @@
 title: "Terraform, OpenTofu and Ansible conventions"
 type: guideline
 description: "Write reproducible infrastructure configuration and check it with native tools, Git hooks and GitHub Actions."
-status: draft
+status: active
 ---
 
 # Terraform, OpenTofu and Ansible conventions

@@ -24,7 +24,7 @@ its platform sources, pinned extension skills and measured popup conventions.
 
 ## Design the interface
 
-Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design/SKILL.md) <!-- renovate: source-ref=main -->
+Use [Anthropic's frontend-design guidance](https://github.com/anthropics/skills/blob/e4bb5d960d87126ff3b3a8af1a104b7db67560ba/skills/frontend-design/SKILL.md) <!-- renovate: source-ref=main -->
 before implementing a new interface or changing a layout. Identify the audience, the task and
 the content readers need first. Inspect the existing interface, its real data, typography and
 interaction patterns. Decide which parts of the existing identity the task preserves.

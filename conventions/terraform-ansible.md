@@ -19,11 +19,11 @@ an apply, access infrastructure or install tools.
 
 | Task | Upstream guidance |
 | --- | --- |
-| Write or review Terraform HCL | HashiCorp's [terraform-style-guide](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-style-guide/SKILL.md). |
-| Write Terraform module tests | HashiCorp's [terraform-test](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-test/SKILL.md). |
-| Change a Terraform Plugin Framework resource | HashiCorp's [provider-resources](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-resources/SKILL.md) and [provider-test-patterns](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-test-patterns/SKILL.md) for implementation and acceptance tests. |
-| Write or improve Ansible playbooks and roles | Ansible Community AI Forge's [write-content](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content/SKILL.md). |
-| Write functional tests for Ansible content | Ansible Community AI Forge's [write-content-tests](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content-tests/SKILL.md) for Molecule scenarios and assertions. |
+| Write or review Terraform HCL | HashiCorp's [terraform-style-guide](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-style-guide/SKILL.md) <!-- renovate: source-ref=main -->. |
+| Write Terraform module tests | HashiCorp's [terraform-test](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/terraform-test/SKILL.md) <!-- renovate: source-ref=main -->. |
+| Change a Terraform Plugin Framework resource | HashiCorp's [provider-resources](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-resources/SKILL.md) <!-- renovate: source-ref=main --> and [provider-test-patterns](https://github.com/hashicorp/agent-skills/blob/5e30fa5c867ba6777c37e4206babfd08049c396f/plugins/terraform/skills/provider-test-patterns/SKILL.md) <!-- renovate: source-ref=main --> for implementation and acceptance tests. |
+| Write or improve Ansible playbooks and roles | Ansible Community AI Forge's [write-content](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content/SKILL.md) <!-- renovate: source-ref=main -->. |
+| Write functional tests for Ansible content | Ansible Community AI Forge's [write-content-tests](https://github.com/ansible-community/ai-forge/blob/28a9a580b19e208e4c1bbd6146aa60e8aafe8a9f/ansible-content-development/module/skills/write-content-tests/SKILL.md) <!-- renovate: source-ref=main --> for Molecule scenarios and assertions. |
 
 For OpenTofu, use the [OpenTofu language and CLI documentation](https://opentofu.org/docs/) and
 verify examples borrowed from Terraform against the selected OpenTofu version. The Ansible project

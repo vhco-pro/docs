@@ -82,6 +82,33 @@ that the App is installed or that its newest run succeeded. Check the Dependency
 Dashboard or update PRs after adoption. Private registries or packages can require
 additional credentials; public source alone does not establish that case.
 
+## Pin and track upstream Markdown references
+
+Use a full commit SHA in a GitHub file or directory link. To follow a live upstream source,
+put a source-ref comment immediately after the link on the same line. Record the name of the
+actual reviewed branch and verify that no tag has the same name. Keep historical evidence, exact
+release examples and other snapshots unannotated so their references stay fixed.
+
+```markdown
+[Upstream style guide](https://github.com/OWNER/REPO/blob/FULL_COMMIT_SHA/path/to/SKILL.md) <!-- renovate: source-ref=main -->
+```
+
+In this repo, the custom manager in [renovate.json](../renovate.json) reads these comments in
+`conventions/`, `guides/` and `knowledge/`. The repository and old SHA come from the link.
+The comment selects the Git ref Renovate should follow. The initial set covers the pinned Terraform
+and Ansible skills. For this adoption, Dependabot continues to own npm and GitHub Actions. The
+existing [VHCO runner](https://github.com/vhco-pro/renovate-runner) can handle the public source
+links once this configuration is on the default branch, the App can access the repository and
+the repository is in the runner's target list.
+
+Review each proposed digest change. Verify the file exists at the new commit and read the linked
+file diff and its referenced guidance. A branch change elsewhere in the upstream repository can
+propose an update even if the linked file did not change. Check the path, guidance and any new
+commands or dependencies before merging. A move or rewrite may need a hand edit. These updates
+use pull requests with automerge disabled. Updating a link does not install or run its content.
+[Renovate Git refs](https://docs.renovatebot.com/modules/datasource/git-refs/) and
+[regex manager](https://docs.renovatebot.com/modules/manager/regex/).
+
 ## Freeze before upgrade
 
 1. Inventory the current refs and relevant workflows/composite actions.

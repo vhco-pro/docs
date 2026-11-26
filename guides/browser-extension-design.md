@@ -77,7 +77,7 @@ does not conflict with the platform sources above and the exceptions listed here
 
 ### Chrome extension APIs: Google's `chrome-extensions`
 
-[`chrome-extensions`](https://github.com/GoogleChrome/modern-web-guidance/blob/9e70fa4c808b52364eb85c645e261523231176f6/skills/chrome-extensions/SKILL.md) <!-- renovate: source-ref=main -->
+[`chrome-extensions`](https://github.com/GoogleChrome/modern-web-guidance/blob/2b4aa13a72dd47cd135b06ce5abfccd92e19b24f/skills/chrome-extensions/SKILL.md) <!-- renovate: source-ref=main -->
 in `GoogleChrome/modern-web-guidance`, Apache-2.0. The `GoogleChrome` organization also hosts
 `chrome-extensions-samples` and Lighthouse, whose homepages are on developer.chrome.com, and its
 public members include Chrome developer relations staff. GitHub does not show it as a verified

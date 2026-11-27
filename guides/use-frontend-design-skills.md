@@ -43,7 +43,7 @@ or present a serialized object as the finished interface.
 
 ## Critique and adapt
 
-Use [Impeccable](https://github.com/pbakaus/impeccable/blob/7510e233b228864606888d252abacf5e7148bf87/.agents/skills/impeccable/SKILL.md) <!-- renovate: source-ref=main -->
+Use [Impeccable](https://github.com/pbakaus/impeccable/blob/2fc5e1459efbbf06d92c7306517c286bf12490cf/.agents/skills/impeccable/SKILL.md) <!-- renovate: source-ref=main -->
 for an explicit design critique, simplification, typography pass or responsive adaptation.
 Read the relevant playbook and craft guidance at that same commit. Its Read and Operate modes
 fit documentation and application screens; expression on a marketing page does not establish

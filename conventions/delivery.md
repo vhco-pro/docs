@@ -247,6 +247,10 @@ budget of Actions minutes. A repository's visibility decides where its CI runs.
 4. **Keep check jobs read-only.** Use fixture data and keep deployment credentials out of check jobs.
    Keep existing project secret scanning in place.
 
+Keep using Make where the repo already uses it. `just` and Task can group commands and make checks
+easier to find. Each adds a prerequisite. GitHub Actions runs hosted checks and reports their
+status. Keep the same native commands available to developers and Git hooks.
+
 ## Workflows and permissions
 
 Keep substantial logic in scripts as defined in [coding](coding.md), and build actions and workflows

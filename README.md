@@ -13,7 +13,8 @@ Agents read [AGENTS.md](AGENTS.md). Humans and agents use these task routes:
 | Change code or scripts | [Coding](conventions/coding.md) |
 | Write Go | [Go](conventions/go.md) |
 | Specify, write or review PHP | [PHP](conventions/php.md) |
-| Specify, write, review or check Terraform, OpenTofu or Ansible | [Infrastructure code](conventions/terraform-ansible.md) |
+| Specify, write, review or check Terraform or OpenTofu | [Terraform and OpenTofu](conventions/terraform-opentofu.md) |
+| Specify, write, review or check Ansible | [Ansible](conventions/ansible.md) |
 | Diagnose a failure, write or change tests, or judge whether a run proves a change | [Testing](conventions/testing.md) |
 | Decide which layer a test belongs in, review a test's value, or handle a slow or flaky suite | [Test strategy](conventions/test-strategy.md): layers by resources, one proof per behaviour, budgets, quarantine and evidence-based removal |
 | Design or change an HTTP API | [HTTP API](conventions/http-api.md): API first, status codes for failed writes and timestamps |

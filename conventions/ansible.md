@@ -13,7 +13,8 @@ Use this guide with [coding](coding.md) and [test strategy](test-strategy.md).
 
 Read the task-specific skill at the linked source revision. Follow this convention for local
 checks and CI. Apply upstream examples where they match the project's runtime and permissions.
-Reading a reference grants no permission to install tools or access infrastructure.
+You can read these references without installing a plugin. Reading them grants no permission to
+install tools or access infrastructure.
 
 | Task | Upstream guidance |
 | --- | --- |

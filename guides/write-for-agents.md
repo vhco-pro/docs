@@ -189,7 +189,7 @@ at commit `5863806dd4e15c63174bee4e7515a4256792ecfa`. Changes from the original:
 - Invocation switches are described per host instead of assuming one harness.
 
 Update this page by re-reading the upstream files at a new commit and recording that commit here.
-Use the [upstream update reference](https://github.com/mattpocock/skills/tree/5863806dd4e15c63174bee4e7515a4256792ecfa/skills/productivity/writing-for-agents) <!-- renovate: source-ref=main -->
+Use the [upstream update reference](https://github.com/mattpocock/skills/tree/bbadaa631c37af594e5a05c9cefacd9956136b18/skills/productivity/writing-for-agents) <!-- renovate: source-ref=main -->
 to review new revisions. Change the provenance when the adaptation changes.
 
 The original is distributed under the MIT License:

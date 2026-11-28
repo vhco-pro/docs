@@ -231,6 +231,22 @@ budget of Actions minutes. A repository's visibility decides where its CI runs.
   triggers in the same change. When a public repository becomes private, make its check workflows
   manual and move their checks into the local command before the next push.
 
+### Infrastructure checks
+
+1. **Document the native commands.** Developers can run each tool to diagnose a failure. If several
+   commands routinely run together, use the existing check entry point or a short script. Return the
+   tool's failure and keep verification read-only. Prefer the repo's existing entry points before
+   adding a task runner or toolchain container.
+2. **Keep Git hooks fast.** Use an opt-in repository Git hook for quick local checks on the relevant
+   staged paths. Leave dependency downloads, expensive scans and fixture provisioning for the full
+   check. The full check must catch the same failures as the hook.
+3. **Use the shared hosted check pattern.** Follow [GitHub Actions](github-actions.md) for pinned setup
+   actions and thin workflows. If several repos need the same check, use separate composite actions
+   for Terraform or OpenTofu checks and Ansible checks. Keep the tool logic callable locally. Test a
+   pass and an expected failure. Public reusable components test synthetic fixtures in their own CI.
+4. **Keep check jobs read-only.** Use fixture data and keep deployment credentials out of check jobs.
+   Keep existing project secret scanning in place.
+
 ## Workflows and permissions
 
 Keep substantial logic in scripts as defined in [coding](coding.md), and build actions and workflows
